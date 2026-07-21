@@ -1,0 +1,20 @@
+{
+  "created_at": "2026-07-21T21:54:51.053443+00:00",
+  "sources": {
+    "kuatia": {
+      "dataset": "guaran-ia/kuatia",
+      "requested_revision": null,
+      "resolved_revision": "f0c063ce19e9107d9a195ab59dea1843929f1e5a"
+    },
+    "fineweb_edu_es": {
+      "dataset": "Helsinki-NLP/fineweb-edu-translated",
+      "requested_revision": null,
+      "resolved_revision": "d82b075a4a8152727b232876aade2ade003e12b9"
+    },
+    "fineweb_edu_en": {
+      "dataset": "HuggingFaceFW/fineweb-edu",
+      "requested_revision": null,
+      "resolved_revision": "87f09149ef4734204d70ed1d046ddc9ca3f2b8f9"
+    }
+  }
+}

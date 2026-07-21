@@ -1,0 +1,26 @@
+{
+  "C1_kuatia": {
+    "file_name": "processed/C1_kuatia.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C2_kuatia_es20": {
+    "file_name": "processed/C2_kuatia_es20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C3_kuatia_en20": {
+    "file_name": "processed/C3_kuatia_en20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C4_kuatia_es10_en10": {
+    "file_name": "processed/C4_kuatia_es10_en10.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  }
+}

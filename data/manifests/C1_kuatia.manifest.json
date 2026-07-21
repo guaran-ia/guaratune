@@ -1,0 +1,37 @@
+{
+  "config_name": "C1_kuatia",
+  "created_at": "2026-07-21T22:01:25.339083+00:00",
+  "config_path": "configs/data/gemma4_cpt.yaml",
+  "tokenizer": "google/gemma-4-26B-A4B",
+  "sample_seed": 20260721,
+  "corpus": {
+    "name": "C1_kuatia",
+    "path": "data/processed/C1_kuatia.jsonl",
+    "documents": 959936,
+    "tokens": 109275685,
+    "components": [
+      "kuatia"
+    ]
+  },
+  "components": [
+    {
+      "name": "kuatia",
+      "source_name": "kuatia",
+      "dataset": "guaran-ia/kuatia",
+      "config": "compiled_full",
+      "split": "train",
+      "loader": "datasets",
+      "revision": "f0c063ce19e9107d9a195ab59dea1843929f1e5a",
+      "selection": "all",
+      "path": "data/processed/components/kuatia.jsonl",
+      "selection_path": "data/selections/kuatia.selection.jsonl.gz",
+      "target_tokens": null,
+      "actual_tokens": 109275685,
+      "documents": 959936,
+      "seed": null
+    }
+  ],
+  "kuatia_share_target": 1.0,
+  "target_scale": 1.0,
+  "max_kuatia_docs": null
+}

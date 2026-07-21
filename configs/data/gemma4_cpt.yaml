@@ -1,0 +1,86 @@
+output_dir: data
+tokenizer: google/gemma-4-26B-A4B
+seed: 20260721
+shuffle_buffer_size: 10000
+allow_incomplete_samples: false
+
+sources:
+  kuatia:
+    name: kuatia
+    dataset: guaran-ia/kuatia
+    config: compiled_full
+    split: train
+    text_column: text
+    id_column: id
+    loader: datasets
+    revision: null
+
+  fineweb_edu_es:
+    name: fineweb_edu_es
+    dataset: Helsinki-NLP/fineweb-edu-translated
+    config: spa
+    split: train
+    text_column: text
+    id_column: id
+    loader: hf_parquet
+    revision: null
+
+  fineweb_edu_en:
+    name: fineweb_edu_en
+    dataset: HuggingFaceFW/fineweb-edu
+    config: null
+    split: train
+    text_column: text
+    id_column: id
+    loader: datasets
+    revision: null
+
+components:
+  kuatia:
+    kind: all
+    source: kuatia
+
+  fineweb_edu_es20:
+    kind: sample
+    source: fineweb_edu_es
+    target_ratio_of_kuatia: 0.25
+
+  fineweb_edu_en20:
+    kind: sample
+    source: fineweb_edu_en
+    target_ratio_of_kuatia: 0.25
+
+  fineweb_edu_es10:
+    kind: fixed_subsample
+    source_component: fineweb_edu_es20
+    target_ratio_of_kuatia: 0.125
+
+  fineweb_edu_en10:
+    kind: fixed_subsample
+    source_component: fineweb_edu_en20
+    target_ratio_of_kuatia: 0.125
+
+corpora:
+  C1_kuatia:
+    kuatia_share_target: 1.0
+    components:
+      - kuatia
+
+  C2_kuatia_es20:
+    kuatia_share_target: 0.8
+    components:
+      - kuatia
+      - fineweb_edu_es20
+
+  C3_kuatia_en20:
+    kuatia_share_target: 0.8
+    components:
+      - kuatia
+      - fineweb_edu_en20
+
+  C4_kuatia_es10_en10:
+    kuatia_share_target: 0.8
+    components:
+      - kuatia
+      - fineweb_edu_es10
+      - fineweb_edu_en10
