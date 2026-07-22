@@ -31,7 +31,7 @@ learning_rate: 0.0001
 gradient_accumulation_steps: 8
 max_steps: 5
 dataset: C1_kuatia
-output_dir: ouputs/gemma4_26b_a4b/smoke/lora/rank_64/C1_kuatia
+output_dir: outputs/train/gemma4_26b_a4b/smoke/lora/rank_64/C1_kuatia
 run_name: gemma4_26b_a4b_lora_r64_C1_kuatia
 lora_rank: 64
 lora_alpha: 128

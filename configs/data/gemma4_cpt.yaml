@@ -4,6 +4,11 @@ seed: 20260721
 shuffle_buffer_size: 10000
 allow_incomplete_samples: false
 
+heldout:
+  enabled: true
+  ratio: 0.01
+  seed: 20260721
+
 sources:
   kuatia:
     name: kuatia

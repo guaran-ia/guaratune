@@ -1,0 +1,16 @@
+task: guarani_cpt_perplexity_c1_kuatia
+dataset_path: json
+dataset_name: null
+dataset_kwargs:
+  data_files:
+    test: data/evaluation/perplexity/C1_kuatia.jsonl
+test_split: test
+output_type: loglikelihood_rolling
+doc_to_text: ""
+doc_to_target: "{{text}}"
+metric_list:
+  - metric: word_perplexity
+  - metric: byte_perplexity
+  - metric: bits_per_byte
+metadata:
+  version: 1.0

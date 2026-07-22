@@ -30,7 +30,7 @@ lora_dropout: 0.05
 learning_rate: 0.0001
 gradient_accumulation_steps: 8
 dataset: C4_kuatia_es10_en10
-output_dir: ouputs/gemma4_26b_a4b/experiments/lora/rank_256/C4_kuatia_es10_en10
+output_dir: outputs/train/gemma4_26b_a4b/experiments/lora/rank_256/C4_kuatia_es10_en10
 run_name: gemma4_26b_a4b_lora_r256_C4_kuatia_es10_en10
 lora_rank: 256
 lora_alpha: 512

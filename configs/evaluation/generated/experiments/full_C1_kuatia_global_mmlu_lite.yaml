@@ -1,0 +1,27 @@
+env_file: .env
+cache_path: outputs/evaluation/cache/requests
+model: hf
+num_fewshot: 0
+cache_requests: true
+log_samples: true
+show_config: true
+model_args:
+  pretrained: outputs/train/gemma4_26b_a4b/experiments/full/C1_kuatia/gemma4_26b_a4b_full_C1_kuatia
+  dtype: bfloat16
+  tokenizer: google/gemma-4-26B-A4B
+tasks:
+- guarani_global_mmlu_lite
+include_path: evaluation/lm_eval_tasks
+output_path: outputs/evaluation/experiments/full_C1_kuatia/global_mmlu_lite
+device: cuda:0
+batch_size: auto
+trust_remote_code: true
+seed: 20260721
+metadata:
+  run_name: full_C1_kuatia_global_mmlu_lite
+  model_key: gemma4_26b_a4b
+  variant: full_C1_kuatia
+  suite: global_mmlu_lite
+  profile: experiments
+  corpus: C1_kuatia
+  lora_rank: null

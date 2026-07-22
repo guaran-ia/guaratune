@@ -29,5 +29,5 @@ deepspeed: LlamaFactory/examples/deepspeed/ds_z3_config.json
 learning_rate: 1.0e-05
 gradient_accumulation_steps: 16
 dataset: C4_kuatia_es10_en10
-output_dir: ouputs/gemma4_26b_a4b/experiments/full/C4_kuatia_es10_en10/gemma4_26b_a4b_full_C4_kuatia_es10_en10
+output_dir: outputs/train/gemma4_26b_a4b/experiments/full/C4_kuatia_es10_en10/gemma4_26b_a4b_full_C4_kuatia_es10_en10
 run_name: gemma4_26b_a4b_full_C4_kuatia_es10_en10

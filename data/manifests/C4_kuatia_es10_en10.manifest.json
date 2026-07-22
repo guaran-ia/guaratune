@@ -1,14 +1,25 @@
 {
   "config_name": "C4_kuatia_es10_en10",
-  "created_at": "2026-07-21T22:01:42.728171+00:00",
+  "created_at": "2026-07-22T19:41:02.792259+00:00",
   "config_path": "configs/data/gemma4_cpt.yaml",
   "tokenizer": "google/gemma-4-26B-A4B",
   "sample_seed": 20260721,
   "corpus": {
     "name": "C4_kuatia_es10_en10",
     "path": "data/processed/C4_kuatia_es10_en10.jsonl",
-    "documents": 986061,
-    "tokens": 136595202,
+    "documents": 976167,
+    "tokens": 135286815,
+    "components": [
+      "kuatia",
+      "fineweb_edu_es10",
+      "fineweb_edu_en10"
+    ]
+  },
+  "heldout_corpus": {
+    "name": "C4_kuatia_es10_en10",
+    "path": "data/evaluation/perplexity/C4_kuatia_es10_en10.jsonl",
+    "documents": 9894,
+    "tokens": 1308387,
     "components": [
       "kuatia",
       "fineweb_edu_es10",
@@ -65,7 +76,6 @@
       "seed": 20260721
     }
   ],
-  "kuatia_share_target": 0.8,
   "target_scale": 1.0,
   "max_kuatia_docs": null
 }

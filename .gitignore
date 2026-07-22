@@ -123,11 +123,17 @@ ipython_config.py
 # Generated CPT dataset artifacts
 data/processed/
 data/cache/
+data/evaluation/perplexity/
 data/selections/*.selection.jsonl
-ouputs/
+outputs/evaluation/
+outputs/train/
 saves/
 wandb/
 __pypackages__/
+
+# Local external tool checkouts
+LlamaFactory/
+lm-evaluation-harness/
 
 # Celery stuff
 celerybeat-schedule

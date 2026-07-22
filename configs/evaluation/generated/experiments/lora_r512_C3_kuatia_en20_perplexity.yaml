@@ -1,0 +1,31 @@
+env_file: .env
+cache_path: outputs/evaluation/cache/requests
+model: hf
+num_fewshot: 0
+cache_requests: true
+log_samples: false
+show_config: true
+model_args:
+  pretrained: google/gemma-4-26B-A4B
+  revision: main
+  dtype: bfloat16
+  peft: outputs/train/gemma4_26b_a4b/experiments/lora/rank_512/C3_kuatia_en20
+tasks:
+- guarani_cpt_perplexity_c1_kuatia
+- guarani_cpt_perplexity_c2_kuatia_es20
+- guarani_cpt_perplexity_c3_kuatia_en20
+- guarani_cpt_perplexity_c4_kuatia_es10_en10
+include_path: evaluation/lm_eval_tasks
+output_path: outputs/evaluation/experiments/lora_r512_C3_kuatia_en20/perplexity
+device: cuda:0
+batch_size: auto
+trust_remote_code: true
+seed: 20260721
+metadata:
+  run_name: lora_r512_C3_kuatia_en20_perplexity
+  model_key: gemma4_26b_a4b
+  variant: lora_r512_C3_kuatia_en20
+  suite: perplexity
+  profile: experiments
+  corpus: C3_kuatia_en20
+  lora_rank: 512

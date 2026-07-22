@@ -1,5 +1,5 @@
 generated_config_dir: configs/train/generated
-runs_root: ouputs/gemma4_26b_a4b
+runs_root: outputs/train/gemma4_26b_a4b
 
 reporting:
   report_to: wandb

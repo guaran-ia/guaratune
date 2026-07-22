@@ -18,6 +18,10 @@ This writes:
 - `data/processed/C2_kuatia_es20.jsonl`
 - `data/processed/C3_kuatia_en20.jsonl`
 - `data/processed/C4_kuatia_es10_en10.jsonl`
+- `data/evaluation/perplexity/C1_kuatia.jsonl`
+- `data/evaluation/perplexity/C2_kuatia_es20.jsonl`
+- `data/evaluation/perplexity/C3_kuatia_en20.jsonl`
+- `data/evaluation/perplexity/C4_kuatia_es10_en10.jsonl`
 - `data/source_revisions.lock.json`
 - `data/selections/*.selection.jsonl.gz`
 - `data/manifests/*.manifest.json`
@@ -32,15 +36,17 @@ The corpus proportions are:
 
 FineWeb samples are fixed, seeded, full-document samples, so they may exceed the target token count slightly. `C4` uses deterministic fixed subsamples of the corresponding 20% Spanish and English samples. Token counts are computed with `google/gemma-4-26B-A4B` without special tokens.
 
-Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, dataset sources, component sampling targets, and final corpus composition. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. The manifest files include the config path plus corpus and component accounting for each generated JSONL file.
+Each final corpus is split into a training file under `data/processed/` and a held-out file under `data/evaluation/perplexity/`. The default held-out split is 1% of documents, assigned by a deterministic hash of the corpus name, document id, and `heldout.seed`, so reruns and reconstruction produce the same train/evaluation split.
 
-The large generated corpora under `data/processed/` are ignored by Git. To reconstruct them from tracked auxiliary files, use:
+Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, held-out split, dataset sources, component sampling targets, and final corpus composition. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. The manifest files include the config path plus train/held-out corpus and component accounting for each generated JSONL file.
+
+The large generated corpora under `data/processed/` and generated perplexity held-outs under `data/evaluation/perplexity/` are ignored by Git. To reconstruct them from tracked auxiliary files, use:
 
 ```bash
 python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml --overwrite
 ```
 
-Reconstruction reads `data/source_revisions.lock.json`, `data/selections/*.selection.jsonl.gz`, and `data/manifests/*.manifest.json`. If any locked Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version.
+Reconstruction reads `data/source_revisions.lock.json`, `data/selections/*.selection.jsonl.gz`, and `data/manifests/*.manifest.json`. If any locked Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version. The held-out perplexity files are reconstructed from the same component ledgers and deterministic split settings.
 
 The default Spanish source is `Helsinki-NLP/fineweb-edu-translated` with config `spa`, read directly from the Hugging Face Parquet shards. To use a smaller version, like the `TokenHaven/FineWeb-Edu-Spanish` sample, edit the Spanish source block in `configs/data/gemma4_cpt.yaml`:
 
@@ -99,3 +105,85 @@ python -m src.train_profile experiments
 ```
 
 > Tune `configs/train/gemma4_cpt_matrix.yaml` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.
+
+## 4. Evaluation
+
+Evaluations use [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness). See the installation section for environment setup.
+
+Generate evaluation configs from `configs/evaluation/gemma4_eval_matrix.yaml`:
+
+```bash
+python -m src.generate_eval_configs --matrix configs/evaluation/gemma4_eval_matrix.yaml --overwrite
+```
+
+This writes config files under:
+
+- `configs/evaluation/generated/smoke/`
+- `configs/evaluation/generated/experiments/`
+
+The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`:
+
+- `guarani_global_mmlu_lite` reads `data/evaluation/gmlgnt.jsonl`
+- `guarani_cpt_perplexity_*` reads held-out JSONL files from `data/evaluation/perplexity/`
+
+Evaluation results, samples, and request caches are stored under `outputs/evaluation/`. The launchers use the lm-evaluation-harness Python API rather than shelling out to the `lm-eval` CLI. Environment loading is config-driven: generated configs include `env_file: .env` and `cache_path: outputs/evaluation/cache/requests`.
+
+Run one evaluation config:
+
+```bash
+python -m src.eval_config configs/evaluation/generated/smoke/base_global_mmlu_lite.yaml
+```
+
+Run a full generated profile:
+
+```bash
+python -m src.eval_profile experiments
+```
+
+> The generated experiment profile evaluates the base model, full CPT checkpoints, and LoRA adapters against Guarani Global-MMLU-Lite and the held-out perplexity splits. The full and LoRA configs expect training outputs under `outputs/train/gemma4_26b_a4b/experiments`, matching the CPT training matrix.
+
+## 5. Installation
+
+Use Python 3.11, 3.12, or 3.13. The current development environment uses Python 3.12.
+
+Create and activate a fresh environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+```
+
+Install the project dependencies from `requirements.txt`:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+> The requirements file includes pinned editable installs for both LlamaFactory and lm-evaluation-harness. The generated training configs also reference `LlamaFactory/examples/deepspeed/ds_z3_config.json`, so keep a local `LlamaFactory/` checkout at the repository root:
+
+```bash
+git clone --depth 1 https://github.com/hiyouga/LlamaFactory.git
+```
+
+For full-parameter multi-GPU training with the current configs, install LlamaFactory's DeepSpeed dependencies on the GPU VM:
+
+```bash
+cd LlamaFactory
+python -m pip install -r requirements/deepspeed.txt
+cd ..
+```
+
+Set local secrets in `.env`; this file is ignored by Git:
+
+```bash
+HF_TOKEN=...
+WANDB_API_KEY=...
+```
+
+Check the installation:
+
+```bash
+llamafactory-cli --help
+python -c "import lm_eval; print('lm_eval ok')"
+```
