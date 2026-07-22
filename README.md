@@ -1,7 +1,8 @@
 # Guarania Models
 
 This repository contains the code, data, configurations, and outcome that resulted 
-from conducting continual pretraining on state-of-the-art base models.
+from conducting continual pretraining on state-of-the-art base models. The train 
+uses the framework [LlamaFactory](https://github.com/hiyouga/LlamaFactory).
 
 ## 1. Dataset preparation
 
@@ -56,3 +57,45 @@ fineweb_edu_es:
 ```
 
 The remaining CLI flags are operational or debug controls: `--output-dir`, `--overwrite`, `--reconstruct`, `--preflight-only`, `--max-kuatia-docs`, `--target-scale`, and `--allow-incomplete-samples`.
+
+## 2. CPT preparation
+
+Training configs are generated from `configs/train/gemma4_cpt_matrix.yaml`.
+
+Generate or refresh the LLaMA Factory YAML files with:
+
+```bash
+python -m src.generate_train_configs --matrix configs/train/gemma4_cpt_matrix.yaml --overwrite
+```
+
+This creates:
+
+- `configs/train/generated/smoke/*.yaml`
+- `configs/train/generated/experiments/*.yaml`
+
+The smoke profile contains one short Gemma 4 LoRA run on `C1_kuatia`. The experiments profile contains the full Gemma 4 matrix:
+
+- full-parameter CPT over `C1` to `C4`
+- LoRA CPT over `C1` to `C4` with ranks `64`, `128`, `256`, and `512`
+
+Training configs report to Weights & Biases by default through `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are generated into `configs/train/generated/wandb.env`. The project is intentionally broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in `.env` to authenticate into Weights & Biases before training.
+
+The launcher sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` for disconnected runs, then sync later with `wandb sync`.
+
+## 3. Run CPT
+
+Launch an individual CPT experiment
+
+```bash
+python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_full_C1_kuatia.yaml
+```
+
+> For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment variables before launching: `CUDA_VISIBLE_DEVICES=0,1,2,3 FORCE_TORCHRUN=1`
+
+To run a whole profile (i.e., all different experiments)
+
+```bash
+python -m src.train_profile experiments
+```
+
+> Tune `configs/train/gemma4_cpt_matrix.yaml` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.

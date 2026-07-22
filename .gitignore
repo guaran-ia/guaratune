@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -123,6 +124,9 @@ ipython_config.py
 data/processed/
 data/cache/
 data/selections/*.selection.jsonl
+ouputs/
+saves/
+wandb/
 __pypackages__/
 
 # Celery stuff
