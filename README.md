@@ -177,7 +177,8 @@ After preparing the CPT configuration, an individual CPT experiment can be run b
 python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_full_C1_kuatia.yaml
 ```
 
-Alternatively, an entire profile (i.e., all experiments) can be executed by running:
+> [!Important]
+> Alternatively, an entire profile (i.e., all experiments) can be executed by running:
 
 ```bash
 python -m src.train_profile experiments
