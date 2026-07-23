@@ -23,11 +23,12 @@ max_grad_norm: 1.0
 num_train_epochs: 1.0
 bf16: true
 ddp_timeout: 180000000
-cutoff_len: 4096
+cutoff_len: 2048
 finetuning_type: full
-deepspeed: LlamaFactory/examples/deepspeed/ds_z3_config.json
-learning_rate: 1.0e-05
-gradient_accumulation_steps: 16
+learning_rate: 5.0e-06
+gradient_accumulation_steps: 32
+weight_decay: 0.01
+deepspeed: LlamaFactory/examples/deepspeed/ds_z3_offload_config.json
 dataset: C1_kuatia
 output_dir: outputs/train/gemma4_26b_a4b/experiments/full/C1_kuatia/gemma4_26b_a4b_full_C1_kuatia
 run_name: gemma4_26b_a4b_full_C1_kuatia

@@ -23,7 +23,7 @@ max_grad_norm: 1.0
 num_train_epochs: 1.0
 bf16: true
 ddp_timeout: 180000000
-cutoff_len: 4096
+cutoff_len: 2048
 finetuning_type: lora
 lora_target: all
 lora_dropout: 0.05

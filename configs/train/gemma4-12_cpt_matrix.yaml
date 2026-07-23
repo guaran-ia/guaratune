@@ -1,16 +1,16 @@
 generated_config_dir: configs/train/generated
-runs_root: outputs/train/gemma4_26b_a4b
+runs_root: outputs/train/gemma4_12b
 
 reporting:
   report_to: wandb
   wandb_project: guarania-models-cpt
-  wandb_run_group: gemma4_26b_a4b
+  wandb_run_group: gemma4_12b
   wandb_mode: online
   wandb_tags: gemma4,cpt,guarani,text-only
 
 model:
-  key: gemma4_26b_a4b
-  model_name_or_path: google/gemma-4-26B-A4B
+  key: gemma4_12b
+  model_name_or_path: google/gemma-4-12B
   model_revision: main
   trust_remote_code: true
   cutoff_len: 2048
@@ -42,12 +42,12 @@ defaults:
     resume_from_checkpoint: null
 
   full:
-    full:
     finetuning_type: full
-    learning_rate: 5.0e-6
+    pure_bf16: true
+    optim: paged_adamw_8bit
     gradient_accumulation_steps: 32
+    learning_rate: 5.0e-6
     weight_decay: 0.01
-    deepspeed: LlamaFactory/examples/deepspeed/ds_z3_offload_config.json
 
   lora:
     finetuning_type: lora
