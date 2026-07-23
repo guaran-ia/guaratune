@@ -105,9 +105,6 @@ The mentioned corpora are combined using the following configurations:
 
 FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples, so they may exceed the target token count slightly. `C4` uses deterministic fixed subsamples of the corresponding 20% Spanish and English samples.
 
-> [!NOTE]
-> Token counts are computed with `google/gemma-4-26B-A4B` without special tokens.
-
 > [!IMPORTANT]  
 > To create the dataset configurations, run the following command:
 
@@ -142,6 +139,9 @@ python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml -
 ```
 
 Reconstruction reads `data/source_revisions.lock.json`, `data/selections/*.selection.jsonl.gz`, and `data/manifests/*.manifest.json`. If any locked Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version. The held-out perplexity files are reconstructed from the same component ledgers and deterministic split settings.
+
+> [!NOTE]
+> Token counts are computed with `google/gemma-4-26B-A4B` without special tokens.
 
 The remaining optional CLI flags are operational or debug controls: `--output-dir`, `--overwrite`, `--reconstruct`, `--preflight-only`, `--max-kuatia-docs`, `--target-scale`, and `--allow-incomplete-samples`.
 
