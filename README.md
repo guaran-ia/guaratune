@@ -171,7 +171,7 @@ The smoke profile contains one short Gemma 4 LoRA run on `C1_kuatia`, while the 
 
 ## 3. Run CPT
 
-After preparing the CPT configuration, an CPT experiments can be run, both individually or by profile. 
+After preparing the CPT configuration, CPT experiments can be run both individually or by profile. 
 
 > [!Important]
 > To execute an entire profile (i.e., all experiments), run
