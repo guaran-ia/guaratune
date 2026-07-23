@@ -171,17 +171,19 @@ The smoke profile contains one short Gemma 4 LoRA run on `C1_kuatia`, while the 
 
 ## 3. Run CPT
 
-After preparing the CPT configuration, an individual CPT experiment can be run by executing:
-
-```bash
-python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_full_C1_kuatia.yaml
-```
+After preparing the CPT configuration, an CPT experiments can be run, both individually or by profile. 
 
 > [!Important]
-> Alternatively, an entire profile (i.e., all experiments) can be executed by running:
+> To execute an entire profile (i.e., all experiments), run
 
 ```bash
 python -m src.train_profile experiments
+```
+
+Alternatively, an individual CPT experiment can be run by executing:
+
+```bash
+python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_full_C1_kuatia.yaml
 ```
 
 > [!Tip]
