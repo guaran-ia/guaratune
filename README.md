@@ -6,14 +6,10 @@ uses the framework [LlamaFactory](https://github.com/hiyouga/LlamaFactory), and 
 
 The full training pipeline consists of four steps:
 
-- [Guarania Models](#guarania-models)
-  - [0. Installation](#0-installation)
-  - [1. Dataset preparation](#1-dataset-preparation)
-  - [2. CPT preparation](#2-cpt-preparation)
-  - [3. Run CPT](#3-run-cpt)
-  - [4. Evaluation](#4-evaluation)
-    - [Prepare evaluation](#prepare-evaluation)
-    - [Run evaluation](#run-evaluation)
+1. Data preparation
+2. CPT preparation
+3. CPT execution
+4. Model evaluation
 
 Before starting, follow the installation instructions below.
 
