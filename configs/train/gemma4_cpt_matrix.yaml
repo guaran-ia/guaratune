@@ -13,7 +13,7 @@ model:
   model_name_or_path: google/gemma-4-26B-A4B
   model_revision: main
   trust_remote_code: true
-  cutoff_len: 4096
+  cutoff_len: 2048
 
 defaults:
   common:
@@ -44,7 +44,7 @@ defaults:
   full:
     finetuning_type: full
     learning_rate: 5.0e-6
-    gradient_accumulation_steps: 16
+    gradient_accumulation_steps: 32
     weight_decay: 0.01
     pure_bf16: true
     optim: paged_adamw_8bit
