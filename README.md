@@ -81,7 +81,8 @@ python -c "import lm_eval; print('lm_eval ok')"
 
 Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
 
-The default Spanish source is [Helsinki-NLP](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated) with config `spa`, read directly from the Hugging Face Parquet shards. To use a smaller version, like the one produced by [Token Haven](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), edit the Spanish source block in `configs/data/gemma4_cpt.yaml`:
+> [!Note]
+> The default Spanish source is [Helsinki-NLP](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated) with config `spa`, read directly from the Hugging Face Parquet shards. To use a smaller version, like the one produced by [Token Haven](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), edit the Spanish source block in `configs/data/gemma4_cpt.yaml`:
 
 ```yaml
 fineweb_edu_es:
@@ -95,7 +96,7 @@ fineweb_edu_es:
   revision: null
 ```
 
-These corpora are combined using the following configurations:
+The mentioned corpora are combined using the following configurations:
 
 - Configuration 1 (`C1`): Kuatia only.
 - `C2`: 80% Kuatia, 20% Spanish FineWeb-Edu.
