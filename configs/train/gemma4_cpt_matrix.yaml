@@ -42,12 +42,12 @@ defaults:
     resume_from_checkpoint: null
 
   full:
+    full:
     finetuning_type: full
     learning_rate: 5.0e-6
     gradient_accumulation_steps: 32
     weight_decay: 0.01
-    pure_bf16: true
-    optim: paged_adamw_8bit
+    deepspeed: LlamaFactory/examples/deepspeed/ds_z3_offload_config.json
 
   lora:
     finetuning_type: lora
