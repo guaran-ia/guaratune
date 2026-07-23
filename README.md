@@ -194,7 +194,7 @@ python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_fu
 
 ## 4. Evaluation
 
-The performance of the trained models can be evaluated using the framework [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
+The performance of the trained models is evaluated using the framework [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
 ### Prepare evaluation
 
@@ -218,7 +218,8 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 
 ### Run evaluation
 
-To run an evaluation from a config, execute:
+> [!Important]
+> To run an evaluation from a config, execute:
 
 ```bash
 python -m src.eval_config configs/evaluation/generated/smoke/base_global_mmlu_lite.yaml

@@ -15,6 +15,7 @@ from typing import Any
 
 DEFAULT_WANDB_ENV_FILE = 'configs/train/generated/wandb.env'
 DEFAULT_SECRET_ENV_FILE = '.env'
+HF_TOKEN_ENV_KEYS = ('HF_TOKEN', 'HF_ACCESS_TOKEN')
 
 
 def load_yaml(path: str) -> dict[str, Any]:
@@ -105,6 +106,21 @@ def load_env_file(path: str, env: dict[str, str]) -> None:
                 env[key] = value
 
 
+def normalize_hf_token_env(env: dict[str, str]) -> None:
+    """Normalize supported Hugging Face token environment variable names.
+
+    Args:
+        env: Environment mapping to update.
+
+    Returns:
+        None.
+    """
+    if env.get('HF_TOKEN'):
+        return
+    if env.get('HF_ACCESS_TOKEN'):
+        env['HF_TOKEN'] = env['HF_ACCESS_TOKEN']
+
+
 def require_training_inputs(config_path: str) -> None:
     """Validate files required before launching training.
 
@@ -144,11 +160,13 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
     if os.path.isfile(env_file):
         load_env_file(env_file, env)
 
+    normalize_hf_token_env(env)
     env.setdefault('TOKENIZERS_PARALLELISM', 'false')
 
-    if 'HF_TOKEN' not in env:
+    if not any(env.get(key) for key in HF_TOKEN_ENV_KEYS):
         print(
-            'HF_TOKEN is not set. Set it if the Gemma model requires gated Hugging Face access.',
+            'HF_TOKEN is not set. Set HF_TOKEN or HF_ACCESS_TOKEN if the Gemma model '
+            'requires gated Hugging Face access.',
             file=sys.stderr,
         )
 

@@ -10,7 +10,7 @@ import json
 import os
 import yaml
 
-from src.train_config import DEFAULT_SECRET_ENV_FILE, load_env_file
+from src.train_config import DEFAULT_SECRET_ENV_FILE, load_env_file, normalize_hf_token_env
 from typing import Any
 
 
@@ -126,6 +126,7 @@ def prepare_environment(config: dict[str, Any]) -> None:
     if os.path.isfile(env_file):
         load_env_file(env_file, env)
 
+    normalize_hf_token_env(env)
     env.setdefault(
         'LM_HARNESS_CACHE_PATH',
         str(config.get('cache_path') or 'outputs/evaluation/cache/requests'),
