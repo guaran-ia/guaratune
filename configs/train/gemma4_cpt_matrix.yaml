@@ -46,6 +46,8 @@ defaults:
     learning_rate: 5.0e-6
     gradient_accumulation_steps: 16
     weight_decay: 0.01
+    pure_bf16: true
+    optim: paged_adamw_8bit
 
   lora:
     finetuning_type: lora
