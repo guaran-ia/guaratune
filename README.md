@@ -37,6 +37,7 @@ pip install -e .
 pip install -r requirements/metrics.txt
 ```
 
+> [!Note]
 > The requirements file also includes pinned editable installs. The generated training configs reference `LlamaFactory/examples/deepspeed/ds_z3_config.json`, so keep the local `LlamaFactory/` checkout at the project root.
 
 **Optional.** For full-parameter multi-GPU training with the current configs, install LlamaFactory's DeepSpeed dependencies on the GPU VM:
@@ -62,7 +63,7 @@ pip install "lm_eval[hf]"
 python -m pip install -r requirements.txt
 ```
 
-5. Set local secrets in `.env`; this file is ignored by Git:
+5. Rename the file `.env.sample` to `.env` and set local secrets:
 
 ```bash
 HF_TOKEN=...
