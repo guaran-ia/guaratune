@@ -108,7 +108,8 @@ FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document 
 > [!NOTE]
 > Token counts are computed with `google/gemma-4-26B-A4B` without special tokens.
 
-To create the dataset configurations, run the following command:
+> [!IMPORTANT]  
+> To create the dataset configurations, run the following command:
 
 ```bash
 python -m src.prepare_data --config configs/data/gemma4_cpt.yaml --overwrite
@@ -146,7 +147,10 @@ The remaining optional CLI flags are operational or debug controls: `--output-di
 
 ## 2. CPT preparation
 
-In the first version, CPT is focused on the 26B variant of the [Gemma 4 model](https://huggingface.co/google/gemma-4-26B-A4B). To prepare CPT, generate the training configurations from `configs/train/gemma4_cpt_matrix.yaml` by running:
+In the first version, CPT is focused on the 26B variant of the [Gemma 4 model](https://huggingface.co/google/gemma-4-26B-A4B). 
+
+> [!Important]
+> To prepare CPT, generate the training configurations from `configs/train/gemma4_cpt_matrix.yaml` by running:
 
 ```bash
 python -m src.generate_train_configs --matrix configs/train/gemma4_cpt_matrix.yaml --overwrite
