@@ -121,6 +121,31 @@ def normalize_hf_token_env(env: dict[str, str]) -> None:
         env['HF_TOKEN'] = env['HF_ACCESS_TOKEN']
 
 
+def default_wandb_env_file(config_path: str) -> str:
+    """Infer the default generated W&B env file for a training config.
+
+    Args:
+        config_path: Generated training config path.
+
+    Returns:
+        Model-specific W&B env path when the config is model-scoped, otherwise the
+        legacy generated W&B env path.
+    """
+    normalized = os.path.normpath(config_path)
+    parts = normalized.split(os.sep)
+    generated_parts = ['configs', 'train', 'generated']
+    for index in range(0, len(parts) - len(generated_parts) + 1):
+        if parts[index:index + len(generated_parts)] != generated_parts:
+            continue
+
+        remainder = parts[index + len(generated_parts):]
+        if len(remainder) >= 3:
+            model_key = remainder[1]
+            return os.path.join('configs', 'train', 'generated', model_key, 'wandb.env')
+
+    return DEFAULT_WANDB_ENV_FILE
+
+
 def require_training_inputs(config_path: str) -> None:
     """Validate files required before launching training.
 
@@ -171,14 +196,16 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
         )
 
     if uses_wandb(config_path):
-        wandb_env_file = env.get('WANDB_ENV_FILE', DEFAULT_WANDB_ENV_FILE)
+        wandb_env_file = env.get('WANDB_ENV_FILE', default_wandb_env_file(config_path))
         if os.path.isfile(wandb_env_file):
             load_env_file(wandb_env_file, env)
+        elif wandb_env_file != DEFAULT_WANDB_ENV_FILE and os.path.isfile(DEFAULT_WANDB_ENV_FILE):
+            load_env_file(DEFAULT_WANDB_ENV_FILE, env)
         else:
             print(f'W&B env file not found: {wandb_env_file}', file=sys.stderr)
             print(
                 'Generate it with:\n'
-                '  python -m src.generate_train_configs --matrix configs/train/gemma4_cpt_matrix.yaml --overwrite',
+                '  python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite',
                 file=sys.stderr,
             )
 

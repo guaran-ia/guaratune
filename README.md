@@ -1,4 +1,4 @@
-# Guarania Models
+# Guarania Models Framework
 
 This repository contains the code, data, configurations, and outputs that resulted
 from conducting continual pretraining (CPT) on state-of-the-art base models. Training
@@ -147,22 +147,22 @@ The remaining optional CLI flags are operational or debug controls: `--output-di
 
 ## 2. CPT preparation
 
-In the first version, CPT is focused on the 26B variant of the [Gemma 4 model](https://huggingface.co/google/gemma-4-26B-A4B). 
+In the first version, CPT is focused on Gemma 4 model variants (12B and 26B) through separate model-specific matrices.
 
 > [!Important]
-> To prepare CPT, generate the training configurations from `configs/train/gemma4_cpt_matrix.yaml` by running:
+> To prepare CPT, generate the training configurations from the target model matrix by running:
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/gemma4_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
 ```
 
 This creates:
 
-- `configs/train/generated/smoke/*.yaml`
-- `configs/train/generated/experiments/*.yaml`
+- `configs/train/generated/smoke/<model_key>/*.yaml`
+- `configs/train/generated/experiments/<model_key>/*.yaml`
 
 
-The smoke profile contains one short Gemma 4 LoRA run on `C1_kuatia`, while the experiments profile contains the full Gemma 4 matrix:
+The smoke profile contains one short LoRA run on `C1_kuatia`, while the experiments profile contains the full matrix:
 - full-parameter CPT over `C1` to `C4`
 - LoRA CPT over `C1` to `C4` with ranks `64`, `128`, `256`, and `512`
 
@@ -171,26 +171,32 @@ The smoke profile contains one short Gemma 4 LoRA run on `C1_kuatia`, while the 
 
 ## 3. Run CPT
 
-After preparing the CPT configuration, CPT experiments can be run both individually or by profile. 
+After preparing the CPT configuration, CPT experiments can be run both individually or by model-scoped profile. 
 
 > [!Important]
-> To execute an entire profile (i.e., all experiments), run
+> To execute an entire profile for one model, run
 
 ```bash
-python -m src.train_profile experiments
+python -m src.train_profile experiments --model gemma4_12b
+```
+
+Generated profile runs can skip specific configs by filename stem, filename, path, or glob pattern:
+
+```bash
+python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_C1_kuatia
 ```
 
 Alternatively, an individual CPT experiment can be run by executing:
 
 ```bash
-python -m src.train_config configs/train/generated/experiments/gemma4_26b_a4b_full_C1_kuatia.yaml
+python -m src.train_config configs/train/generated/experiments/gemma4_12b/gemma4_12b_full_C1_kuatia.yaml
 ```
 
 > [!Tip]
 > For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment variables before launching: `CUDA_VISIBLE_DEVICES=0,1,2,3 FORCE_TORCHRUN=1`
 
 > [!Note]
-> Tune `configs/train/gemma4_cpt_matrix.yaml` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.
+> Tune the target model matrix under `configs/train/` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.
 
 ## 4. Evaluation
 
@@ -198,16 +204,17 @@ The performance of the trained models is evaluated using the framework [lm-evalu
 
 ### Prepare evaluation
 
-As the first step, generate the evaluation configs from `configs/evaluation/gemma4_eval_matrix.yaml` by running:
+> [!Important]
+> As the first step, generate the evaluation configs from the target model matrix by running:
 
 ```bash
-python -m src.generate_eval_configs --matrix configs/evaluation/gemma4_eval_matrix.yaml --overwrite
+python -m src.generate_eval_configs --matrix configs/evaluation/gemma4-12_eval_matrix.yaml --overwrite
 ```
 
 This writes config files under:
 
-- `configs/evaluation/generated/smoke/`
-- `configs/evaluation/generated/experiments/`
+- `configs/evaluation/generated/smoke/<model_key>/`
+- `configs/evaluation/generated/experiments/<model_key>/`
 
 > [!Note]
 > The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`:
@@ -222,14 +229,20 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 > To run an evaluation from a config, execute:
 
 ```bash
-python -m src.eval_config configs/evaluation/generated/smoke/base_global_mmlu_lite.yaml
+python -m src.eval_config configs/evaluation/generated/smoke/gemma4_12b/gemma4_12b_base_global_mmlu_lite.yaml
 ```
 
 Alternatively, a full generated profile can be executed:
 
 ```bash
-python -m src.eval_profile experiments
+python -m src.eval_profile experiments --model gemma4_12b
+```
+
+Generated evaluation profiles also support exclusions:
+
+```bash
+python -m src.eval_profile experiments --model gemma4_12b --exclude 'gemma4_12b_full_C1_kuatia_*'
 ```
 
 > [!Note]
-> The generated experiment profile evaluates the base model, full CPT checkpoints, and LoRA adapters against a Guarani version of Global-MMLU-Lite and the held-out perplexity splits. The full and LoRA configs expect training outputs under `outputs/train/gemma4_26b_a4b/experiments`.
+> The generated experiment profile evaluates the base model, full CPT checkpoints, and LoRA adapters against a Guarani version of Global-MMLU-Lite and the held-out perplexity splits. The full and LoRA configs expect training outputs under the model-specific `outputs/train/<model_key>/experiments` directory.

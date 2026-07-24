@@ -91,17 +91,18 @@ def write_yaml(path: str, data: dict[str, Any], overwrite: bool) -> None:
         yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
 
 
-def run_name(variant: str, suite_name: str) -> str:
+def run_name(model_key: str, variant: str, suite_name: str) -> str:
     """Build a stable evaluation run name.
 
     Args:
+        model_key: Short model identifier.
         variant: Model variant name.
         suite_name: Evaluation suite name.
 
     Returns:
         Stable run name used for YAML filenames and output directories.
     """
-    return f'{variant}_{suite_name}'
+    return f'{model_key}_{variant}_{suite_name}'
 
 
 def training_run_name(model_key: str, method: str, corpus: str, rank: int | None) -> str:
@@ -266,8 +267,10 @@ def evaluation_config(
         raise ValueError(f'Profile overrides must be a mapping: {profile_name}')
 
     variant = variant_name(variant_kind, corpus, rank)
-    name = run_name(variant, suite_name)
-    output_path = os.path.join(matrix['outputs_root'], profile_name, variant, suite_name)
+    name = run_name(model['key'], variant, suite_name)
+    output_path = os.path.join(
+        matrix['outputs_root'], profile_name, model['key'], variant, suite_name
+    )
 
     return merge_dicts(
         defaults,
@@ -311,12 +314,13 @@ def iter_configs(
     profiles = require_mapping(matrix, 'profiles')
     profile = require_mapping(profiles, profile_name)
     output_dir = matrix.get('generated_config_dir', 'configs/evaluation/generated')
+    model = require_mapping(matrix, 'model')
 
     for variant_kind, corpus, rank in iter_variants(profile):
         variant = variant_name(variant_kind, corpus, rank)
         for suite_name in profile['suites']:
-            name = run_name(variant, suite_name)
-            path = os.path.join(output_dir, profile_name, f'{name}.yaml')
+            name = run_name(model['key'], variant, suite_name)
+            path = os.path.join(output_dir, profile_name, model['key'], f'{name}.yaml')
             yield path, evaluation_config(
                 matrix, profile_name, suite_name, variant_kind, corpus, rank
             )
@@ -330,7 +334,7 @@ def iter_configs(
     '--matrix',
     'matrix_path',
     type=click.Path(exists=True, dir_okay=False),
-    default='configs/evaluation/gemma4_eval_matrix.yaml',
+    default='configs/evaluation/gemma4-12_eval_matrix.yaml',
     help='Evaluation matrix YAML file.',
 )
 @click.option(

@@ -1,0 +1,30 @@
+env_file: .env
+cache_path: outputs/evaluation/cache/requests
+model: hf
+num_fewshot: 0
+cache_requests: true
+log_samples: false
+show_config: true
+model_args:
+  pretrained: outputs/train/gemma4_12b/experiments/full/C1_kuatia/gemma4_12b_full_C1_kuatia
+  dtype: bfloat16
+  tokenizer: google/gemma-4-12B
+tasks:
+- guarani_cpt_perplexity_c1_kuatia
+- guarani_cpt_perplexity_c2_kuatia_es20
+- guarani_cpt_perplexity_c3_kuatia_en20
+- guarani_cpt_perplexity_c4_kuatia_es10_en10
+include_path: evaluation/lm_eval_tasks
+output_path: outputs/evaluation/experiments/gemma4_12b/full_C1_kuatia/perplexity
+device: cuda:0
+batch_size: auto
+trust_remote_code: true
+seed: 20260721
+metadata:
+  run_name: gemma4_12b_full_C1_kuatia_perplexity
+  model_key: gemma4_12b
+  variant: full_C1_kuatia
+  suite: perplexity
+  profile: experiments
+  corpus: C1_kuatia
+  lora_rank: null

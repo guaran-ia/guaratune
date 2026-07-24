@@ -117,7 +117,7 @@ def write_wandb_env(
     Returns:
         Path to the written env file.
     """
-    path = os.path.join(output_dir, 'wandb.env')
+    path = os.path.join(output_dir, model_key, 'wandb.env')
     if os.path.exists(path) and not overwrite:
         raise FileExistsError(f'Refusing to overwrite existing env file: {path}')
 
@@ -292,6 +292,23 @@ def iter_runs(matrix: dict[str, Any], profile_name: str):
                 yield method, corpus, None
 
 
+def generated_config_path(
+    output_dir: str, profile_name: str, model_key: str, name: str
+) -> str:
+    """Build the generated training config path.
+
+    Args:
+        output_dir: Generated config root directory.
+        profile_name: Profile being generated.
+        model_key: Short model identifier.
+        name: Generated config filename stem.
+
+    Returns:
+        Model-scoped generated config path.
+    """
+    return os.path.join(output_dir, profile_name, model_key, f'{name}.yaml')
+
+
 @click.command(
     context_settings={'show_default': True},
     help='Generate LLaMA Factory YAML configs from a CPT experiment matrix.',
@@ -300,7 +317,7 @@ def iter_runs(matrix: dict[str, Any], profile_name: str):
     '--matrix',
     'matrix_path',
     type=click.Path(exists=True, dir_okay=False),
-    default='configs/train/gemma4_cpt_matrix.yaml',
+    default='configs/train/gemma4-12_cpt_matrix.yaml',
     help='Training matrix YAML file.',
 )
 @click.option(
@@ -336,7 +353,7 @@ def main(matrix_path: str, profile_names: tuple[str, ...], overwrite: bool) -> N
 
         for method, corpus, rank in iter_runs(matrix, profile_name):
             name = run_name(matrix['model']['key'], method, corpus, rank)
-            path = os.path.join(output_dir, profile_name, f'{name}.yaml')
+            path = generated_config_path(output_dir, profile_name, matrix['model']['key'], name)
             config = training_config(matrix, profile_name, method, corpus, rank)
             write_yaml(path, config, overwrite)
             print(path)
