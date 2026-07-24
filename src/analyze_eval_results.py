@@ -15,12 +15,16 @@ from typing import Any
 
 DEFAULT_EVALUATION_ROOT = 'outputs/evaluation'
 DEFAULT_RESULTS_DIR = 'results'
-DEFAULT_CSV_NAME = 'evaluation_summary.csv'
-DEFAULT_MARKDOWN_NAME = 'evaluation_summary.md'
+SUMMARY_FILE_PREFIX = 'evaluation_summary'
+HIDDEN_COLUMN_PREFIX = '__'
+PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
 IGNORED_METRIC_SUFFIXES = (
     '_stderr',
     '_stderr,none',
     '_stderr,bootstrap',
+)
+IGNORED_METRIC_NAMES = (
+    'sample_len',
 )
 LOWER_IS_BETTER_TOKENS = (
     'perplexity',
@@ -83,6 +87,9 @@ def is_metric_key(key: str, value: Any) -> bool:
     if not is_number(value):
         return False
 
+    if clean_metric_name(key) in IGNORED_METRIC_NAMES:
+        return False
+
     return not any(key.endswith(suffix) for suffix in IGNORED_METRIC_SUFFIXES)
 
 
@@ -107,9 +114,8 @@ def task_suffix(task_name: str) -> str:
     Returns:
         Compact task name used in metric columns.
     """
-    prefix = 'guarani_cpt_perplexity_'
-    if task_name.startswith(prefix):
-        return task_name[len(prefix):]
+    if task_name.startswith(PERPLEXITY_TASK_PREFIX):
+        return task_name[len(PERPLEXITY_TASK_PREFIX):]
     if task_name == 'guarani_global_mmlu_lite':
         return 'global_mmlu_lite'
 
@@ -127,6 +133,73 @@ def metric_column(task_name: str, metric_name: str) -> str:
         Summary table column name.
     """
     return f'{task_suffix(task_name)}_{clean_metric_name(metric_name)}'
+
+
+def normalize_corpus(value: Any) -> str | None:
+    """Normalize a corpus/configuration name for matching.
+
+    Args:
+        value: Corpus/configuration value.
+
+    Returns:
+        Lowercase corpus name, or None for missing values.
+    """
+    if value is None:
+        return None
+
+    normalized = str(value).strip().lower()
+    return normalized or None
+
+
+def is_perplexity_task(task_name: str) -> bool:
+    """Return whether a task is one of the held-out perplexity tasks.
+
+    Args:
+        task_name: Raw lm-eval task name.
+
+    Returns:
+        True when the task is a CPT perplexity task.
+    """
+    return task_name.startswith(PERPLEXITY_TASK_PREFIX)
+
+
+def base_perplexity_column(task_name: str, metric_name: str) -> str:
+    """Build a hidden base metric column for corpus-specific perplexity.
+
+    Args:
+        task_name: Raw lm-eval task name.
+        metric_name: Clean metric name.
+
+    Returns:
+        Hidden metric column name.
+    """
+    return f'{HIDDEN_COLUMN_PREFIX}base_{task_suffix(task_name)}_{metric_name}'
+
+
+def result_metric_column(
+    task_name: str, metric_name: str, row_corpus: str | int | None
+) -> str | None:
+    """Build the visible or hidden summary column for one task metric.
+
+    Args:
+        task_name: Raw lm-eval task name.
+        metric_name: Clean metric name.
+        row_corpus: Training corpus/configuration for the current row.
+
+    Returns:
+        Summary column name, or None when the metric should be skipped.
+    """
+    if not is_perplexity_task(task_name):
+        return metric_column(task_name, metric_name)
+
+    task_corpus = normalize_corpus(task_suffix(task_name))
+    normalized_row_corpus = normalize_corpus(row_corpus)
+    if normalized_row_corpus is None:
+        return base_perplexity_column(task_name, metric_name)
+    if normalized_row_corpus == task_corpus:
+        return metric_name
+
+    return None
 
 
 def discover_result_paths(
@@ -267,7 +340,10 @@ def extract_result_record(result_path: str, evaluation_root: str) -> dict[str, A
 
         for raw_metric, value in task_metrics.items():
             if is_metric_key(raw_metric, value):
-                row[metric_column(str(task_name), raw_metric)] = value
+                metric_name = clean_metric_name(raw_metric)
+                column = result_metric_column(str(task_name), metric_name, row.get('corpus'))
+                if column is not None:
+                    row[column] = value
 
     return row
 
@@ -343,7 +419,11 @@ def metric_columns(rows: list[dict[str, Any]]) -> list[str]:
     """
     columns = set()
     for row in rows:
-        columns.update(column for column in row.keys() if column not in IDENTITY_COLUMNS)
+        columns.update(
+            column
+            for column in row.keys()
+            if column not in IDENTITY_COLUMNS and not column.startswith(HIDDEN_COLUMN_PREFIX)
+        )
 
     return sorted(columns)
 
@@ -380,6 +460,27 @@ def percentage_improvement(value: Any, base_value: Any, metric_name: str) -> flo
     return ((float(base_value) - float(value)) / float(base_value)) * 100
 
 
+def base_metric_value(base: dict[str, Any], row: dict[str, Any], metric: str) -> Any:
+    """Find the relevant base metric value for a row.
+
+    Args:
+        base: Base row for the same model.
+        row: Variant row.
+        metric: Visible metric column.
+
+    Returns:
+        Base metric value when available.
+    """
+    if metric in base:
+        return base.get(metric)
+
+    corpus = normalize_corpus(row.get('corpus'))
+    if corpus is not None:
+        return base.get(f'{HIDDEN_COLUMN_PREFIX}base_{corpus}_{metric}')
+
+    return None
+
+
 def add_improvement_columns(rows: list[dict[str, Any]], metrics: list[str]) -> list[str]:
     """Add base-relative improvement columns to summary rows.
 
@@ -404,7 +505,9 @@ def add_improvement_columns(rows: list[dict[str, Any]], metrics: list[str]) -> l
                 row[column] = None
                 continue
 
-            row[column] = percentage_improvement(row.get(metric), base.get(metric), metric)
+            row[column] = percentage_improvement(
+                row.get(metric), base_metric_value(base, row, metric), metric
+            )
 
     return improvement_columns
 
@@ -463,6 +566,34 @@ def write_markdown(path: str, rows: list[dict[str, Any]], columns: list[str]) ->
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
 
+def output_name_suffix(model_keys: tuple[str, ...]) -> str:
+    """Build the default output filename suffix for analyzed models.
+
+    Args:
+        model_keys: Model keys passed to the analyzer.
+
+    Returns:
+        Model key for one model, or a combined model-key label for multiple models.
+    """
+    if len(model_keys) == 1:
+        return model_keys[0]
+
+    return 'combined_' + '_'.join(model_keys)
+
+
+def default_output_name(model_keys: tuple[str, ...], extension: str) -> str:
+    """Build a default output filename.
+
+    Args:
+        model_keys: Model keys passed to the analyzer.
+        extension: File extension without leading dot.
+
+    Returns:
+        Default model-scoped output filename.
+    """
+    return f'{SUMMARY_FILE_PREFIX}_{output_name_suffix(model_keys)}.{extension}'
+
+
 def analyze_results(
     evaluation_root: str, model_keys: tuple[str, ...], profile_names: tuple[str, ...]
 ) -> list[dict[str, Any]]:
@@ -515,12 +646,12 @@ def analyze_results(
 )
 @click.option(
     '--csv-name',
-    default=DEFAULT_CSV_NAME,
+    default=None,
     help='CSV output filename.',
 )
 @click.option(
     '--markdown-name',
-    default=DEFAULT_MARKDOWN_NAME,
+    default=None,
     help='Markdown output filename.',
 )
 def main(
@@ -528,8 +659,8 @@ def main(
     evaluation_root: str,
     profile_names: tuple[str, ...],
     output_dir: str,
-    csv_name: str,
-    markdown_name: str,
+    csv_name: str | None,
+    markdown_name: str | None,
 ) -> None:
     """Summarize available evaluation results.
 
@@ -538,8 +669,8 @@ def main(
         evaluation_root: Evaluation output root directory.
         profile_names: Evaluation profiles to analyze.
         output_dir: Analysis output directory.
-        csv_name: CSV output filename.
-        markdown_name: Markdown output filename.
+        csv_name: Optional CSV output filename.
+        markdown_name: Optional markdown output filename.
 
     Returns:
         None.
@@ -554,8 +685,10 @@ def main(
     improvement_columns = add_improvement_columns(rows, metrics)
     columns = list(IDENTITY_COLUMNS) + metrics + improvement_columns
     os.makedirs(output_dir, exist_ok=True)
-    csv_path = os.path.join(output_dir, csv_name)
-    markdown_path = os.path.join(output_dir, markdown_name)
+    resolved_csv_name = csv_name or default_output_name(model_keys, 'csv')
+    resolved_markdown_name = markdown_name or default_output_name(model_keys, 'md')
+    csv_path = os.path.join(output_dir, resolved_csv_name)
+    markdown_path = os.path.join(output_dir, resolved_markdown_name)
     write_csv(csv_path, rows, columns)
     write_markdown(markdown_path, rows, columns)
     print(csv_path)

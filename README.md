@@ -258,7 +258,8 @@ python -m src.analyze_eval_results --model gemma4_12b --model gemma4_26b_a4b --p
 
 The analyzer writes:
 
-- `results/evaluation_summary.csv`
-- `results/evaluation_summary.md`
+- `results/evaluation_summary_gemma4_12b.csv` for one model
+- `results/evaluation_summary_combined_gemma4_12b_gemma4_26b_a4b.csv` for multiple models
+- matching `.md` files with the same filename stem
 
-The summary has one row per model variant, including `base` when available. Metric columns include Global-MMLU-Lite accuracy metrics and held-out perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist.
+The summary has one row per model variant, including `base` when available. Metric columns include Global-MMLU-Lite accuracy metrics and held-out perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist. Corpus-specific perplexity task names are collapsed into generic metric columns, such as `word_perplexity`, using only the held-out corpus that matches each trained variant's corpus configuration.
