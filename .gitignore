@@ -127,6 +127,7 @@ data/evaluation/perplexity/
 data/selections/*.selection.jsonl
 outputs/evaluation/
 outputs/train/
+results/
 saves/
 wandb/
 __pypackages__/

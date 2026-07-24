@@ -246,3 +246,19 @@ python -m src.eval_profile experiments --model gemma4_12b --exclude 'gemma4_12b_
 
 > [!Note]
 > The generated experiment profile evaluates the base model, full CPT checkpoints, and LoRA adapters against a Guarani version of Global-MMLU-Lite and the held-out perplexity splits. The full and LoRA configs expect training outputs under the model-specific `outputs/train/<model_key>/experiments` directory.
+
+### Analyze evaluation results
+
+> [!Important]
+> After evaluation runs finish, summarize all available results for one or more models:
+
+```bash
+python -m src.analyze_eval_results --model gemma4_12b --model gemma4_26b_a4b --profile experiments
+```
+
+The analyzer writes:
+
+- `results/evaluation_summary.csv`
+- `results/evaluation_summary.md`
+
+The summary has one row per model variant, including `base` when available. Metric columns include Global-MMLU-Lite accuracy metrics and held-out perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist.
