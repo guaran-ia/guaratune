@@ -16,7 +16,6 @@ from typing import Any
 DEFAULT_EVALUATION_ROOT = 'outputs/evaluation'
 DEFAULT_RESULTS_DIR = 'results'
 SUMMARY_FILE_PREFIX = 'evaluation_summary'
-HIDDEN_COLUMN_PREFIX = '__'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
 IGNORED_METRIC_SUFFIXES = (
     '_stderr',
@@ -36,6 +35,7 @@ IDENTITY_COLUMNS = (
     'variant',
     'training_method',
     'corpus',
+    'eval_corpus',
     'lora_rank',
     'profiles',
 )
@@ -163,43 +163,62 @@ def is_perplexity_task(task_name: str) -> bool:
     return task_name.startswith(PERPLEXITY_TASK_PREFIX)
 
 
-def base_perplexity_column(task_name: str, metric_name: str) -> str:
-    """Build a hidden base metric column for corpus-specific perplexity.
+def result_metric_column(task_name: str, metric_name: str) -> str:
+    """Build the visible summary column for one task metric.
 
     Args:
         task_name: Raw lm-eval task name.
         metric_name: Clean metric name.
 
     Returns:
-        Hidden metric column name.
+        Summary column name.
     """
-    return f'{HIDDEN_COLUMN_PREFIX}base_{task_suffix(task_name)}_{metric_name}'
+    if is_perplexity_task(task_name):
+        return metric_name
+
+    return metric_column(task_name, metric_name)
 
 
-def result_metric_column(
-    task_name: str, metric_name: str, row_corpus: str | int | None
-) -> str | None:
-    """Build the visible or hidden summary column for one task metric.
+def should_include_perplexity_task(task_name: str, row_corpus: str | int | None) -> bool:
+    """Return whether a perplexity task belongs in a result row.
 
     Args:
         task_name: Raw lm-eval task name.
-        metric_name: Clean metric name.
         row_corpus: Training corpus/configuration for the current row.
 
     Returns:
-        Summary column name, or None when the metric should be skipped.
+        True when the task should be included in the summary.
     """
-    if not is_perplexity_task(task_name):
-        return metric_column(task_name, metric_name)
-
-    task_corpus = normalize_corpus(task_suffix(task_name))
     normalized_row_corpus = normalize_corpus(row_corpus)
     if normalized_row_corpus is None:
-        return base_perplexity_column(task_name, metric_name)
-    if normalized_row_corpus == task_corpus:
-        return metric_name
+        return True
 
-    return None
+    return normalized_row_corpus == normalize_corpus(task_suffix(task_name))
+
+
+def base_result_row(
+    model_key: str, variant: str, profile: str, parsed_variant: dict[str, str | int | None]
+) -> dict[str, Any]:
+    """Build common identity fields for an evaluation result.
+
+    Args:
+        model_key: Model key from result metadata or output path.
+        variant: Model variant from result metadata or output path.
+        profile: Evaluation profile from result metadata or output path.
+        parsed_variant: Parsed variant fields.
+
+    Returns:
+        Result row with identity fields populated.
+    """
+    return {
+        'model_key': model_key,
+        'variant': variant,
+        'profiles': profile,
+        'training_method': parsed_variant['training_method'],
+        'corpus': parsed_variant['corpus'],
+        'eval_corpus': None,
+        'lora_rank': parsed_variant['lora_rank'],
+    }
 
 
 def discover_result_paths(
@@ -301,15 +320,15 @@ def parse_variant(variant: str | None) -> dict[str, str | int | None]:
     }
 
 
-def extract_result_record(result_path: str, evaluation_root: str) -> dict[str, Any]:
-    """Extract one partial row from an lm-eval result file.
+def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[str, Any]]:
+    """Extract partial rows from an lm-eval result file.
 
     Args:
         result_path: Result JSON path.
         evaluation_root: Evaluation output root directory.
 
     Returns:
-        Partial row containing identity fields and metrics.
+        Partial rows containing identity fields and metrics.
     """
     data = load_json(result_path)
     path_metadata = metadata_from_path(result_path, evaluation_root)
@@ -321,31 +340,41 @@ def extract_result_record(result_path: str, evaluation_root: str) -> dict[str, A
     variant = str(result_metadata.get('variant') or path_metadata['variant'])
     profile = str(result_metadata.get('profile') or path_metadata['profile'])
     parsed_variant = parse_variant(variant)
-    row = {
-        'model_key': model_key,
-        'variant': variant,
-        'profiles': profile,
-        'training_method': parsed_variant['training_method'],
-        'corpus': parsed_variant['corpus'],
-        'lora_rank': parsed_variant['lora_rank'],
-    }
+    row = base_result_row(model_key, variant, profile, parsed_variant)
 
     results = data.get('results', {})
     if not isinstance(results, dict):
-        return row
+        return [row]
 
+    global_metrics = {}
+    perplexity_rows: dict[str, dict[str, Any]] = {}
     for task_name, task_metrics in results.items():
         if not isinstance(task_metrics, dict):
             continue
 
+        task_name = str(task_name)
+        if is_perplexity_task(task_name):
+            if not should_include_perplexity_task(task_name, row.get('corpus')):
+                continue
+
+            eval_corpus = task_suffix(task_name)
+            task_row = perplexity_rows.setdefault(eval_corpus, row | {'eval_corpus': eval_corpus})
+        else:
+            task_row = global_metrics
+
         for raw_metric, value in task_metrics.items():
             if is_metric_key(raw_metric, value):
                 metric_name = clean_metric_name(raw_metric)
-                column = result_metric_column(str(task_name), metric_name, row.get('corpus'))
-                if column is not None:
-                    row[column] = value
+                task_row[result_metric_column(task_name, metric_name)] = value
 
-    return row
+    if perplexity_rows:
+        for task_row in perplexity_rows.values():
+            task_row.update(global_metrics)
+
+        return list(perplexity_rows.values())
+
+    row.update(global_metrics)
+    return [row]
 
 
 def row_key(row: dict[str, Any]) -> tuple[Any, ...]:
@@ -362,8 +391,98 @@ def row_key(row: dict[str, Any]) -> tuple[Any, ...]:
         row.get('variant'),
         row.get('training_method'),
         row.get('corpus'),
+        row.get('eval_corpus'),
         row.get('lora_rank'),
     )
+
+
+def variant_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    """Build the grouping key for all rows from one model variant.
+
+    Args:
+        row: Summary row.
+
+    Returns:
+        Tuple key identifying a model variant across evaluation corpora.
+    """
+    return (
+        row.get('model_key'),
+        row.get('variant'),
+        row.get('training_method'),
+        row.get('corpus'),
+        row.get('lora_rank'),
+    )
+
+
+def metric_values(row: dict[str, Any]) -> dict[str, Any]:
+    """Return metric values from a row.
+
+    Args:
+        row: Summary row.
+
+    Returns:
+        Mapping of metric columns to values.
+    """
+    return {
+        column: value
+        for column, value in row.items()
+        if column not in IDENTITY_COLUMNS
+    }
+
+
+def merge_profile_values(*values: Any) -> str:
+    """Merge comma-separated profile values.
+
+    Args:
+        values: Profile values to merge.
+
+    Returns:
+        Sorted, comma-separated profile names.
+    """
+    profiles = set()
+    for value in values:
+        if value is None:
+            continue
+
+        profiles.update(part for part in str(value).split(',') if part)
+
+    return ','.join(sorted(profiles))
+
+
+def collapse_global_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Copy global metrics onto corpus rows and remove redundant global rows.
+
+    Args:
+        rows: Merged rows.
+
+    Returns:
+        Rows with global-only entries collapsed where corpus rows exist.
+    """
+    global_by_variant = {}
+    variants_with_eval_corpus = set()
+    for row in rows:
+        key = variant_key(row)
+        if row.get('eval_corpus') is None:
+            global_by_variant[key] = row
+        else:
+            variants_with_eval_corpus.add(key)
+
+    collapsed = []
+    for row in rows:
+        key = variant_key(row)
+        if row.get('eval_corpus') is None and key in variants_with_eval_corpus:
+            continue
+
+        global_row = global_by_variant.get(key)
+        if row.get('eval_corpus') is not None and global_row is not None:
+            for column, value in metric_values(global_row).items():
+                row.setdefault(column, value)
+
+            row['profiles'] = merge_profile_values(row.get('profiles'), global_row.get('profiles'))
+
+        collapsed.append(row)
+
+    return collapsed
 
 
 def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -396,6 +515,7 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row['profiles'] = ','.join(sorted(profiles_by_key[key]))
         merged.append(row)
 
+    merged = collapse_global_rows(merged)
     return sorted(
         merged,
         key=lambda item: (
@@ -403,6 +523,7 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             str(item.get('training_method') or ''),
             str(item.get('lora_rank') or ''),
             str(item.get('corpus') or ''),
+            str(item.get('eval_corpus') or ''),
             str(item.get('variant') or ''),
         ),
     )
@@ -422,7 +543,7 @@ def metric_columns(rows: list[dict[str, Any]]) -> list[str]:
         columns.update(
             column
             for column in row.keys()
-            if column not in IDENTITY_COLUMNS and not column.startswith(HIDDEN_COLUMN_PREFIX)
+            if column not in IDENTITY_COLUMNS
         )
 
     return sorted(columns)
@@ -460,23 +581,27 @@ def percentage_improvement(value: Any, base_value: Any, metric_name: str) -> flo
     return ((float(base_value) - float(value)) / float(base_value)) * 100
 
 
-def base_metric_value(base: dict[str, Any], row: dict[str, Any], metric: str) -> Any:
+def base_metric_value(
+    base_rows: list[dict[str, Any]], row: dict[str, Any], metric: str
+) -> Any:
     """Find the relevant base metric value for a row.
 
     Args:
-        base: Base row for the same model.
+        base_rows: Base rows for the same model.
         row: Variant row.
         metric: Visible metric column.
 
     Returns:
         Base metric value when available.
     """
-    if metric in base:
-        return base.get(metric)
+    preferred_eval_corpus = row.get('eval_corpus')
+    for base in base_rows:
+        if base.get('eval_corpus') == preferred_eval_corpus and is_number(base.get(metric)):
+            return base.get(metric)
 
-    corpus = normalize_corpus(row.get('corpus'))
-    if corpus is not None:
-        return base.get(f'{HIDDEN_COLUMN_PREFIX}base_{corpus}_{metric}')
+    for base in base_rows:
+        if is_number(base.get(metric)):
+            return base.get(metric)
 
     return None
 
@@ -491,22 +616,22 @@ def add_improvement_columns(rows: list[dict[str, Any]], metrics: list[str]) -> l
     Returns:
         Improvement column names.
     """
-    base_by_model = {
-        row['model_key']: row
-        for row in rows
-        if row.get('variant') == 'base'
-    }
+    base_by_model: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        if row.get('variant') == 'base':
+            base_by_model[str(row['model_key'])].append(row)
+
     improvement_columns = [f'{metric}_improvement_vs_base_pct' for metric in metrics]
     for row in rows:
-        base = base_by_model.get(row.get('model_key'))
+        base_rows = base_by_model.get(str(row.get('model_key')))
         for metric in metrics:
             column = f'{metric}_improvement_vs_base_pct'
-            if base is None or row.get('variant') == 'base':
+            if not base_rows or row.get('variant') == 'base':
                 row[column] = None
                 continue
 
             row[column] = percentage_improvement(
-                row.get(metric), base_metric_value(base, row, metric), metric
+                row.get(metric), base_metric_value(base_rows, row, metric), metric
             )
 
     return improvement_columns
@@ -605,12 +730,11 @@ def analyze_results(
         profile_names: Optional profiles to analyze.
 
     Returns:
-        One summary row per model variant.
+        One summary row per model variant and evaluated corpus.
     """
-    partial_rows = [
-        extract_result_record(path, evaluation_root)
-        for path in discover_result_paths(evaluation_root, model_keys, profile_names)
-    ]
+    partial_rows = []
+    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
+        partial_rows.extend(extract_result_records(path, evaluation_root))
 
     return merge_rows(partial_rows)
 
