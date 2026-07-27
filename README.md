@@ -191,7 +191,7 @@ python -m src.train_profile experiments --model gemma4_12b
 Generated profile runs can skip specific configs by filename stem, filename, path, or glob pattern:
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_C1_kuatia
+python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_*
 ```
 
 Alternatively, an individual CPT experiment can be run by executing:
