@@ -273,6 +273,6 @@ The analyzer writes:
 The summary has one row per model variant and evaluated corpus, including `base` when available. The `corpus` column identifies the training corpus configuration, while `eval_corpus` identifies the held-out corpus used for perplexity evaluation. Metric columns include Global-MMLU-Lite accuracy metrics and held-out perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist. Corpus-specific perplexity task names are collapsed into generic metric columns, such as `word_perplexity`, and disambiguated through `eval_corpus`.
 
 > [!Note]
-> Check `configs/evaluation/README.md` for instructions on how to add new evaluation matrices. 
+> Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation matrices. 
 > Also, new LM-Eval tasks can be included by following steps listed in `evaluation/lm_eval_tasks/README.md` 
 
