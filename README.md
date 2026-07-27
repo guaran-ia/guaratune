@@ -146,8 +146,8 @@ Reconstruction reads `data/source_revisions.lock.json`, `data/selections/*.selec
 The remaining optional CLI flags are operational or debug controls: `--output-dir`, `--overwrite`, `--reconstruct`, `--preflight-only`, `--max-kuatia-docs`, `--target-scale`, and `--allow-incomplete-samples`.
 
 > [!Note]
-> New datasets can added by following the instructions in `data/README.md` and 
-> new data configurations can be included after implementing the steps listed in `configs/data/gemma4_cpt.yaml`.
+> New datasets can added by following the instructions in [data/README.md](data/README.md) and 
+> new data configurations can be included after implementing the steps listed in [configs/data/gemma4_cpt.yaml](configs/data/gemma4_cpt.yaml).
 
 ## 2. CPT preparation
 
@@ -174,7 +174,7 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 > Training configs report to [Weights & Biases](https://wandb.ai) by default through `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are generated into `configs/train/generated/wandb.env`. The project is intentionally broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in `.env` to authenticate into Weights & Biases before training. The launcher sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` for disconnected runs, then sync later with `wandb sync`.
 
 >[!Note]
-> New training matrices can be added by following the instructions presented in `configs/train/README.md`.
+> New training matrices can be added by following the instructions presented in [configs/train/README.md](configs/train/README.md).
 
 
 ## 3. Run CPT
@@ -274,5 +274,5 @@ The summary has one row per model variant and evaluated corpus, including `base`
 
 > [!Note]
 > Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation matrices. 
-> Also, new LM-Eval tasks can be included by following steps listed in `evaluation/lm_eval_tasks/README.md` 
+> Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md). 
 
