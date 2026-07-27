@@ -7,7 +7,7 @@ dataset_dir: data
 preprocessing_num_workers: 16
 dataloader_num_workers: 4
 packing: true
-flash_attn: fa2
+flash_attn: sdpa
 disable_gradient_checkpointing: false
 plot_loss: true
 overwrite_output_dir: false
