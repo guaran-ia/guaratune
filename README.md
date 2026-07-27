@@ -147,7 +147,7 @@ The remaining optional CLI flags are operational or debug controls: `--output-di
 
 > [!Note]
 > New datasets can added by following the instructions in [data/README.md](data/README.md) and 
-> new data configurations can be included after implementing the steps listed in [configs/data/gemma4_cpt.yaml](configs/data/gemma4_cpt.yaml).
+> new data configurations can be included after implementing the steps listed in [configs/data/README.md](configs/data/gemma4_cpt.yaml).
 
 ## 2. CPT preparation
 
