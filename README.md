@@ -1,4 +1,4 @@
-# Guarania Models Framework
+# Guarania CPT Framework
 
 <p align="center">
   <strong>Perform continual pre-training on open-source base models</strong>
