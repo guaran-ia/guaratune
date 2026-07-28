@@ -16,9 +16,9 @@
 
 This repository contains the code, data, and configurations developed to
 conduct both full and LoRA **continual pretraining (CPT)** on state-of-the-art 
-open-source base models (check supported models). Training employs the framework 
-[LlamaFactory](https://github.com/hiyouga/LlamaFactory), and evaluation uses the 
-framework [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
+open-source base models (check supported models). Training employs 
+[LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the evaluation is 
+based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
 
 ### Pipeline
 
