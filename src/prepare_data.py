@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import click
 import gzip
+import hashlib
 import inspect
 import json
 import os
@@ -334,6 +335,7 @@ def output_paths(output_dir: str) -> dict[str, str]:
     return {
         'processed': os.path.join(output_dir, 'processed'),
         'components': os.path.join(output_dir, 'processed', 'components'),
+        'perplexity': os.path.join(output_dir, 'evaluation', 'perplexity'),
         'selections': os.path.join(output_dir, 'selections'),
         'manifests': os.path.join(output_dir, 'manifests'),
         'source_lock': os.path.join(output_dir, 'source_revisions.lock.json'),
@@ -353,6 +355,33 @@ def selection_file_path(paths: dict[str, str], component_name: str) -> str:
     return os.path.join(paths['selections'], f'{component_name}{SELECTION_SUFFIX}')
 
 
+def heldout_config_from_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Return normalized held-out split settings.
+
+    Args:
+        config: Resolved dataset preparation config.
+
+    Returns:
+        Held-out settings containing enabled, ratio, and seed values.
+
+    Raises:
+        ValueError: If the held-out ratio is outside the supported range.
+    """
+    raw_config = config.get('heldout') or {}
+    if not isinstance(raw_config, dict):
+        raise ValueError('Config key must be a mapping: heldout')
+
+    ratio = float(raw_config.get('ratio', 0.0))
+    if ratio < 0.0 or ratio >= 1.0:
+        raise ValueError('heldout.ratio must be greater than or equal to 0 and less than 1.')
+
+    return {
+        'enabled': bool(raw_config.get('enabled', ratio > 0.0)),
+        'ratio': ratio,
+        'seed': int(raw_config.get('seed', config['seed'])),
+    }
+
+
 def ensure_writable_output(
     output_dir: str,
     overwrite: bool,
@@ -360,6 +389,7 @@ def ensure_writable_output(
     component_names: Iterable[str],
     *,
     auxiliary: bool,
+    heldout_enabled: bool,
 ) -> dict[str, str]:
     """Create output directories and guard existing generated files.
 
@@ -369,6 +399,7 @@ def ensure_writable_output(
         corpus_names: Final corpus names expected to be generated.
         component_names: Component names expected to be generated.
         auxiliary: Whether auxiliary files are expected to be written.
+        heldout_enabled: Whether held-out perplexity files are generated.
 
     Returns:
         Mapping of logical directory names to absolute or relative path strings.
@@ -384,6 +415,10 @@ def ensure_writable_output(
             os.makedirs(path, exist_ok=True)
 
     generated = [os.path.join(paths['processed'], f'{name}.jsonl') for name in corpus_names]
+    if heldout_enabled:
+        generated.extend(
+            os.path.join(paths['perplexity'], f'{name}.jsonl') for name in corpus_names
+        )
     generated.extend(
         os.path.join(paths['components'], f'{name}.jsonl') for name in component_names
     )
@@ -829,35 +864,132 @@ def write_fixed_subsample(
     )
 
 
-def combine_components(
-    config_name: str, components: list[ComponentStats], output_path: str
-) -> dict[str, Any]:
-    """Concatenate component JSONL files into a final corpus config.
+def is_heldout_document(
+    doc_id: str, *, config_name: str, ratio: float, seed: int
+) -> bool:
+    """Return whether a document belongs to the deterministic held-out split.
+
+    Args:
+        doc_id: Stable document id from the component JSONL.
+        config_name: Final corpus configuration name used as split salt.
+        ratio: Held-out split ratio.
+        seed: Held-out split seed.
+
+    Returns:
+        True when the document should be excluded from training and written to held-out.
+    """
+    if ratio <= 0.0:
+        return False
+
+    digest = hashlib.sha256(f'{seed}:{config_name}:{doc_id}'.encode('utf-8')).digest()
+    bucket = int.from_bytes(digest[:8], byteorder='big') / float(1 << 64)
+    return bucket < ratio
+
+
+def empty_corpus_summary(config_name: str, output_path: str) -> dict[str, Any]:
+    """Build an empty corpus summary for disabled output splits.
 
     Args:
         config_name: Final corpus configuration name.
-        components: Component statistics whose paths are concatenated.
-        output_path: Destination JSONL path for the final corpus.
+        output_path: Destination JSONL path represented by the summary.
 
     Returns:
-        Summary dictionary with corpus path, document count, tokens, and components.
+        Summary dictionary with zero document and token counts.
     """
-    docs = 0
-    tokens = 0
-    with open(output_path, 'w', encoding='utf-8') as out:
-        for component in components:
-            for record in stream_jsonl(component.path):
-                out.write(json.dumps(record, ensure_ascii=False) + '\n')
-                docs += 1
-            tokens += component.actual_tokens
-
     return {
         'name': config_name,
         'path': str(output_path),
-        'documents': docs,
-        'tokens': tokens,
+        'documents': 0,
+        'tokens': 0,
+        'components': [],
+    }
+
+
+def write_corpus_splits(
+    config_name: str,
+    components: list[ComponentStats],
+    train_output_path: str,
+    heldout_output_path: str,
+    heldout_config: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Write train and held-out JSONL files for a final corpus config.
+
+    Args:
+        config_name: Final corpus configuration name.
+        components: Component statistics whose records are split and concatenated.
+        train_output_path: Destination JSONL path for the train split.
+        heldout_output_path: Destination JSONL path for the held-out split.
+        heldout_config: Normalized held-out split settings.
+
+    Returns:
+        Pair of summary dictionaries for the train and held-out splits.
+    """
+    train_docs = 0
+    train_tokens = 0
+    heldout_docs = 0
+    heldout_tokens = 0
+    heldout_enabled = bool(heldout_config['enabled'])
+    heldout_ratio = float(heldout_config['ratio'])
+    heldout_seed = int(heldout_config['seed'])
+
+    os.makedirs(os.path.dirname(train_output_path), exist_ok=True)
+    if heldout_enabled:
+        os.makedirs(os.path.dirname(heldout_output_path), exist_ok=True)
+
+    heldout_out = None
+    with open(train_output_path, 'w', encoding='utf-8') as train_out:
+        if heldout_enabled:
+            heldout_out = open(heldout_output_path, 'w', encoding='utf-8')
+        for component in components:
+            component_records = stream_jsonl(component.path)
+            component_selections = stream_jsonl(component.selection_path)
+            for record, selection in zip(
+                component_records, component_selections, strict=True
+            ):
+                doc_tokens = int(selection['tokens'])
+                if record['id'] != selection['id']:
+                    raise RuntimeError(
+                        f'Component {component.name} has mismatched record and selection '
+                        f'ids: {record["id"]} != {selection["id"]}.'
+                    )
+
+                line = json.dumps(record, ensure_ascii=False) + '\n'
+                if heldout_enabled and is_heldout_document(
+                    record['id'],
+                    config_name=config_name,
+                    ratio=heldout_ratio,
+                    seed=heldout_seed,
+                ):
+                    if heldout_out is None:
+                        raise RuntimeError('Held-out output is not open.')
+                    heldout_out.write(line)
+                    heldout_docs += 1
+                    heldout_tokens += doc_tokens
+                else:
+                    train_out.write(line)
+                    train_docs += 1
+                    train_tokens += doc_tokens
+        if heldout_out is not None:
+            heldout_out.close()
+
+    train_summary = {
+        'name': config_name,
+        'path': str(train_output_path),
+        'documents': train_docs,
+        'tokens': train_tokens,
         'components': [component.name for component in components],
     }
+    heldout_summary = {
+        'name': config_name,
+        'path': str(heldout_output_path),
+        'documents': heldout_docs,
+        'tokens': heldout_tokens,
+        'components': [component.name for component in components],
+    }
+    if not heldout_enabled:
+        heldout_summary = empty_corpus_summary(config_name, heldout_output_path)
+
+    return train_summary, heldout_summary
 
 
 def write_manifest(
@@ -868,6 +1000,7 @@ def write_manifest(
     tokenizer: str,
     seed: int,
     corpus: dict[str, Any],
+    heldout_corpus: dict[str, Any],
     components: list[ComponentStats],
     extra: dict[str, Any],
 ) -> None:
@@ -879,7 +1012,8 @@ def write_manifest(
         config_path: Config file path used for the run.
         tokenizer: Tokenizer name or path used for token accounting.
         seed: Sampling seed used for fixed FineWeb samples.
-        corpus: Final corpus summary from combine_components.
+        corpus: Final train corpus summary from write_corpus_splits.
+        heldout_corpus: Held-out corpus summary from write_corpus_splits.
         components: Component statistics included in the final corpus.
         extra: Additional metadata fields to include in the manifest.
 
@@ -893,6 +1027,7 @@ def write_manifest(
         'tokenizer': tokenizer,
         'sample_seed': seed,
         'corpus': corpus,
+        'heldout_corpus': heldout_corpus,
         'components': [asdict(component) for component in components],
         **extra,
     }
@@ -1109,11 +1244,14 @@ def verify_component_stats(expected: ComponentStats, actual: ComponentStats) -> 
         )
 
 
-def verify_corpus_manifest(corpus: dict[str, Any], manifest: dict[str, Any]) -> None:
-    """Verify a reconstructed final corpus against its manifest.
+def verify_split_manifest(
+    corpus: dict[str, Any], heldout_corpus: dict[str, Any], manifest: dict[str, Any]
+) -> None:
+    """Verify reconstructed final train and held-out corpora against a manifest.
 
     Args:
-        corpus: Reconstructed final corpus summary.
+        corpus: Reconstructed final train corpus summary.
+        heldout_corpus: Reconstructed held-out corpus summary.
         manifest: Expected manifest dictionary.
 
     Returns:
@@ -1123,11 +1261,35 @@ def verify_corpus_manifest(corpus: dict[str, Any], manifest: dict[str, Any]) -> 
         RuntimeError: If document or token counts differ.
     """
     expected = manifest['corpus']
-    if corpus['documents'] != expected['documents'] or corpus['tokens'] != expected['tokens']:
+    expected_heldout = manifest.get('heldout_corpus')
+    if isinstance(expected_heldout, dict):
+        train_matches = (
+            corpus['documents'] == expected['documents']
+            and corpus['tokens'] == expected['tokens']
+        )
+        heldout_matches = (
+            heldout_corpus['documents'] == expected_heldout['documents']
+            and heldout_corpus['tokens'] == expected_heldout['tokens']
+        )
+        if train_matches and heldout_matches:
+            return
+
         raise RuntimeError(
-            f'Reconstructed {corpus["name"]} does not match the manifest: '
+            f'Reconstructed {corpus["name"]} does not match the manifest: train '
             f'expected {expected["documents"]:,} docs / {expected["tokens"]:,} tokens, '
-            f'got {corpus["documents"]:,} docs / {corpus["tokens"]:,} tokens.'
+            f'got {corpus["documents"]:,} docs / {corpus["tokens"]:,} tokens; held-out '
+            f'expected {expected_heldout["documents"]:,} docs / '
+            f'{expected_heldout["tokens"]:,} tokens, got {heldout_corpus["documents"]:,} '
+            f'docs / {heldout_corpus["tokens"]:,} tokens.'
+        )
+
+    total_documents = corpus['documents'] + heldout_corpus['documents']
+    total_tokens = corpus['tokens'] + heldout_corpus['tokens']
+    if total_documents != expected['documents'] or total_tokens != expected['tokens']:
+        raise RuntimeError(
+            f'Reconstructed {corpus["name"]} does not match the legacy manifest total: '
+            f'expected {expected["documents"]:,} docs / {expected["tokens"]:,} tokens, '
+            f'got {total_documents:,} docs / {total_tokens:,} tokens.'
         )
 
 
@@ -1325,6 +1487,7 @@ def reconstruct_from_auxiliary(
     sources = source_specs_from_config(resolved_config)
     components_config = require_mapping(resolved_config, 'components')
     corpora_config = require_mapping(resolved_config, 'corpora')
+    heldout_config = heldout_config_from_config(resolved_config)
     output_dir = resolved_config['output_dir']
     paths = output_paths(output_dir)  # type: ignore
 
@@ -1340,6 +1503,7 @@ def reconstruct_from_auxiliary(
         corpus_names=corpora_config.keys(),
         component_names=expected_components.keys(),
         auxiliary=False,
+        heldout_enabled=bool(heldout_config['enabled']),
     )
 
     tokenizer_instance = AutoTokenizer.from_pretrained(resolved_config['tokenizer'])
@@ -1409,17 +1573,25 @@ def reconstruct_from_auxiliary(
     for config_name, manifest in manifests.items():
         component_names = manifest['corpus']['components']
         components = [component_stats[name] for name in component_names]
-        corpus = combine_components(
+        corpus, heldout_corpus = write_corpus_splits(
             config_name,
             components,
             os.path.join(paths['processed'], f'{config_name}.jsonl'),
+            os.path.join(paths['perplexity'], f'{config_name}.jsonl'),
+            heldout_config,
         )
-        verify_corpus_manifest(corpus, manifest)
+        verify_split_manifest(corpus, heldout_corpus, manifest)
         print(
             f'[corpus] {config_name}: {corpus["documents"]:,} docs / '
             f'{corpus["tokens"]:,} tokens',
             flush=True,
         )
+        if heldout_corpus['documents']:
+            print(
+                f'[heldout] {config_name}: {heldout_corpus["documents"]:,} docs / '
+                f'{heldout_corpus["tokens"]:,} tokens',
+                flush=True,
+            )
 
     write_dataset_info(os.path.join(output_dir, 'dataset_info.json'), corpora_config.keys())  # type: ignore
     print(f'[done] reconstructed corpora under {output_dir}', flush=True)
@@ -1509,6 +1681,7 @@ def main(
     sources = source_specs_from_config(resolved_config)
     components_config = require_mapping(resolved_config, 'components')
     corpora_config = require_mapping(resolved_config, 'corpora')
+    heldout_config = heldout_config_from_config(resolved_config)
 
     if preflight_only:
         preflight(list(sources.values()))
@@ -1528,6 +1701,7 @@ def main(
         corpus_names=corpora_config.keys(),
         component_names=components_config.keys(),
         auxiliary=True,
+        heldout_enabled=bool(heldout_config['enabled']),
     )
     locked_sources = resolve_source_revisions(sources)
     sources = pin_sources_to_revisions(sources, locked_sources)
@@ -1590,10 +1764,12 @@ def main(
 
     for config_name, corpus_config in corpora_config.items():
         components = [component_stats[component_name] for component_name in corpus_config['components']]
-        corpus = combine_components(
+        corpus, heldout_corpus = write_corpus_splits(
             config_name,
             components,
             os.path.join(paths['processed'], f'{config_name}.jsonl'),
+            os.path.join(paths['perplexity'], f'{config_name}.jsonl'),
+            heldout_config,
         )
         write_manifest(
             os.path.join(paths['manifests'], f'{config_name}.manifest.json'),
@@ -1602,9 +1778,9 @@ def main(
             tokenizer=tokenizer,
             seed=seed,
             corpus=corpus,
+            heldout_corpus=heldout_corpus,
             components=components,
             extra={
-                'kuatia_share_target': corpus_config.get('kuatia_share_target'),
                 'target_scale': scale,
                 'max_kuatia_docs': max_docs,
             },
@@ -1613,6 +1789,12 @@ def main(
             f'[corpus] {config_name}: {corpus["documents"]:,} docs / {corpus["tokens"]:,} tokens',
             flush=True,
         )
+        if heldout_corpus['documents']:
+            print(
+                f'[heldout] {config_name}: {heldout_corpus["documents"]:,} docs / '
+                f'{heldout_corpus["tokens"]:,} tokens',
+                flush=True,
+            )
 
     write_dataset_info(os.path.join(output_dir, 'dataset_info.json'), corpora_config.keys())  # type: ignore
     print(f'[done] wrote corpora under {output_dir}', flush=True)

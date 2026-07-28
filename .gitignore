@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -122,8 +123,18 @@ ipython_config.py
 # Generated CPT dataset artifacts
 data/processed/
 data/cache/
+data/evaluation/perplexity/
 data/selections/*.selection.jsonl
+outputs/evaluation/
+outputs/train/
+results/
+saves/
+wandb/
 __pypackages__/
+
+# Local external tool checkouts
+LlamaFactory/
+lm-evaluation-harness/
 
 # Celery stuff
 celerybeat-schedule
