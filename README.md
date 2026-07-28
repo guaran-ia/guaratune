@@ -1,7 +1,7 @@
 # Guarania CPT Framework
 
 <p align="center">
-  <strong>Perform continual pre-training on open-source base models</strong>
+  <strong>Framework to conduct continual pre-training on open-source base models</strong>
 </p>
 
 <p align="center">
