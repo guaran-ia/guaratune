@@ -6,18 +6,23 @@
 
 <p align="center">
   <a href="#overview">Overview</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#data-preparation">Data Preparation</a> •
-  <a href="#continual-pre-training-(cpt)">Continual Pre-Training (CPT)</a> •
-  <a href="#evaluation">Evaluation</a>
+  <a href="#0-installation">Installation</a> •
+  <a href="#1-data-preparation">Data Preparation</a> •
+  <a href="#2-continual-pre-training-cpt">Continual Pre-Training (CPT)</a> •
+  <a href="#3-evaluation">Evaluation</a>
 </p>
+
+---
 
 ## Overview
 
 This repository contains the code, data, and configurations developed to
 conduct both full and LoRA **continual pretraining (CPT)** on state-of-the-art 
-open-source base models (check supported models). Training employs 
-[LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the evaluation is 
+open-source base models (check supported models). 
+
+Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
+
+Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the evaluation is 
 based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
 
 ### Pipeline
@@ -102,8 +107,6 @@ python -c "import lm_eval; print('lm_eval ok')"
 ```
 
 ## 1. Data preparation
-
-Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
 
 > [!Note]
 > The default Spanish source is [Helsinki-NLP](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated) with config `spa` and reads directly from the Hugging Face Parquet shards. To use a smaller version, like the one produced by [Token Haven](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), edit the Spanish source block in `configs/data/gemma4_cpt.yaml`:
