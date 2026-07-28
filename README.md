@@ -1,17 +1,41 @@
 # Guarania Models Framework
 
-This repository contains the code, data, configurations, and outputs that resulted
-from conducting continual pretraining (CPT) on state-of-the-art base models. Training
-uses the framework [LlamaFactory](https://github.com/hiyouga/LlamaFactory), and evaluation uses the framework [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
+<p align="center">
+  <strong>Perform continual pre-training on open-source base models</strong>
+</p>
 
-The full training pipeline consists of four steps:
+<p align="center">
+  <a href="#overview">Overview</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#data-preparation">Data Preparation</a> •
+  <a href="#continual-pre-training-(cpt)">Continual Pre-Training (CPT)</a> •
+  <a href="#evaluation">Evaluation</a>
+</p>
+
+## Overview
+
+This repository contains the code, data, and configurations developed to
+conduct both full and LoRA **continual pretraining (CPT)** on state-of-the-art 
+open-source base models (check supported models). Training employs the framework 
+[LlamaFactory](https://github.com/hiyouga/LlamaFactory), and evaluation uses the 
+framework [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
+
+### Pipeline
+
+The full training pipeline consists of three steps:
 
 1. Data preparation
-2. CPT preparation
-3. CPT execution
-4. Model evaluation
+2. CPT execution
+3. Model evaluation
 
 Before starting, follow the installation instructions below.
+
+### Supported Models
+
+| Model                        | Parameters | Minimum GPU Memory |
+| ---------------------------- | ---------- | ------------------ | 
+| google/gemma4_12b            | 12B        | ~24 GB (bf16)      |
+| google/gemma-4-26B-A4B       | 26B        | ~52 GB (bf16)      |
 
 ## 0. Installation
 
@@ -77,7 +101,7 @@ llamafactory-cli --help
 python -c "import lm_eval; print('lm_eval ok')"
 ```
 
-## 1. Dataset preparation
+## 1. Data preparation
 
 Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
 
@@ -149,9 +173,11 @@ The remaining optional CLI flags are operational or debug controls: `--output-di
 > New datasets can added by following the instructions in [data/README.md](data/README.md) and 
 > new data configurations can be included after implementing the steps listed in [configs/data/README.md](configs/data/gemma4_cpt.yaml).
 
-## 2. CPT preparation
+## 2. Continual Pre-Training (CPT)
 
-In the first version, CPT is focused on Gemma 4 model variants (12B and 26B) through separate model-specific matrices.
+### Prepare CPT
+
+Next, commands are explaining assumming CPT on `Gemma 4 12B`.
 
 > [!Important]
 > To prepare CPT, generate the training configurations from the target model matrix by running:
@@ -177,7 +203,7 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 > New training configurations can be added by following the instructions presented in [configs/train/README.md](configs/train/README.md).
 
 
-## 3. Run CPT
+### Run CPT
 
 After preparing the CPT configuration, CPT experiments can be run both individually or by model-scoped profile. 
 
@@ -226,7 +252,7 @@ python -m src.train_config configs/train/generated/experiments/gemma4_12b/gemma4
 > [!Note]
 > Tune the target model matrix under `configs/train/` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.
 
-## 4. Evaluation
+## 3. Evaluation
 
 The performance of the trained models is evaluated using the framework [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
