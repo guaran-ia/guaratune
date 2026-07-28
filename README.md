@@ -18,7 +18,7 @@
 
 This repository contains the code, data, and configurations developed to
 conduct both full and LoRA **continual pretraining (CPT)** on state-of-the-art 
-open-source base models (check supported models). 
+open-source base models (check [supported models](#supported-models)). 
 
 Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
 
@@ -36,6 +36,9 @@ The full training pipeline consists of three steps:
 Before starting, follow the installation instructions below.
 
 ### Supported Models
+
+Currently, the framework supports the Gemma 4 variants 12B and 26B. New models can be added by 
+following the instructions described in [configs/train/README.md](configs/train/README.md).
 
 | Model                        | Parameters | Minimum GPU Memory |
 | ---------------------------- | ---------- | ------------------ | 
