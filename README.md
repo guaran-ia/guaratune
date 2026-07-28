@@ -174,7 +174,7 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 > Training configs report to [Weights & Biases](https://wandb.ai) by default through `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are generated into `configs/train/generated/wandb.env`. The project is intentionally broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in `.env` to authenticate into Weights & Biases before training. The launcher sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` for disconnected runs, then sync later with `wandb sync`.
 
 >[!Note]
-> New training matrices can be added by following the instructions presented in [configs/train/README.md](configs/train/README.md).
+> New training configurations can be added by following the instructions presented in [configs/train/README.md](configs/train/README.md).
 
 
 ## 3. Run CPT
@@ -188,10 +188,30 @@ After preparing the CPT configuration, CPT experiments can be run both individua
 python -m src.train_profile experiments --model gemma4_12b
 ```
 
-Generated profile runs can skip specific configs by filename stem, filename, path, or glob pattern:
+Generated profile runs can skip specific configs by indicating the: 
+
+- Filename stem
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_*
+python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_26b_a4b_full_C1_kuatia
+```
+
+- Filename
+
+```bash
+python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_26b_a4b_full_C1_kuatia.yaml
+```
+
+- Full path
+
+```bash
+python -m src.train_profile experiments --model gemma4_12b --exclude configs/train/generated/experiments/gemma4_26b_a4b/gemma4_26b_a4b_full_C1_kuatia.yaml
+```
+
+- Glob pattern:
+
+```bash
+python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_26b_a4b_full_*
 ```
 
 Alternatively, an individual CPT experiment can be run by executing:
@@ -273,6 +293,5 @@ The analyzer writes:
 The summary has one row per model variant and evaluated corpus, including `base` when available. The `corpus` column identifies the training corpus configuration, while `eval_corpus` identifies the held-out corpus used for perplexity evaluation. Metric columns include Global-MMLU-Lite accuracy metrics and held-out perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist. Corpus-specific perplexity task names are collapsed into generic metric columns, such as `word_perplexity`, and disambiguated through `eval_corpus`.
 
 > [!Note]
-> Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation matrices. 
-> Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md). 
+> Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation configurations. Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md). 
 
