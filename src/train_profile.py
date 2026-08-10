@@ -199,11 +199,11 @@ def main(
                 sys.executable,
                 '-m',
                 'src.train_config',
-                config_path,
                 '--env-file',
                 env_file,
                 '--cleanup-optimizers',
                 str(cleanup_optimizers),
+                config_path,
             ],
             check=False,
         )
