@@ -236,6 +236,63 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
     return env
 
 
+def cleanup_optimizers(output_dir: str, enabled: bool = True) -> None:
+    """Remove optimizer.pt files from training output directory.
+
+    Safe to call after training; frees disk space by removing optimizer state files.
+    Model weights and other essential files are preserved.
+
+    Args:
+        output_dir: Training output directory path.
+        enabled: Whether to perform cleanup. If False, function returns immediately.
+
+    Returns:
+        None.
+    """
+    if not enabled:
+        return
+
+    if not os.path.isdir(output_dir):
+        print(f'[cleanup] Output directory not found: {output_dir}', file=sys.stderr)
+        return
+
+    optimizer_files = []
+    total_size = 0
+
+    try:
+        for root, _, filenames in os.walk(output_dir):
+            for filename in filenames:
+                if filename == 'optimizer.pt':
+                    filepath = os.path.join(root, filename)
+                    try:
+                        file_size = os.path.getsize(filepath)
+                        optimizer_files.append((filepath, file_size))
+                        total_size += file_size
+                    except OSError as e:
+                        print(f'[cleanup] Warning: Could not stat {filepath}: {e}', file=sys.stderr)
+
+        if not optimizer_files:
+            print('[cleanup] No optimizer.pt files found to remove.', flush=True)
+            return
+
+        for filepath, file_size in optimizer_files:
+            try:
+                os.remove(filepath)
+                size_gb = file_size / (1024 ** 3)
+                print(f'[cleanup] Removed {filepath} ({size_gb:.2f} GB)', flush=True)
+            except OSError as e:
+                print(f'[cleanup] Warning: Could not remove {filepath}: {e}', file=sys.stderr)
+
+        total_gb = total_size / (1024 ** 3)
+        print(
+            f'[cleanup] Successfully removed {len(optimizer_files)} optimizer file(s) '
+            f'({total_gb:.2f} GB freed)',
+            flush=True,
+        )
+    except Exception as e:
+        print(f'[cleanup] Error during cleanup: {e}', file=sys.stderr)
+
+
 @click.command(
     context_settings={'show_default': True},
     help='Run one generated LLaMA Factory training config.',
@@ -247,12 +304,19 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
     default=DEFAULT_SECRET_ENV_FILE,
     help='Local secret env file containing values such as HF_TOKEN and WANDB_API_KEY.',
 )
-def main(config_path: str, env_file: str) -> None:
+@click.option(
+    '--cleanup-optimizers',
+    type=bool,
+    default=True,
+    help='Remove optimizer.pt files after training completes to save disk space.',
+)
+def main(config_path: str, env_file: str, cleanup_optimizers: bool) -> None:
     """Run one training config through LLaMA Factory.
 
     Args:
         config_path: Generated LLaMA Factory training config path.
         env_file: Local secret env file path.
+        cleanup_optimizers: Whether to remove optimizer.pt files after training.
 
     Returns:
         None.
@@ -260,12 +324,17 @@ def main(config_path: str, env_file: str) -> None:
     try:
         require_training_inputs(config_path)
         env = prepare_environment(config_path, env_file)
+        config = load_yaml(config_path)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
     result = subprocess.run(['llamafactory-cli', 'train', config_path], env=env, check=False)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
+
+    output_dir = config.get('output_dir')
+    if output_dir:
+        cleanup_optimizers(output_dir, enabled=cleanup_optimizers)  # type:ignore
 
 
 if __name__ == '__main__':
