@@ -11,8 +11,8 @@ model:
   trust_remote_code: true
   dtype: bfloat16
   device: cuda:0
-  batch_size: auto
-  max_batch_size: null
+  batch_size: 1
+  max_batch_size: 1
 
 defaults:
   env_file: .env

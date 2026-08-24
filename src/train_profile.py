@@ -157,8 +157,18 @@ def apply_exclusions(configs: list[str], exclude_patterns: tuple[str, ...]) -> l
     multiple=True,
     help='Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions.',
 )
+@click.option(
+    '--cleanup-optimizers',
+    type=bool,
+    default=True,
+    help='Remove optimizer.pt files after each training completes to save disk space.',
+)
 def main(
-    profile: str, model_key: str | None, env_file: str, exclude_patterns: tuple[str, ...]
+    profile: str,
+    model_key: str | None,
+    env_file: str,
+    exclude_patterns: tuple[str, ...],
+    cleanup_optimizers: bool,
 ) -> None:
     """Run all configs in one profile.
 
@@ -167,6 +177,7 @@ def main(
         model_key: Optional model key to run.
         env_file: Local secret env file path.
         exclude_patterns: Config exclusion patterns.
+        cleanup_optimizers: Whether to remove optimizer.pt files after each training.
 
     Returns:
         None.
@@ -188,9 +199,11 @@ def main(
                 sys.executable,
                 '-m',
                 'src.train_config',
-                config_path,
                 '--env-file',
                 env_file,
+                '--cleanup-optimizers',
+                str(cleanup_optimizers),
+                config_path,
             ],
             check=False,
         )

@@ -252,6 +252,12 @@ Alternatively, an individual CPT experiment can be run by executing:
 python -m src.train_config configs/train/generated/experiments/gemma4_12b/gemma4_12b_full_C1_kuatia.yaml
 ```
 
+`train_config` can also run a group of configs by passing a quoted glob pattern:
+
+```bash
+python -m src.train_config 'configs/train/generated/experiments/gemma4_12b/gemma4_12b_lora_r64_*'
+```
+
 > [!Tip]
 > For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment variables before launching: `CUDA_VISIBLE_DEVICES=0,1,2,3 FORCE_TORCHRUN=1`
 
@@ -328,5 +334,4 @@ The summary has one row per model variant and evaluated corpus, including `base`
 ## License
 
 This project is licensed under the GNU GPLv3 License. Model weights are subject to their respective licenses (Gemma 4).
-
 
