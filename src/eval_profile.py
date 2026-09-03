@@ -6,8 +6,6 @@ from __future__ import annotations
 import click
 import fnmatch
 import os
-import subprocess
-import sys
 import yaml
 
 from src.eval_config import run_evaluation
