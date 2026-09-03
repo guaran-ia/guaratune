@@ -10,7 +10,7 @@ import subprocess
 import sys
 import yaml
 
-from eval_config import run_evaluation
+from src.eval_config import run_evaluation
 from typing import Any
 
 
