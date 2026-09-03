@@ -182,7 +182,7 @@ def write_results(output_path: str, results: dict[str, Any]) -> None:
             )
 
 
-def run_evaluation(config: dict[str, Any]) -> None:
+def do_run_evaluation(config: dict[str, Any]) -> None:
     """Run one lm-evaluation-harness config through the Python API.
 
     Args:
@@ -227,6 +227,19 @@ def run_evaluation(config: dict[str, Any]) -> None:
         write_results(str(config['output_path']), results)
 
 
+def run_evaluation(config_path: str) -> None:
+    """Run one lm-evaluation-harness config through the Python API.
+
+    Args:
+        config_path: Path to the evaluation config file.
+    """
+    require_lm_eval()
+    require_evaluation_inputs(config_path)
+    config = load_yaml(config_path)
+    prepare_environment(config)
+    do_run_evaluation(config)
+
+
 @click.command(
     context_settings={'show_default': True},
     help='Run one generated lm-evaluation-harness config.',
@@ -246,7 +259,7 @@ def main(config_path: str) -> None:
         require_evaluation_inputs(config_path)
         config = load_yaml(config_path)
         prepare_environment(config)
-        run_evaluation(config)
+        do_run_evaluation(config)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 
