@@ -1,0 +1,86 @@
+generated_config_dir: configs/train/generated
+runs_root: outputs/train/gemma4_31b
+
+reporting:
+  report_to: wandb
+  wandb_project: guarania-models-cpt
+  wandb_run_group: gemma4_31b
+  wandb_mode: online
+  wandb_tags: gemma4,cpt,guarani,text-only
+
+model:
+  key: gemma4_31b
+  model_name_or_path: google/gemma-4-31B
+  model_revision: main
+  trust_remote_code: true
+  cutoff_len: 2048
+
+defaults:
+  common:
+    stage: pt
+    do_train: true
+    dataset_dir: data
+    preprocessing_num_workers: 16
+    dataloader_num_workers: 4
+    packing: true
+    flash_attn: sdpa
+    disable_gradient_checkpointing: false
+    plot_loss: true
+    overwrite_output_dir: false
+    save_only_model: false
+    report_to: wandb
+    logging_steps: 10
+    save_steps: 500
+    save_total_limit: 3
+    per_device_train_batch_size: 1
+    lr_scheduler_type: cosine
+    warmup_steps: 0.03
+    max_grad_norm: 1.0
+    num_train_epochs: 1.0
+    bf16: true
+    ddp_timeout: 180000000
+    resume_from_checkpoint: null
+
+  full:
+    finetuning_type: full
+    learning_rate: 5.0e-6
+    gradient_accumulation_steps: 32
+    weight_decay: 0.01
+    deepspeed: LlamaFactory/examples/deepspeed/ds_z3_offload_config.json
+
+  lora:
+    finetuning_type: lora
+    lora_target: all
+    lora_dropout: 0.05
+    lora_alpha_multiplier: 2
+    learning_rate: 1.0e-4
+    gradient_accumulation_steps: 8
+
+profiles:
+  smoke:
+    methods:
+      - lora
+    corpora:
+      - C1_kuatia
+    lora_ranks:
+      - 64
+    overrides:
+      max_steps: 5
+      logging_steps: 1
+      save_steps: 5
+      overwrite_output_dir: true
+
+  experiments:
+    methods:
+      - full
+      - lora
+    corpora:
+      - C1_kuatia
+      - C2_kuatia_es20
+      - C3_kuatia_en20
+      - C4_kuatia_es10_en10
+    lora_ranks:
+      - 64
+      - 128
+      - 256
+      - 512
