@@ -700,8 +700,13 @@ def write_kuatia_component(
             selection = {'id': doc_id, 'source': spec.name, 'tokens': doc_tokens}
             if row.get('url'):
                 selection['url'] = row['url']
-            if row.get('corpus'):
-                selection['corpus'] = row['corpus']
+            source_corpus = row.get('source_corpus') or row.get('corpus')
+            corpus_id = row.get('corpus_id') or source_corpus
+            if source_corpus:
+                selection['corpus'] = source_corpus
+                selection['source_corpus'] = source_corpus
+            if corpus_id:
+                selection['corpus_id'] = corpus_id
 
             out.write(json.dumps(record, ensure_ascii=False) + '\n')
             sel.write(json.dumps(selection, ensure_ascii=False) + '\n')
@@ -1115,7 +1120,7 @@ def manifest_output_paths(output_dir: str) -> dict[str, str]:
         Mapping of output directory names to paths.
     """
     paths = output_paths(output_dir)
-    for key in ['train', 'validation']:
+    for key in ['train', 'validation', 'components', 'selections']:
         os.makedirs(paths[key], exist_ok=True)
     return paths
 
@@ -1125,6 +1130,7 @@ def ensure_manifest_outputs(
     overwrite: bool,
     corpus_names: Iterable[str],
     component_paths: Iterable[str] = (),
+    selection_paths: Iterable[str] = (),
 ) -> dict[str, str]:
     """Create manifest output directories and guard generated files.
 
@@ -1133,6 +1139,7 @@ def ensure_manifest_outputs(
         overwrite: Whether existing generated outputs may be replaced.
         corpus_names: Corpus names expected to be generated.
         component_paths: Source component files expected to be generated.
+        selection_paths: Selection ledger files expected to be generated.
 
     Returns:
         Standard output paths.
@@ -1144,6 +1151,7 @@ def ensure_manifest_outputs(
     generated = [os.path.join(paths['train'], f'{name}.jsonl') for name in corpus_names]
     generated.extend(os.path.join(paths['validation'], f'{name}.jsonl') for name in corpus_names)
     generated.extend(component_paths)
+    generated.extend(selection_paths)
     generated.append(os.path.join(output_dir, 'dataset_info.json'))
 
     existing = [path for path in generated if os.path.exists(path)]
@@ -1410,6 +1418,434 @@ def source_spec_from_manifest_source(
     )
 
 
+def manifest_source_metadata(
+    manifests: dict[str, Any], source_name: str
+) -> dict[str, Any] | None:
+    """Return consistent source metadata from corpus manifests.
+
+    Args:
+        manifests: Loaded manifest dictionaries.
+        source_name: Source key whose metadata is requested.
+
+    Returns:
+        Source metadata when present, otherwise None.
+
+    Raises:
+        RuntimeError: If manifests disagree about source metadata.
+    """
+    metadata = None
+    for manifest in manifests.values():
+        manifest_source = manifest.get('source') if source_name == 'kuatia' else None
+        if manifest_source is None:
+            sources = manifest.get('sources', {})
+            if isinstance(sources, dict):
+                manifest_source = sources.get(source_name)
+        if manifest_source is None:
+            continue
+        if metadata is not None and manifest_source != metadata:
+            raise RuntimeError(f'Manifests disagree about source metadata: {source_name}')
+        metadata = manifest_source
+
+    return metadata
+
+
+def required_manifest_selection_paths(
+    config: dict[str, Any], manifests: dict[str, Any]
+) -> list[str]:
+    """Collect selection ledger paths that will be generated.
+
+    Args:
+        config: Resolved manifest-backed config.
+        manifests: Loaded manifest dictionaries.
+
+    Returns:
+        Sorted selection ledger paths.
+    """
+    paths = set()
+    sources = require_mapping(config, 'sources')
+    if manifest_source_metadata(manifests, 'kuatia') is not None:
+        paths.add(sources['kuatia']['selection_path'])
+
+    for manifest in manifests.values():
+        for split in manifest['splits'].values():
+            for component in split['corpora']:
+                if 'source' in component:
+                    paths.add(component['selection_path'])
+
+    return sorted(paths)
+
+
+def required_manifest_component_paths(
+    config: dict[str, Any], manifests: dict[str, Any]
+) -> list[str]:
+    """Collect source component paths that will be generated.
+
+    Args:
+        config: Resolved manifest-backed config.
+        manifests: Loaded manifest dictionaries.
+
+    Returns:
+        Sorted source component JSONL paths.
+    """
+    source_names = set()
+    if manifest_source_metadata(manifests, 'kuatia') is not None:
+        source_names.add('kuatia')
+
+    for manifest in manifests.values():
+        for split in manifest['splits'].values():
+            for component in split['corpora']:
+                source_name = component.get('source')
+                if source_name:
+                    source_names.add(source_name)
+
+    sources = require_mapping(config, 'sources')
+    return sorted(
+        component_path_from_selection(
+            config['output_dir'],  # type: ignore
+            sources[source_name]['selection_path'],
+        )
+        for source_name in source_names
+    )
+
+
+def manifest_selection_specs(manifests: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Collect unique non-Kuatia selection specs from manifests.
+
+    Args:
+        manifests: Loaded manifest dictionaries.
+
+    Returns:
+        Selection metadata keyed by selection path.
+
+    Raises:
+        RuntimeError: If one selection path has conflicting metadata.
+    """
+    specs = {}
+    for manifest in manifests.values():
+        for split_name, split in manifest['splits'].items():
+            for component in split['corpora']:
+                source_name = component.get('source')
+                if not source_name:
+                    continue
+                selection_path = component['selection_path']
+                spec = {
+                    'source': source_name,
+                    'split': split_name,
+                    'selection_path': selection_path,
+                    'target_tokens': int(component['target_tokens']),
+                    'documents': int(component['documents']),
+                    'tokens': int(component['tokens']),
+                    'seed': int(component['seed']),
+                }
+                existing = specs.get(selection_path)
+                if existing is not None and existing != spec:
+                    raise RuntimeError(
+                        f'Conflicting manifest selection metadata: {selection_path}'
+                    )
+                specs[selection_path] = spec
+
+    return specs
+
+
+def selection_entry_from_row(
+    row: dict[str, Any],
+    spec: SourceSpec,
+    tokenizer: PreTrainedTokenizerBase,
+    index: int,
+) -> dict[str, Any] | None:
+    """Build one selection ledger entry from a source row.
+
+    Args:
+        row: Raw dataset row.
+        spec: Source descriptor.
+        tokenizer: Tokenizer used for token accounting.
+        index: Stream row index used for fallback ids.
+
+    Returns:
+        Selection entry, or None for empty text rows.
+    """
+    text = clean_text(row.get(spec.text_column))
+    if not text:
+        return None
+
+    selection = {
+        'id': row_id(row, spec.name, spec.id_column, index),
+        'source': spec.name,
+        'tokens': token_count(tokenizer, text),
+    }
+    raw_metadata = row.get('metadata')
+    metadata: dict[str, Any] = (
+        raw_metadata if isinstance(raw_metadata, dict) else {}
+    )
+    url = row.get('url') or metadata.get('url')
+    if url:
+        selection['url'] = url
+
+    return selection
+
+
+def write_selection_entries(path: str, entries: list[dict[str, Any]]) -> tuple[int, int]:
+    """Write selection ledger entries to disk.
+
+    Args:
+        path: Destination selection ledger path.
+        entries: Selection entries to write.
+
+    Returns:
+        Pair of written document and token counts.
+    """
+    documents = 0
+    tokens = 0
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open_text(path, 'w') as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, ensure_ascii=False) + '\n')
+            documents += 1
+            tokens += int(entry['tokens'])
+
+    return documents, tokens
+
+
+def selection_prefix_for_target(
+    entries: list[dict[str, Any]], target_tokens: int
+) -> list[dict[str, Any]]:
+    """Return the shortest entry prefix reaching a token target.
+
+    Args:
+        entries: Source selection entries.
+        target_tokens: Minimum token count to reach.
+
+    Returns:
+        Prefix of entries reaching the target token count.
+
+    Raises:
+        RuntimeError: If the entries do not reach target_tokens.
+    """
+    selected = []
+    tokens = 0
+    for entry in entries:
+        selected.append(entry)
+        tokens += int(entry['tokens'])
+        if tokens >= target_tokens:
+            return selected
+
+    raise RuntimeError(
+        f'Selection prefix reached {tokens:,} tokens before target {target_tokens:,}.'
+    )
+
+
+def verify_selection_totals(
+    path: str, documents: int, tokens: int, expected: dict[str, Any]
+) -> None:
+    """Validate generated selection totals against manifest metadata.
+
+    Args:
+        path: Selection path being checked.
+        documents: Generated document count.
+        tokens: Generated token count.
+        expected: Manifest selection metadata.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: If generated totals differ from the manifest.
+    """
+    if documents != expected['documents'] or tokens != expected['tokens']:
+        raise RuntimeError(
+            f'Generated selection {path} has {documents:,} docs / {tokens:,} tokens, '
+            f'expected {expected["documents"]:,} docs / {expected["tokens"]:,} tokens.'
+        )
+
+
+def take_selection_entries(
+    entry_stream: Iterator[dict[str, Any]],
+    target_tokens: int,
+) -> list[dict[str, Any]]:
+    """Consume selection entries until a token target is reached.
+
+    Args:
+        entry_stream: Selection entry iterator.
+        target_tokens: Minimum token count to reach.
+
+    Returns:
+        Selected entries.
+
+    Raises:
+        RuntimeError: If the stream ends before the target is reached.
+    """
+    entries = []
+    tokens = 0
+    for entry in entry_stream:
+        entries.append(entry)
+        tokens += int(entry['tokens'])
+        if tokens >= target_tokens:
+            return entries
+
+    raise RuntimeError(
+        f'Source stream ended at {tokens:,} tokens before target {target_tokens:,}.'
+    )
+
+
+def iter_source_selection_entries(
+    spec: SourceSpec,
+    tokenizer: PreTrainedTokenizerBase,
+    *,
+    seed: int,
+    shuffle_buffer_size: int,
+) -> Iterator[dict[str, Any]]:
+    """Yield deterministic shuffled selection entries for a source.
+
+    Args:
+        spec: Source descriptor.
+        tokenizer: Tokenizer used for token accounting.
+        seed: Shuffle seed.
+        shuffle_buffer_size: Shuffle buffer size for compatible streaming sources.
+
+    Returns:
+        Iterator over non-empty document selection entries.
+    """
+    for index, row in enumerate(
+        load_stream(
+            spec,
+            shuffle=True,
+            seed=seed,
+            buffer_size=shuffle_buffer_size,
+        )
+    ):
+        entry = selection_entry_from_row(row, spec, tokenizer, index)
+        if entry is not None:
+            yield entry
+
+
+def write_source_selection_specs(
+    source_name: str,
+    specs: list[dict[str, Any]],
+    source_config: dict[str, Any],
+    tokenizer: PreTrainedTokenizerBase,
+    shuffle_buffer_size: int,
+) -> None:
+    """Generate selection ledgers for one non-Kuatia source.
+
+    The largest train selection is sampled first. Validation is sampled from
+    the continuation of the same shuffled stream, and smaller selections are
+    deterministic prefixes of the largest selection for the same split.
+
+    Args:
+        source_name: Source key.
+        specs: Selection specs for the source.
+        source_config: Source configuration.
+        tokenizer: Tokenizer used for token accounting.
+        shuffle_buffer_size: Shuffle buffer size for compatible streaming sources.
+
+    Returns:
+        None.
+    """
+    seeds = {spec['seed'] for spec in specs}
+    if len(seeds) != 1:
+        raise RuntimeError(f'Multiple seeds for {source_name} selections: {sorted(seeds)}')
+
+    spec = source_spec_from_manifest_source(source_name, source_config)
+    entry_stream = iter_source_selection_entries(
+        spec,
+        tokenizer,
+        seed=seeds.pop(),
+        shuffle_buffer_size=shuffle_buffer_size,
+    )
+
+    for split_name in ('train', 'validation'):
+        split_specs = [
+            item for item in specs if item['split'] == split_name
+        ]
+        if not split_specs:
+            continue
+
+        max_target = max(item['target_tokens'] for item in split_specs)
+        base_entries = take_selection_entries(entry_stream, max_target)
+        for selection_spec in sorted(
+            split_specs,
+            key=lambda item: (item['target_tokens'], item['selection_path']),
+            reverse=True,
+        ):
+            entries = selection_prefix_for_target(
+                base_entries, selection_spec['target_tokens']
+            )
+            documents, tokens = write_selection_entries(
+                selection_spec['selection_path'], entries
+            )
+            verify_selection_totals(
+                selection_spec['selection_path'], documents, tokens, selection_spec
+            )
+            print(
+                f'[selection] {selection_spec["selection_path"]}: '
+                f'{documents:,} docs / {tokens:,} tokens',
+                flush=True,
+            )
+
+
+def write_manifest_selection_ledgers(
+    config: dict[str, Any],
+    manifests: dict[str, Any],
+    tokenizer: PreTrainedTokenizerBase,
+) -> None:
+    """Generate all selection ledgers required by a manifest-backed run.
+
+    Args:
+        config: Resolved manifest-backed config.
+        manifests: Loaded manifest dictionaries.
+        tokenizer: Tokenizer used for token accounting.
+
+    Returns:
+        None.
+    """
+    sources = require_mapping(config, 'sources')
+    kuatia_metadata = manifest_source_metadata(manifests, 'kuatia')
+    if kuatia_metadata is not None:
+        kuatia_config = sources['kuatia']
+        component_path = component_path_from_selection(
+            config['output_dir'],  # type: ignore
+            kuatia_config['selection_path'],
+        )
+        stats = write_kuatia_component(
+            'kuatia',
+            source_spec_from_manifest_source('kuatia', kuatia_config),
+            tokenizer,
+            component_path,
+            kuatia_config['selection_path'],
+            max_docs=None,
+        )
+        if (
+            stats.documents != int(kuatia_metadata['documents'])
+            or stats.actual_tokens != int(kuatia_metadata['tokens'])
+        ):
+            raise RuntimeError(
+                f'Generated Kuatia selection has {stats.documents:,} docs / '
+                f'{stats.actual_tokens:,} tokens, expected '
+                f'{int(kuatia_metadata["documents"]):,} docs / '
+                f'{int(kuatia_metadata["tokens"]):,} tokens.'
+            )
+        print(
+            f'[selection] {kuatia_config["selection_path"]}: '
+            f'{stats.documents:,} docs / {stats.actual_tokens:,} tokens',
+            flush=True,
+        )
+
+    specs_by_path = manifest_selection_specs(manifests)
+    specs_by_source: dict[str, list[dict[str, Any]]] = {}
+    for spec in specs_by_path.values():
+        specs_by_source.setdefault(spec['source'], []).append(spec)
+
+    shuffle_buffer_size = int(config.get('shuffle_buffer_size', 10000))
+    for source_name, specs in sorted(specs_by_source.items()):
+        write_source_selection_specs(
+            source_name,
+            specs,
+            sources[source_name],
+            tokenizer,
+            shuffle_buffer_size,
+        )
+
+
 def add_selection_tokens(
     selected_tokens: dict[str, int], selection_path: str
 ) -> tuple[int, int]:
@@ -1461,13 +1897,6 @@ def required_manifest_source_selections(
             ),
             'selected_tokens': {},
         }
-
-    kuatia_source = required.get('kuatia')
-    if kuatia_source is not None:
-        add_selection_tokens(
-            kuatia_source['selected_tokens'],
-            kuatia_source['source_config']['selection_path'],
-        )
 
     for manifest in manifests.values():
         for split in manifest['splits'].values():
@@ -1747,19 +2176,19 @@ def write_manifest_config_outputs(
         validate_manifest_config_sources(resolved_config, manifest)
         manifests[config_name] = manifest
 
-    required_sources = required_manifest_source_selections(resolved_config, manifests)
     paths = ensure_manifest_outputs(
         output_root,  # type: ignore
         overwrite,
         corpora_config.keys(),
-        component_paths=[
-            metadata['component_path'] for metadata in required_sources.values()
-        ],
+        component_paths=required_manifest_component_paths(resolved_config, manifests),
+        selection_paths=required_manifest_selection_paths(resolved_config, manifests),
     )
 
     locked_sources = source_lock_from_manifest_config(resolved_config)
     write_source_revisions_lock(paths['source_lock'], locked_sources)
     tokenizer_instance = AutoTokenizer.from_pretrained(resolved_config['tokenizer'])
+    write_manifest_selection_ledgers(resolved_config, manifests, tokenizer_instance)
+    required_sources = required_manifest_source_selections(resolved_config, manifests)
     write_manifest_source_components(required_sources, tokenizer_instance)
 
     for config_name, manifest in manifests.items():
