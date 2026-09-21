@@ -3,7 +3,6 @@ tokenizer: google/gemma-4-E4B
 seed: 20260721
 
 split_config: data/kuatia_config.yaml
-manifest_dir: data/manifests
 
 sources:
   kuatia:
@@ -35,19 +34,16 @@ sources:
 
 corpora:
   C1_kuatia:
-    manifest: data/manifests/C1_kuatia.manifest.json
     kuatia:
       include_synthetic: true
     augmentations: []
 
   C2_kuatia_no_synthetic:
-    manifest: data/manifests/C2_kuatia_no_synthetic.manifest.json
     kuatia:
       include_synthetic: false
     augmentations: []
 
   C3_kuatia_es20:
-    manifest: data/manifests/C3_kuatia_es20.manifest.json
     kuatia:
       include_synthetic: true
     augmentations:
@@ -58,7 +54,6 @@ corpora:
         validation_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.validation.selection.jsonl.gz
 
   C4_kuatia_no_synthetic_es20:
-    manifest: data/manifests/C4_kuatia_no_synthetic_es20.manifest.json
     kuatia:
       include_synthetic: false
     augmentations:
@@ -69,7 +64,6 @@ corpora:
         validation_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.validation.selection.jsonl.gz
 
   C5_kuatia_en20:
-    manifest: data/manifests/C5_kuatia_en20.manifest.json
     kuatia:
       include_synthetic: true
     augmentations:
@@ -80,7 +74,6 @@ corpora:
         validation_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.validation.selection.jsonl.gz
 
   C6_kuatia_no_synthetic_en20:
-    manifest: data/manifests/C6_kuatia_no_synthetic_en20.manifest.json
     kuatia:
       include_synthetic: false
     augmentations:
@@ -91,7 +84,6 @@ corpora:
         validation_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.validation.selection.jsonl.gz
 
   C7_kuatia_es10_en10:
-    manifest: data/manifests/C7_kuatia_es10_en10.manifest.json
     kuatia:
       include_synthetic: true
     augmentations:
@@ -107,7 +99,6 @@ corpora:
         validation_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_en.validation.selection.jsonl.gz
 
   C8_kuatia_no_synthetic_es10_en10:
-    manifest: data/manifests/C8_kuatia_no_synthetic_es10_en10.manifest.json
     kuatia:
       include_synthetic: false
     augmentations:

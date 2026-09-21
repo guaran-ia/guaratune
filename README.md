@@ -123,7 +123,7 @@ fineweb_edu_es:
   selection_path: data/selections/fineweb_edu_es20.selection.jsonl.gz
 ```
 
-The active data configuration is manifest-backed. Kuatia train and validation splits are defined in `data/kuatia_config.yaml` to avoid train/validation leakage, and each final corpus is declared in `configs/data/gemma4_cpt.yaml`.
+The active data preparation flow is config-backed. Kuatia train and validation splits are defined in `data/kuatia_config.yaml` to avoid train/validation leakage, and each final corpus is declared in `configs/data/gemma4_cpt.yaml`.
 
 The current CPT corpus configurations are:
 
@@ -136,7 +136,7 @@ The current CPT corpus configurations are:
 - `C7_kuatia_es10_en10`: `C1` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
 - `C8_kuatia_no_synthetic_es10_en10`: `C2` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
 
-FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. Train and validation FineWeb-Edu selections are stored separately so the same selected document is not used in both splits.
+FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. The configured percentages are approximate token proportions: the sampler keeps complete documents and stops after reaching the requested proportion, so the final token count can be slightly above the requested amount. Train and validation FineWeb-Edu selections are stored separately so the same selected document is not used in both splits.
 
 > [!IMPORTANT]  
 > To create the dataset configurations, run the following command:
@@ -168,18 +168,18 @@ This writes:
 - `data/manifests/*.manifest.json`
 - `data/dataset_info.json`
 
-Each final corpus is split into a training file under `data/train/` and a validation file under `data/validation/`. With the active manifest-backed config, train/validation membership comes from the manifests generated from `data/kuatia_config.yaml`. `src.prepare_data` regenerates the local source selection ledgers under `data/selections/` and source component pools under `data/train/components/` before final corpora are assembled, so stale local files are not reused. Legacy component-style configs can still use deterministic held-out splits.
+Each final corpus is split into a training file under `data/train/` and a validation file under `data/validation/`. With the active config-backed flow, train/validation membership comes from `data/kuatia_config.yaml` and augmentation ratios from `configs/data/gemma4_cpt.yaml`. `src.prepare_data` regenerates local manifests, source selection ledgers under `data/selections/`, and source component pools under `data/train/components/` before final corpora are assembled, so stale local files are not reused. Legacy component-style configs can still use deterministic held-out splits.
 
-Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, dataset sources, manifest paths, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. The manifest files include the config path plus train/validation corpus and component accounting for each generated JSONL file.
+Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, dataset sources, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. Generated manifest files include the config path plus train/validation corpus and component accounting for each generated JSONL file.
 
 > [!NOTE]
-> The generated corpora under `data/train/`, generated validation splits under `data/validation/`, source revision lock, and selection ledgers are ignored by Git. To reconstruct them from tracked manifests and pinned source metadata, use:
+> The generated corpora under `data/train/`, generated validation splits under `data/validation/`, manifests, source revision lock, and selection ledgers are ignored by Git. To reconstruct them from tracked config files and pinned source metadata, use:
 
 ```bash
 python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml --overwrite
 ```
 
-For manifest-backed configs, reconstruction reads `configs/data/gemma4_cpt.yaml` and `data/manifests/*.manifest.json`, regenerates `data/source_revisions.lock.json` and `data/selections/*.selection.jsonl.gz`, and then rebuilds train and validation files. If any pinned Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version.
+For config-backed data preparation, reconstruction reads `configs/data/gemma4_cpt.yaml` and `data/kuatia_config.yaml`, regenerates `data/manifests/*.manifest.json`, `data/source_revisions.lock.json`, and `data/selections/*.selection.jsonl.gz`, and then rebuilds train and validation files. If any pinned Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version.
 
 The `data/validation/` files are reserved for in-training validation. Post-training evaluation inputs, including Global-MMLU-Lite and perplexity evaluation sets, live under `data/evaluation/`.
 

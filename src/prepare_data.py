@@ -54,7 +54,7 @@ class ComponentStats:
     selection: str
     path: str
     selection_path: str
-    target_tokens: int | None
+    requested_tokens: int | None
     actual_tokens: int
     documents: int
     seed: int | None
@@ -157,19 +157,22 @@ def source_specs_from_config(config: dict[str, Any]) -> dict[str, SourceSpec]:
 
 
 def is_manifest_config(config: dict[str, Any]) -> bool:
-    """Return whether a config uses manifest-backed corpus definitions.
+    """Return whether a config uses the config-backed corpus scheme.
 
     Args:
         config: Resolved dataset preparation config.
 
     Returns:
-        True when every configured corpus points to a manifest file.
+        True when sources and corpus recipes are declared in the config.
     """
     corpora = config.get('corpora')
     if not isinstance(corpora, dict) or not corpora:
         return False
 
-    return all(isinstance(corpus, dict) and 'manifest' in corpus for corpus in corpora.values())
+    return isinstance(config.get('sources'), dict) and all(
+        isinstance(corpus, dict) and 'kuatia' in corpus
+        for corpus in corpora.values()
+    )
 
 
 def resolve_source_revisions(sources: dict[str, SourceSpec]) -> dict[str, Any]:
@@ -727,7 +730,7 @@ def write_kuatia_component(
         selection='all' if max_docs is None else f'first_{max_docs}_documents',
         path=str(output_path),
         selection_path=str(selection_path),
-        target_tokens=None,
+        requested_tokens=None,
         actual_tokens=tokens,
         documents=docs,
         seed=None,
@@ -740,28 +743,28 @@ def write_sample_component(
     output_path: str,
     selection_path: str,
     *,
-    target_tokens: int,
+    requested_tokens: int,
     seed: int,
     shuffle_buffer_size: int,
     allow_incomplete: bool,
 ) -> ComponentStats:
-    """Sample full documents until a token target is reached.
+    """Sample full documents until an approximate token request is reached.
 
     Args:
         spec: FineWeb source descriptor.
         tokenizer: Tokenizer used to count document tokens.
         output_path: Destination component JSONL path.
         selection_path: Destination selection ledger JSONL path.
-        target_tokens: Minimum token count to sample.
+        requested_tokens: Approximate minimum token count to sample.
         seed: Random seed for deterministic sampling.
         shuffle_buffer_size: Shuffle buffer size for compatible streaming sources.
-        allow_incomplete: Whether to accept samples smaller than target_tokens.
+        allow_incomplete: Whether to accept samples smaller than requested_tokens.
 
     Returns:
         Component statistics for the sampled corpus.
 
     Raises:
-        RuntimeError: If the source is exhausted before target_tokens and
+        RuntimeError: If the source is exhausted before requested_tokens and
             allow_incomplete is false.
     """
     docs = 0
@@ -798,15 +801,15 @@ def write_sample_component(
             if docs % 10000 == 0:
                 print(
                     f'[{os.path.splitext(os.path.basename(output_path))[0]}] sampled '
-                    f'{docs:,} docs / {tokens:,} of {target_tokens:,} target tokens',
+                    f'{docs:,} docs / {tokens:,} of {requested_tokens:,} requested tokens',
                     flush=True,
                 )
-            if tokens >= target_tokens:
+            if tokens >= requested_tokens:
                 break
 
-    if tokens < target_tokens and not allow_incomplete:
+    if tokens < requested_tokens and not allow_incomplete:
         raise RuntimeError(
-            f'{spec.name} exhausted at {tokens:,} tokens before reaching target {target_tokens:,}. '
+            f'{spec.name} exhausted at {tokens:,} tokens before reaching requested minimum {requested_tokens:,}. '
             'Use a larger source or rerun with --allow-incomplete-samples for development only.'
         )
 
@@ -821,7 +824,7 @@ def write_sample_component(
         selection='sampled_document_level',
         path=str(output_path),
         selection_path=str(selection_path),
-        target_tokens=target_tokens,
+        requested_tokens=requested_tokens,
         actual_tokens=tokens,
         documents=docs,
         seed=seed,
@@ -835,7 +838,7 @@ def write_fixed_subsample(
     output_path: str,
     selection_path: str,
     *,
-    target_tokens: int,
+    requested_tokens: int,
 ) -> ComponentStats:
     """Write a deterministic fixed subsample from an existing component.
 
@@ -845,7 +848,7 @@ def write_fixed_subsample(
         source_selection_path: Selection ledger path for the source component.
         output_path: Destination subsample JSONL path.
         selection_path: Destination subsample ledger path.
-        target_tokens: Minimum token count to include in the subsample.
+        requested_tokens: Approximate minimum token count to include in the subsample.
 
     Returns:
         Component statistics for the fixed subsample.
@@ -864,7 +867,7 @@ def write_fixed_subsample(
             sel.write(json.dumps(selection, ensure_ascii=False) + '\n')
             docs += 1
             tokens += int(selection['tokens'])
-            if tokens >= target_tokens:
+            if tokens >= requested_tokens:
                 break
 
     return ComponentStats(
@@ -878,7 +881,7 @@ def write_fixed_subsample(
         selection=f'fixed_subsample_of_{source_stats.name}',
         path=str(output_path),
         selection_path=str(selection_path),
-        target_tokens=target_tokens,
+        requested_tokens=requested_tokens,
         actual_tokens=tokens,
         documents=docs,
         seed=source_stats.seed,
@@ -1111,7 +1114,7 @@ def component_path_from_selection(output_dir: str, selection_path: str) -> str:
 
 
 def manifest_output_paths(output_dir: str) -> dict[str, str]:
-    """Create standard output directories for manifest-backed corpora.
+    """Create standard output directories for config-backed corpora.
 
     Args:
         output_dir: Root directory where generated dataset artifacts are written.
@@ -1150,6 +1153,10 @@ def ensure_manifest_outputs(
     paths = manifest_output_paths(output_dir)
     generated = [os.path.join(paths['train'], f'{name}.jsonl') for name in corpus_names]
     generated.extend(os.path.join(paths['validation'], f'{name}.jsonl') for name in corpus_names)
+    generated.extend(
+        os.path.join(paths['manifests'], f'{name}.manifest.json')
+        for name in corpus_names
+    )
     generated.extend(component_paths)
     generated.extend(selection_paths)
     generated.append(os.path.join(output_dir, 'dataset_info.json'))
@@ -1166,10 +1173,10 @@ def ensure_manifest_outputs(
 
 
 def source_lock_from_manifest_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Build a source revision lock from manifest-backed source entries.
+    """Build a source revision lock from config-backed source entries.
 
     Args:
-        config: Resolved manifest-backed data config.
+        config: Resolved config-backed data config.
 
     Returns:
         Source revision lock entries keyed by source name.
@@ -1184,6 +1191,214 @@ def source_lock_from_manifest_config(config: dict[str, Any]) -> dict[str, Any]:
         }
 
     return locked_sources
+
+
+def manifest_source_entry(
+    source_name: str,
+    source_config: dict[str, Any],
+    *,
+    include_selection_path: bool,
+) -> dict[str, Any]:
+    """Build source metadata for a generated data-preparation manifest.
+
+    Args:
+        source_name: Source key from the data config.
+        source_config: Source metadata from the data config.
+        include_selection_path: Whether to include the source-level selection path.
+
+    Returns:
+        Source metadata with empty run accounting.
+    """
+    entry = {
+        'name': source_config.get('name', source_name),
+        'dataset': source_config['dataset'],
+        'version': source_config.get('version'),
+        'loader': source_config.get('loader'),
+        'requested_revision': source_config.get('requested_revision'),
+        'commit_id': source_config.get('commit_id'),
+        'documents': 0,
+        'tokens': 0,
+    }
+    if include_selection_path:
+        entry['selection_path'] = source_config['selection_path']
+
+    return entry
+
+
+def split_dataset_metadata(split_config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Return Kuatia dataset metadata keyed by configured dataset name.
+
+    Args:
+        split_config: Parsed Kuatia split configuration.
+
+    Returns:
+        Mapping from dataset name to metadata.
+    """
+    return {
+        item['name']: item
+        for item in split_config.get('datasets', [])
+        if isinstance(item, dict) and 'name' in item
+    }
+
+
+def kuatia_split_components(
+    split_config: dict[str, Any],
+    split_name: str,
+    *,
+    include_synthetic: bool,
+) -> list[dict[str, Any]]:
+    """Build Kuatia manifest components for one configured split.
+
+    Args:
+        split_config: Parsed Kuatia split configuration.
+        split_name: Split name, usually train or validation.
+        include_synthetic: Whether synthetic corpora should be included.
+
+    Returns:
+        Manifest component entries with empty run accounting.
+    """
+    datasets = split_dataset_metadata(split_config)
+    synthetic_names = set(split_config.get('synthetic', []))
+    components = []
+    for dataset_name in split_config.get(split_name, []):
+        metadata = datasets.get(dataset_name, {})
+        corpus_id = metadata.get('corpus_id', dataset_name)
+        synthetic = dataset_name in synthetic_names or corpus_id in synthetic_names
+        if synthetic and not include_synthetic:
+            continue
+
+        components.append(
+            {
+                'name': dataset_name,
+                'corpus_id': corpus_id,
+                'synthetic': synthetic,
+                'documents': 0,
+                'tokens': 0,
+            }
+        )
+
+    return components
+
+
+def augmentation_display_name(source_name: str, ratio: float) -> str:
+    """Build a readable augmentation component name.
+
+    Args:
+        source_name: Source key from the data config.
+        ratio: Augmentation ratio.
+
+    Returns:
+        Human-readable augmentation name.
+    """
+    source_labels = {
+        'fineweb_edu_en': 'FineWeb-Edu English',
+        'fineweb_edu_es': 'FineWeb-Edu Spanish',
+    }
+    source_label = source_labels.get(source_name, source_name)
+    percent = ratio * 100
+    if percent.is_integer():
+        percent_label = f'{int(percent)}%'
+    else:
+        percent_label = f'{percent:g}%'
+
+    return f'{source_label} {percent_label}'
+
+
+def build_config_manifests(
+    config_path: str, config: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Build in-memory manifests from tracked data configuration files.
+
+    Args:
+        config_path: Dataset preparation config file.
+        config: Resolved config-backed data config.
+
+    Returns:
+        Generated manifests keyed by corpus configuration name.
+    """
+    split_config_path = config.get('split_config', config_path)
+    split_config = load_config(split_config_path)
+    sources = require_mapping(config, 'sources')
+    corpora_config = require_mapping(config, 'corpora')
+    manifests = {}
+
+    for config_name, corpus_config in corpora_config.items():
+        include_synthetic = bool(
+            corpus_config.get('kuatia', {}).get('include_synthetic', True)
+        )
+        manifest_sources = {
+            'kuatia': manifest_source_entry(
+                'kuatia', sources['kuatia'], include_selection_path=False
+            )
+        }
+        splits = {
+            split_name: {
+                'documents': 0,
+                'tokens': 0,
+                'corpora': kuatia_split_components(
+                    split_config,
+                    split_name,
+                    include_synthetic=include_synthetic,
+                ),
+            }
+            for split_name in ('train', 'validation')
+        }
+
+        for augmentation in corpus_config.get('augmentations', []):
+            source_name = augmentation['source']
+            ratio = float(augmentation['ratio'])
+            manifest_sources[source_name] = manifest_source_entry(
+                source_name, sources[source_name], include_selection_path=True
+            )
+            component_name = augmentation_display_name(source_name, ratio)
+            for split_name, selection_key in (
+                ('train', 'train_selection_path'),
+                ('validation', 'validation_selection_path'),
+            ):
+                splits[split_name]['corpora'].append(
+                    {
+                        'name': component_name,
+                        'source': source_name,
+                        'selection': 'sampled_document_level',
+                        'documents': 0,
+                        'tokens': 0,
+                        'seed': int(config['seed']),
+                        'selection_path': augmentation[selection_key],
+                    }
+                )
+
+        manifests[config_name] = {
+            'config_name': config_name,
+            'created_at': datetime.now(UTC).isoformat(),
+            'config_path': split_config_path,
+            'selection_path': sources['kuatia']['selection_path'],
+            'tokenizer': config['tokenizer'],
+            'sources': manifest_sources,
+            'sample_seed': int(config['seed']),
+            'splits': splits,
+        }
+
+    return manifests
+
+
+def write_config_manifests(
+    manifests: dict[str, dict[str, Any]], manifest_dir: str
+) -> None:
+    """Write generated data-preparation manifests.
+
+    Args:
+        manifests: Generated manifest data keyed by corpus name.
+        manifest_dir: Destination manifest directory.
+
+    Returns:
+        None.
+    """
+    os.makedirs(manifest_dir, exist_ok=True)
+    for config_name, manifest in manifests.items():
+        manifest['created_at'] = datetime.now(UTC).isoformat()
+        path = os.path.join(manifest_dir, f'{config_name}.manifest.json')
+        with open(path, 'w', encoding='utf-8') as handle:
+            handle.write(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 
 
 def load_json(path: str) -> dict[str, Any]:
@@ -1229,6 +1444,27 @@ def load_selection_tokens(selection_path: str) -> tuple[dict[str, int], int, int
         tokens += doc_tokens
 
     return tokens_by_id, documents, tokens
+
+
+def load_selection_corpus_totals(selection_path: str) -> dict[str, tuple[int, int]]:
+    """Load document and token totals grouped by corpus id from a ledger.
+
+    Args:
+        selection_path: Selection ledger JSONL path.
+
+    Returns:
+        Mapping from corpus id to document and token totals.
+    """
+    totals = {}
+    for row in stream_jsonl(selection_path):
+        corpus_id = row.get('corpus_id')
+        if not corpus_id:
+            continue
+
+        documents, tokens = totals.get(corpus_id, (0, 0))
+        totals[corpus_id] = (documents + 1, tokens + int(row['tokens']))
+
+    return totals
 
 
 def stream_component_records(
@@ -1346,7 +1582,7 @@ def validate_manifest_source_config(
     """Validate that a config source matches manifest source metadata.
 
     Args:
-        source_name: Source key used in the manifest-backed config.
+        source_name: Source key used in the config-backed recipe.
         source_config: Source metadata from the config.
         manifest_source: Source metadata from a manifest.
 
@@ -1376,7 +1612,7 @@ def validate_manifest_config_sources(
     """Validate manifest source metadata against the active config.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data recipe.
         manifest: Corpus manifest data.
 
     Returns:
@@ -1396,7 +1632,7 @@ def validate_manifest_config_sources(
 def source_spec_from_manifest_source(
     source_name: str, source_config: dict[str, Any]
 ) -> SourceSpec:
-    """Build a source descriptor from a manifest-backed source config.
+    """Build a source descriptor from a config-backed source config.
 
     Args:
         source_name: Source key in the data config.
@@ -1456,7 +1692,7 @@ def required_manifest_selection_paths(
     """Collect selection ledger paths that will be generated.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
         manifests: Loaded manifest dictionaries.
 
     Returns:
@@ -1482,7 +1718,7 @@ def required_manifest_component_paths(
     """Collect source component paths that will be generated.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
         manifests: Loaded manifest dictionaries.
 
     Returns:
@@ -1509,10 +1745,46 @@ def required_manifest_component_paths(
     )
 
 
-def manifest_selection_specs(manifests: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Collect unique non-Kuatia selection specs from manifests.
+def find_manifest_selection_component(
+    manifest: dict[str, Any],
+    split_name: str,
+    selection_path: str,
+    source_name: str,
+) -> dict[str, Any]:
+    """Find a sampled-source component in a manifest split.
 
     Args:
+        manifest: Corpus manifest data.
+        split_name: Split containing the sampled-source component.
+        selection_path: Selection ledger path from the data config.
+        source_name: Source key from the data config.
+
+    Returns:
+        Manifest component matching the selection path and source.
+
+    Raises:
+        RuntimeError: If no matching component exists.
+    """
+    for component in manifest['splits'][split_name]['corpora']:
+        if (
+            component.get('source') == source_name
+            and component.get('selection_path') == selection_path
+        ):
+            return component
+
+    raise RuntimeError(
+        f'Manifest {manifest["config_name"]} {split_name} does not contain '
+        f'{source_name} selection {selection_path}.'
+    )
+
+
+def manifest_selection_specs(
+    config: dict[str, Any], manifests: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Collect unique sampled-source selection specs from config ratios.
+
+    Args:
+        config: Resolved config-backed data config.
         manifests: Loaded manifest dictionaries.
 
     Returns:
@@ -1522,28 +1794,76 @@ def manifest_selection_specs(manifests: dict[str, Any]) -> dict[str, dict[str, A
         RuntimeError: If one selection path has conflicting metadata.
     """
     specs = {}
-    for manifest in manifests.values():
-        for split_name, split in manifest['splits'].items():
-            for component in split['corpora']:
-                source_name = component.get('source')
-                if not source_name:
-                    continue
-                selection_path = component['selection_path']
+    corpora_config = require_mapping(config, 'corpora')
+    default_seed = int(config['seed'])
+    for config_name, corpus_config in corpora_config.items():
+        manifest = manifests[config_name]
+        for augmentation in corpus_config.get('augmentations', []):
+            source_name = augmentation['source']
+            ratio = float(augmentation['ratio'])
+            reference_name = augmentation.get('ratio_reference', config_name)
+            if reference_name not in manifests:
+                raise RuntimeError(
+                    f'{config_name} references unknown ratio_reference {reference_name}.'
+                )
+
+            for split_name, selection_key in (
+                ('train', 'train_selection_path'),
+                ('validation', 'validation_selection_path'),
+            ):
+                selection_path = augmentation[selection_key]
+                component = find_manifest_selection_component(
+                    manifest, split_name, selection_path, source_name
+                )
+                requested_tokens = round(
+                    int(manifests[reference_name]['splits'][split_name]['tokens']) * ratio
+                )
                 spec = {
                     'source': source_name,
                     'split': split_name,
                     'selection_path': selection_path,
-                    'target_tokens': int(component['target_tokens']),
+                    'requested_tokens': requested_tokens,
+                    'ratio': ratio,
+                    'ratio_reference': reference_name,
                     'documents': int(component['documents']),
                     'tokens': int(component['tokens']),
-                    'seed': int(component['seed']),
+                    'seed': int(component.get('seed', manifest.get('sample_seed', default_seed))),
                 }
                 existing = specs.get(selection_path)
-                if existing is not None and existing != spec:
+                comparable = {
+                    key: spec[key]
+                    for key in (
+                        'source',
+                        'split',
+                        'selection_path',
+                        'requested_tokens',
+                        'ratio',
+                        'ratio_reference',
+                        'seed',
+                    )
+                }
+                existing_comparable = (
+                    {
+                        key: existing[key]
+                        for key in (
+                            'source',
+                            'split',
+                            'selection_path',
+                            'requested_tokens',
+                            'ratio',
+                            'ratio_reference',
+                            'seed',
+                        )
+                    }
+                    if existing is not None
+                    else None
+                )
+                if existing is not None and existing_comparable != comparable:
                     raise RuntimeError(
                         f'Conflicting manifest selection metadata: {selection_path}'
                     )
-                specs[selection_path] = spec
+                if existing is None:
+                    specs[selection_path] = spec
 
     return specs
 
@@ -1607,84 +1927,85 @@ def write_selection_entries(path: str, entries: list[dict[str, Any]]) -> tuple[i
     return documents, tokens
 
 
-def selection_prefix_for_target(
-    entries: list[dict[str, Any]], target_tokens: int
+def selection_prefix_for_request(
+    entries: list[dict[str, Any]], requested_tokens: int
 ) -> list[dict[str, Any]]:
-    """Return the shortest entry prefix reaching a token target.
+    """Return the shortest entry prefix reaching a token request.
 
     Args:
         entries: Source selection entries.
-        target_tokens: Minimum token count to reach.
+        requested_tokens: Approximate minimum token count to reach.
 
     Returns:
-        Prefix of entries reaching the target token count.
+        Prefix of entries reaching the requested token count.
 
     Raises:
-        RuntimeError: If the entries do not reach target_tokens.
+        RuntimeError: If the entries do not reach requested_tokens.
     """
     selected = []
     tokens = 0
     for entry in entries:
         selected.append(entry)
         tokens += int(entry['tokens'])
-        if tokens >= target_tokens:
+        if tokens >= requested_tokens:
             return selected
 
     raise RuntimeError(
-        f'Selection prefix reached {tokens:,} tokens before target {target_tokens:,}.'
+        f'Selection prefix reached {tokens:,} tokens before request {requested_tokens:,}.'
     )
 
 
 def verify_selection_totals(
     path: str, documents: int, tokens: int, expected: dict[str, Any]
 ) -> None:
-    """Validate generated selection totals against manifest metadata.
+    """Validate generated selection totals against the approximate token request.
 
     Args:
         path: Selection path being checked.
         documents: Generated document count.
         tokens: Generated token count.
-        expected: Manifest selection metadata.
+        expected: Selection metadata derived from config ratios.
 
     Returns:
         None.
 
     Raises:
-        RuntimeError: If generated totals differ from the manifest.
+        RuntimeError: If generated totals do not reach the requested token count.
     """
-    if documents != expected['documents'] or tokens != expected['tokens']:
+    requested_tokens = int(expected['requested_tokens'])
+    if tokens < requested_tokens:
         raise RuntimeError(
-            f'Generated selection {path} has {documents:,} docs / {tokens:,} tokens, '
-            f'expected {expected["documents"]:,} docs / {expected["tokens"]:,} tokens.'
+            f'Generated selection {path} has {tokens:,} tokens, '
+            f'below requested minimum {requested_tokens:,}.'
         )
 
 
 def take_selection_entries(
     entry_stream: Iterator[dict[str, Any]],
-    target_tokens: int,
+    requested_tokens: int,
 ) -> list[dict[str, Any]]:
-    """Consume selection entries until a token target is reached.
+    """Consume selection entries until a token request is reached.
 
     Args:
         entry_stream: Selection entry iterator.
-        target_tokens: Minimum token count to reach.
+        requested_tokens: Approximate minimum token count to reach.
 
     Returns:
         Selected entries.
 
     Raises:
-        RuntimeError: If the stream ends before the target is reached.
+        RuntimeError: If the stream ends before the request is reached.
     """
     entries = []
     tokens = 0
     for entry in entry_stream:
         entries.append(entry)
         tokens += int(entry['tokens'])
-        if tokens >= target_tokens:
+        if tokens >= requested_tokens:
             return entries
 
     raise RuntimeError(
-        f'Source stream ended at {tokens:,} tokens before target {target_tokens:,}.'
+        f'Source stream ended at {tokens:,} tokens before request {requested_tokens:,}.'
     )
 
 
@@ -1761,15 +2082,15 @@ def write_source_selection_specs(
         if not split_specs:
             continue
 
-        max_target = max(item['target_tokens'] for item in split_specs)
-        base_entries = take_selection_entries(entry_stream, max_target)
+        max_requested_tokens = max(item['requested_tokens'] for item in split_specs)
+        base_entries = take_selection_entries(entry_stream, max_requested_tokens)
         for selection_spec in sorted(
             split_specs,
-            key=lambda item: (item['target_tokens'], item['selection_path']),
+            key=lambda item: (item['requested_tokens'], item['selection_path']),
             reverse=True,
         ):
-            entries = selection_prefix_for_target(
-                base_entries, selection_spec['target_tokens']
+            entries = selection_prefix_for_request(
+                base_entries, selection_spec['requested_tokens']
             )
             documents, tokens = write_selection_entries(
                 selection_spec['selection_path'], entries
@@ -1789,10 +2110,10 @@ def write_manifest_selection_ledgers(
     manifests: dict[str, Any],
     tokenizer: PreTrainedTokenizerBase,
 ) -> None:
-    """Generate all selection ledgers required by a manifest-backed run.
+    """Generate all selection ledgers required by a config-backed run.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
         manifests: Loaded manifest dictionaries.
         tokenizer: Tokenizer used for token accounting.
 
@@ -1815,23 +2136,14 @@ def write_manifest_selection_ledgers(
             kuatia_config['selection_path'],
             max_docs=None,
         )
-        if (
-            stats.documents != int(kuatia_metadata['documents'])
-            or stats.actual_tokens != int(kuatia_metadata['tokens'])
-        ):
-            raise RuntimeError(
-                f'Generated Kuatia selection has {stats.documents:,} docs / '
-                f'{stats.actual_tokens:,} tokens, expected '
-                f'{int(kuatia_metadata["documents"]):,} docs / '
-                f'{int(kuatia_metadata["tokens"]):,} tokens.'
-            )
         print(
             f'[selection] {kuatia_config["selection_path"]}: '
             f'{stats.documents:,} docs / {stats.actual_tokens:,} tokens',
             flush=True,
         )
 
-    specs_by_path = manifest_selection_specs(manifests)
+    refresh_manifest_kuatia_totals(manifests)
+    specs_by_path = manifest_selection_specs(config, manifests)
     specs_by_source: dict[str, list[dict[str, Any]]] = {}
     for spec in specs_by_path.values():
         specs_by_source.setdefault(spec['source'], []).append(spec)
@@ -1845,6 +2157,116 @@ def write_manifest_selection_ledgers(
             tokenizer,
             shuffle_buffer_size,
         )
+
+
+def refresh_manifest_kuatia_totals(manifests: dict[str, Any]) -> None:
+    """Refresh in-memory Kuatia component totals from generated ledgers.
+
+    Args:
+        manifests: Loaded manifest dictionaries to update in place.
+
+    Returns:
+        None.
+    """
+    corpus_totals_by_path = {}
+    selection_totals_by_path = {}
+    for manifest in manifests.values():
+        selection_path = manifest.get('selection_path')
+        if not selection_path:
+            continue
+
+        if selection_path not in selection_totals_by_path:
+            _, documents, tokens = load_selection_tokens(selection_path)
+            selection_totals_by_path[selection_path] = (documents, tokens)
+        if selection_path not in corpus_totals_by_path:
+            corpus_totals_by_path[selection_path] = (
+                load_selection_corpus_totals(selection_path)
+            )
+
+        documents, tokens = selection_totals_by_path[selection_path]
+        manifest['sources']['kuatia']['documents'] = documents
+        manifest['sources']['kuatia']['tokens'] = tokens
+
+        for split in manifest['splits'].values():
+            split_documents = 0
+            split_tokens = 0
+            for component in split['corpora']:
+                if 'corpus_id' in component:
+                    documents, tokens = corpus_totals_by_path[selection_path].get(
+                        component['corpus_id'], (0, 0)
+                    )
+                    component['documents'] = documents
+                    component['tokens'] = tokens
+
+                split_documents += int(component['documents'])
+                split_tokens += int(component['tokens'])
+
+            split['documents'] = split_documents
+            split['tokens'] = split_tokens
+
+
+def refresh_manifest_selection_totals(manifests: dict[str, Any]) -> None:
+    """Refresh in-memory manifest totals from generated selection ledgers.
+
+    Args:
+        manifests: Loaded manifest dictionaries to update in place.
+
+    Returns:
+        None.
+    """
+    totals_by_path = {}
+    corpus_totals_by_path = {}
+    for manifest in manifests.values():
+        source_tokens_by_id = {}
+        selection_path = manifest.get('selection_path')
+        if selection_path:
+            _, documents, tokens = load_selection_tokens(selection_path)
+            manifest['sources']['kuatia']['documents'] = documents
+            manifest['sources']['kuatia']['tokens'] = tokens
+
+        for split in manifest['splits'].values():
+            split_documents = 0
+            split_tokens = 0
+            for component in split['corpora']:
+                if 'source' in component:
+                    selection_path = component['selection_path']
+                    if selection_path not in totals_by_path:
+                        tokens_by_id, documents, tokens = load_selection_tokens(
+                            selection_path
+                        )
+                        totals_by_path[selection_path] = (
+                            tokens_by_id,
+                            documents,
+                            tokens,
+                        )
+
+                    tokens_by_id, documents, tokens = totals_by_path[selection_path]
+                    component['documents'] = documents
+                    component['tokens'] = tokens
+                    source_name = component['source']
+                    source_tokens_by_id.setdefault(source_name, {}).update(tokens_by_id)
+                elif 'corpus_id' in component:
+                    selection_path = manifest['selection_path']
+                    if selection_path not in corpus_totals_by_path:
+                        corpus_totals_by_path[selection_path] = (
+                            load_selection_corpus_totals(selection_path)
+                        )
+
+                    documents, tokens = corpus_totals_by_path[selection_path].get(
+                        component['corpus_id'], (0, 0)
+                    )
+                    component['documents'] = documents
+                    component['tokens'] = tokens
+
+                split_documents += int(component['documents'])
+                split_tokens += int(component['tokens'])
+
+            split['documents'] = split_documents
+            split['tokens'] = split_tokens
+
+        for source_name, tokens_by_id in source_tokens_by_id.items():
+            manifest['sources'][source_name]['documents'] = len(tokens_by_id)
+            manifest['sources'][source_name]['tokens'] = sum(tokens_by_id.values())
 
 
 def add_selection_tokens(
@@ -1878,10 +2300,10 @@ def add_selection_tokens(
 def required_manifest_source_selections(
     config: dict[str, Any], manifests: dict[str, Any]
 ) -> dict[str, dict[str, Any]]:
-    """Collect source selections needed by active manifest-backed corpora.
+    """Collect source selections needed by active config-backed corpora.
 
     Args:
-        config: Resolved manifest-backed data config.
+        config: Resolved config-backed data config.
         manifests: Loaded corpus manifests.
 
     Returns:
@@ -2025,7 +2447,7 @@ def source_config_for_manifest_component(
     """Return the source config for a non-Kuatia manifest component.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
         component: Manifest split component.
 
     Returns:
@@ -2052,7 +2474,7 @@ def write_manifest_split_file(
     """Write one manifest split to a JSONL file.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
         manifest: Corpus manifest data.
         split_name: Split name to write, usually train or validation.
         output_path: Destination JSONL path.
@@ -2133,11 +2555,11 @@ def write_manifest_config_outputs(
     output_dir: str | None,
     overwrite: bool,
 ) -> None:
-    """Write train and validation files from manifest-backed config.
+    """Write train, validation, and manifest files from a config-backed recipe.
 
     Args:
         config_path: Dataset preparation config file.
-        config: Loaded manifest-backed config.
+        config: Loaded config-backed data recipe.
         output_dir: Optional output directory override.
         overwrite: Whether to replace generated outputs.
 
@@ -2153,29 +2575,7 @@ def write_manifest_config_outputs(
     )
     corpora_config = require_mapping(resolved_config, 'corpora')
     output_root = resolved_config['output_dir']
-    manifests = {}
-    for config_name, corpus_config in corpora_config.items():
-        manifest_path = corpus_config['manifest']
-        manifest = load_json(manifest_path)
-        if manifest.get('config_name') != config_name:
-            raise RuntimeError(
-                f'Manifest {manifest_path} has config_name={manifest.get("config_name")}, '
-                f'expected {config_name}.'
-            )
-        expected_config_path = resolved_config.get('split_config', config_path)
-        if manifest.get('config_path') != expected_config_path:
-            raise RuntimeError(
-                f'Manifest {manifest_path} was created from {manifest.get("config_path")}, '
-                f'not {expected_config_path}.'
-            )
-        if manifest.get('tokenizer') != resolved_config.get('tokenizer'):
-            raise RuntimeError(
-                f'Manifest {manifest_path} tokenizer={manifest.get("tokenizer")}, '
-                f'config tokenizer={resolved_config.get("tokenizer")}.'
-            )
-
-        validate_manifest_config_sources(resolved_config, manifest)
-        manifests[config_name] = manifest
+    manifests = build_config_manifests(config_path, resolved_config)
 
     paths = ensure_manifest_outputs(
         output_root,  # type: ignore
@@ -2189,6 +2589,7 @@ def write_manifest_config_outputs(
     write_source_revisions_lock(paths['source_lock'], locked_sources)
     tokenizer_instance = AutoTokenizer.from_pretrained(resolved_config['tokenizer'])
     write_manifest_selection_ledgers(resolved_config, manifests, tokenizer_instance)
+    refresh_manifest_selection_totals(manifests)
     required_sources = required_manifest_source_selections(resolved_config, manifests)
     write_manifest_source_components(required_sources, tokenizer_instance)
 
@@ -2216,15 +2617,16 @@ def write_manifest_config_outputs(
             flush=True,
         )
 
+    write_config_manifests(manifests, paths['manifests'])
     write_dataset_info(os.path.join(output_root, 'dataset_info.json'), corpora_config.keys())  # type: ignore
-    print(f'[done] wrote manifest-backed corpora under {output_root}', flush=True)
+    print(f'[done] wrote config-backed corpora under {output_root}', flush=True)
 
 
 def preflight_manifest_config(config: dict[str, Any]) -> None:
-    """Print manifest-backed data config metadata without writing outputs.
+    """Print config-backed data config metadata without writing outputs.
 
     Args:
-        config: Resolved manifest-backed config.
+        config: Resolved config-backed data config.
 
     Returns:
         None.
@@ -2235,7 +2637,13 @@ def preflight_manifest_config(config: dict[str, Any]) -> None:
         print(f'    selection: {source["selection_path"]}')
     print('corpora:')
     for corpus_name, corpus in require_mapping(config, 'corpora').items():
-        print(f'  {corpus_name}: {corpus["manifest"]}')
+        include_synthetic = corpus.get('kuatia', {}).get('include_synthetic', True)
+        print(f'  {corpus_name}: include_synthetic={include_synthetic}')
+        for augmentation in corpus.get('augmentations', []):
+            print(
+                f'    {augmentation["source"]}: ratio={augmentation["ratio"]} '
+                f'reference={augmentation.get("ratio_reference", corpus_name)}'
+            )
 
 
 def preflight(specs: list[SourceSpec]) -> None:
@@ -2320,7 +2728,7 @@ def component_stats_from_dict(data: dict[str, Any]) -> ComponentStats:
         selection=data['selection'],
         path=data['path'],
         selection_path=data['selection_path'],
-        target_tokens=data.get('target_tokens'),
+        requested_tokens=data.get('requested_tokens'),
         actual_tokens=int(data['actual_tokens']),
         documents=int(data['documents']),
         seed=data.get('seed'),
@@ -2833,7 +3241,7 @@ def reconstruct_from_auxiliary(
     '--target-scale',
     type=float,
     default=1.0,
-    help='Development-only multiplier for FineWeb target tokens. Keep 1.0 for real corpora.',
+    help='Development-only multiplier for FineWeb requested tokens. Keep 1.0 for real corpora.',
 )
 def main(
     config_path: str,
@@ -2879,15 +3287,15 @@ def main(
             return
         if target_scale != 1.0:
             raise click.ClickException(
-                '--target-scale is not supported for manifest-backed configs.'
+                '--target-scale is not supported for config-backed data recipes.'
             )
         if max_kuatia_docs is not None:
             raise click.ClickException(
-                '--max-kuatia-docs is not supported for manifest-backed configs.'
+                '--max-kuatia-docs is not supported for config-backed data recipes.'
             )
         if allow_incomplete_samples:
             raise click.ClickException(
-                '--allow-incomplete-samples is not supported for manifest-backed configs.'
+                '--allow-incomplete-samples is not supported for config-backed data recipes.'
             )
         write_manifest_config_outputs(config_path, resolved_config, output_dir, overwrite)
         return
@@ -2945,15 +3353,15 @@ def main(
         if component_config.get('kind') != 'sample':
             continue
 
-        target_tokens = round(kuatia_tokens * float(component_config['target_ratio_of_kuatia']) * scale)
-        print(f'[targets] {component_name}={target_tokens:,}', flush=True)
+        requested_tokens = round(kuatia_tokens * float(component_config['target_ratio_of_kuatia']) * scale)
+        print(f'[requests] {component_name}={requested_tokens:,}', flush=True)
         source = sources[component_config['source']]
         component_stats[component_name] = write_sample_component(
             source,
             tokenizer_instance,
             os.path.join(paths['components'], f'{component_name}.jsonl'),
             selection_file_path(paths, component_name),
-            target_tokens=target_tokens,
+            requested_tokens=requested_tokens,
             seed=seed,
             shuffle_buffer_size=shuffle_buffer_size,
             allow_incomplete=allow_incomplete,
@@ -2965,15 +3373,15 @@ def main(
 
         source_component = component_config['source_component']
         source_stats = component_stats[source_component]
-        target_tokens = round(kuatia_tokens * float(component_config['target_ratio_of_kuatia']) * scale)
-        print(f'[targets] {component_name}={target_tokens:,}', flush=True)
+        requested_tokens = round(kuatia_tokens * float(component_config['target_ratio_of_kuatia']) * scale)
+        print(f'[requests] {component_name}={requested_tokens:,}', flush=True)
         component_stats[component_name] = write_fixed_subsample(
             source_stats,
             source_stats.path,
             source_stats.selection_path,
             os.path.join(paths['components'], f'{component_name}.jsonl'),
             selection_file_path(paths, component_name),
-            target_tokens=target_tokens,
+            requested_tokens=requested_tokens,
         )
 
     for config_name, corpus_config in corpora_config.items():

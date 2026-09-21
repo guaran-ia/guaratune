@@ -12,9 +12,8 @@ Then edit the new YAML file. The main fields to review are:
 - `tokenizer`: tokenizer used only for token accounting during data preparation.
 - `seed`: deterministic sampling seed used by source selection routines.
 - `split_config`: Kuatia split policy file, currently `data/kuatia_config.yaml`.
-- `manifest_dir`: directory containing corpus manifests.
 - `sources`: Hugging Face datasets or Parquet-backed sources pinned by `commit_id`.
-- `corpora`: final CPT dataset configurations exposed to training and in-training validation. In the active config each corpus points to a manifest under `data/manifests/`.
+- `corpora`: final CPT dataset configurations exposed to training and in-training validation. Each corpus declares Kuatia synthetic-data handling plus optional augmentation ratios and selection paths. Manifests are generated under `data/manifests/` during preparation.
 
 After editing the new configuration, run data preparation with the new file:
 
