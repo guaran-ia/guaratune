@@ -125,7 +125,9 @@ data/train/
 data/cache/
 data/evaluation/coreguapa*
 data/evaluation/perplexity/
-data/selections/*.selection.jsonl
+data/selections/*.selection.jsonl*
+data/source_revisions.lock.json
+
 outputs/evaluation/
 outputs/train/
 results/

@@ -1,6 +1,6 @@
 {
-  "config_name": "C1_kuatia",
-  "created_at": "2026-09-18T19:26:45.694883+00:00",
+  "config_name": "C2_kuatia_no_synthetic",
+  "created_at": "2026-09-18T19:34:55.174745+00:00",
   "config_path": "data/kuatia_config.yaml",
   "selection_path": "data/selections/kuatia.selection.jsonl.gz",
   "tokenizer": "google/gemma-4-E4B",
@@ -16,8 +16,8 @@
   },
   "splits": {
     "train": {
-      "documents": 731267,
-      "tokens": 78583759,
+      "documents": 137285,
+      "tokens": 62901125,
       "corpora": [
         {
           "name": "AmericasNLI",
@@ -25,13 +25,6 @@
           "synthetic": false,
           "documents": 0,
           "tokens": 0
-        },
-        {
-          "name": "Ancora",
-          "corpus_id": "ancora",
-          "synthetic": true,
-          "documents": 14110,
-          "tokens": 708762
         },
         {
           "name": "Bible",
@@ -76,13 +69,6 @@
           "tokens": 22674503
         },
         {
-          "name": "Grammar",
-          "corpus_id": "grammar",
-          "synthetic": true,
-          "documents": 230118,
-          "tokens": 3310461
-        },
-        {
           "name": "Gua-Spa",
           "corpus_id": "gua_spa",
           "synthetic": false,
@@ -116,27 +102,6 @@
           "synthetic": false,
           "documents": 333,
           "tokens": 213924
-        },
-        {
-          "name": "Opus",
-          "corpus_id": "opus",
-          "synthetic": true,
-          "documents": 31,
-          "tokens": 199
-        },
-        {
-          "name": "OPUS-all-en",
-          "corpus_id": "opus-all-en",
-          "synthetic": true,
-          "documents": 349723,
-          "tokens": 11663212
-        },
-        {
-          "name": "OPUS-all-es",
-          "corpus_id": "opus-all-es",
-          "synthetic": true,
-          "documents": 0,
-          "tokens": 0
         },
         {
           "name": "Orembae",
@@ -176,23 +141,9 @@
       ]
     },
     "validation": {
-      "documents": 9025,
-      "tokens": 1910738,
+      "documents": 5770,
+      "tokens": 212407,
       "corpora": [
-        {
-          "name": "ApolloMoEBench",
-          "corpus_id": "apollomoebench",
-          "synthetic": true,
-          "documents": 262,
-          "tokens": 25900
-        },
-        {
-          "name": "ApolloMoEDataset",
-          "corpus_id": "apollomoedataset",
-          "synthetic": true,
-          "documents": 2993,
-          "tokens": 1672431
-        },
         {
           "name": "Joemo",
           "corpus_id": "joemo",
@@ -258,10 +209,6 @@
       {
         "name": "AmericasNLI",
         "corpus_id": "americasnli"
-      },
-      {
-        "name": "OPUS-all-es",
-        "corpus_id": "opus-all-es"
       }
     ]
   }

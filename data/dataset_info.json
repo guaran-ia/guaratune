@@ -1,24 +1,96 @@
 {
   "C1_kuatia": {
-    "file_name": "processed/C1_kuatia.jsonl",
+    "file_name": "train/C1_kuatia.jsonl",
     "columns": {
       "prompt": "text"
     }
   },
-  "C2_kuatia_es20": {
-    "file_name": "processed/C2_kuatia_es20.jsonl",
+  "C1_kuatia_validation": {
+    "file_name": "validation/C1_kuatia.jsonl",
     "columns": {
       "prompt": "text"
     }
   },
-  "C3_kuatia_en20": {
-    "file_name": "processed/C3_kuatia_en20.jsonl",
+  "C2_kuatia_no_synthetic": {
+    "file_name": "train/C2_kuatia_no_synthetic.jsonl",
     "columns": {
       "prompt": "text"
     }
   },
-  "C4_kuatia_es10_en10": {
-    "file_name": "processed/C4_kuatia_es10_en10.jsonl",
+  "C2_kuatia_no_synthetic_validation": {
+    "file_name": "validation/C2_kuatia_no_synthetic.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C3_kuatia_es20": {
+    "file_name": "train/C3_kuatia_es20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C3_kuatia_es20_validation": {
+    "file_name": "validation/C3_kuatia_es20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C4_kuatia_no_synthetic_es20": {
+    "file_name": "train/C4_kuatia_no_synthetic_es20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C4_kuatia_no_synthetic_es20_validation": {
+    "file_name": "validation/C4_kuatia_no_synthetic_es20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C5_kuatia_en20": {
+    "file_name": "train/C5_kuatia_en20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C5_kuatia_en20_validation": {
+    "file_name": "validation/C5_kuatia_en20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C6_kuatia_no_synthetic_en20": {
+    "file_name": "train/C6_kuatia_no_synthetic_en20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C6_kuatia_no_synthetic_en20_validation": {
+    "file_name": "validation/C6_kuatia_no_synthetic_en20.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C7_kuatia_es10_en10": {
+    "file_name": "train/C7_kuatia_es10_en10.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C7_kuatia_es10_en10_validation": {
+    "file_name": "validation/C7_kuatia_es10_en10.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C8_kuatia_no_synthetic_es10_en10": {
+    "file_name": "train/C8_kuatia_no_synthetic_es10_en10.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  },
+  "C8_kuatia_no_synthetic_es10_en10_validation": {
+    "file_name": "validation/C8_kuatia_no_synthetic_es10_en10.jsonl",
     "columns": {
       "prompt": "text"
     }

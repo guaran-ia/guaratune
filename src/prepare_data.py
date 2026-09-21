@@ -156,6 +156,22 @@ def source_specs_from_config(config: dict[str, Any]) -> dict[str, SourceSpec]:
     return specs
 
 
+def is_manifest_config(config: dict[str, Any]) -> bool:
+    """Return whether a config uses manifest-backed corpus definitions.
+
+    Args:
+        config: Resolved dataset preparation config.
+
+    Returns:
+        True when every configured corpus points to a manifest file.
+    """
+    corpora = config.get('corpora')
+    if not isinstance(corpora, dict) or not corpora:
+        return False
+
+    return all(isinstance(corpus, dict) and 'manifest' in corpus for corpus in corpora.values())
+
+
 def resolve_source_revisions(sources: dict[str, SourceSpec]) -> dict[str, Any]:
     """Resolve source revisions to immutable Hugging Face commit SHAs.
 
@@ -333,9 +349,9 @@ def output_paths(output_dir: str) -> dict[str, str]:
         Mapping of logical artifact locations to paths.
     """
     return {
-        'processed': os.path.join(output_dir, 'processed'),
-        'components': os.path.join(output_dir, 'processed', 'components'),
-        'perplexity': os.path.join(output_dir, 'evaluation', 'perplexity'),
+        'train': os.path.join(output_dir, 'train'),
+        'components': os.path.join(output_dir, 'train', 'components'),
+        'validation': os.path.join(output_dir, 'validation'),
         'selections': os.path.join(output_dir, 'selections'),
         'manifests': os.path.join(output_dir, 'manifests'),
         'source_lock': os.path.join(output_dir, 'source_revisions.lock.json'),
@@ -399,7 +415,7 @@ def ensure_writable_output(
         corpus_names: Final corpus names expected to be generated.
         component_names: Component names expected to be generated.
         auxiliary: Whether auxiliary files are expected to be written.
-        heldout_enabled: Whether held-out perplexity files are generated.
+        heldout_enabled: Whether held-out validation files are generated.
 
     Returns:
         Mapping of logical directory names to absolute or relative path strings.
@@ -414,10 +430,10 @@ def ensure_writable_output(
         else:
             os.makedirs(path, exist_ok=True)
 
-    generated = [os.path.join(paths['processed'], f'{name}.jsonl') for name in corpus_names]
+    generated = [os.path.join(paths['train'], f'{name}.jsonl') for name in corpus_names]
     if heldout_enabled:
         generated.extend(
-            os.path.join(paths['perplexity'], f'{name}.jsonl') for name in corpus_names
+            os.path.join(paths['validation'], f'{name}.jsonl') for name in corpus_names
         )
     generated.extend(
         os.path.join(paths['components'], f'{name}.jsonl') for name in component_names
@@ -1045,15 +1061,751 @@ def write_dataset_info(path: str, corpus_names: Iterable[str]) -> None:
     Returns:
         None.
     """
-    info = {
-        config_name: {
-            'file_name': f'processed/{config_name}.jsonl',
+    info = {}
+    for config_name in corpus_names:
+        info[config_name] = {
+            'file_name': f'train/{config_name}.jsonl',
             'columns': {'prompt': 'text'},
         }
-        for config_name in corpus_names
-    }
+        info[f'{config_name}_validation'] = {
+            'file_name': f'validation/{config_name}.jsonl',
+            'columns': {'prompt': 'text'},
+        }
+
     with open(path, 'w', encoding='utf-8') as handle:
         handle.write(json.dumps(info, ensure_ascii=False, indent=2) + '\n')
+
+
+def component_path_from_selection(output_dir: str, selection_path: str) -> str:
+    """Infer a train component path from a selection ledger path.
+
+    Args:
+        output_dir: Root directory for generated dataset artifacts.
+        selection_path: Component selection ledger path.
+
+    Returns:
+        Train component JSONL path matching the selection ledger basename.
+    """
+    filename = os.path.basename(selection_path)
+    if filename.endswith(SELECTION_SUFFIX):
+        component_name = filename[: -len(SELECTION_SUFFIX)]
+    elif filename.endswith('.selection.jsonl'):
+        component_name = filename[: -len('.selection.jsonl')]
+    else:
+        component_name = os.path.splitext(filename)[0]
+
+    selection_dir = os.path.dirname(selection_path)
+    if os.path.basename(selection_dir) == 'selections':
+        artifact_root = os.path.dirname(selection_dir)
+    else:
+        artifact_root = output_dir
+
+    return os.path.join(
+        artifact_root, 'train', 'components', f'{component_name}.jsonl'
+    )
+
+
+def manifest_output_paths(output_dir: str) -> dict[str, str]:
+    """Create standard output directories for manifest-backed corpora.
+
+    Args:
+        output_dir: Root directory where generated dataset artifacts are written.
+
+    Returns:
+        Mapping of output directory names to paths.
+    """
+    paths = output_paths(output_dir)
+    for key in ['train', 'validation']:
+        os.makedirs(paths[key], exist_ok=True)
+    return paths
+
+
+def ensure_manifest_outputs(
+    output_dir: str,
+    overwrite: bool,
+    corpus_names: Iterable[str],
+    component_paths: Iterable[str] = (),
+) -> dict[str, str]:
+    """Create manifest output directories and guard generated files.
+
+    Args:
+        output_dir: Root directory where generated dataset artifacts are written.
+        overwrite: Whether existing generated outputs may be replaced.
+        corpus_names: Corpus names expected to be generated.
+        component_paths: Source component files expected to be generated.
+
+    Returns:
+        Standard output paths.
+
+    Raises:
+        FileExistsError: If generated files already exist and overwrite is false.
+    """
+    paths = manifest_output_paths(output_dir)
+    generated = [os.path.join(paths['train'], f'{name}.jsonl') for name in corpus_names]
+    generated.extend(os.path.join(paths['validation'], f'{name}.jsonl') for name in corpus_names)
+    generated.extend(component_paths)
+    generated.append(os.path.join(output_dir, 'dataset_info.json'))
+
+    existing = [path for path in generated if os.path.exists(path)]
+    if existing and not overwrite:
+        formatted = '\n'.join(f'  {path}' for path in existing)
+        raise FileExistsError(
+            f'Refusing to overwrite existing generated files:\n{formatted}'
+        )
+
+    return paths
+
+
+def source_lock_from_manifest_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Build a source revision lock from manifest-backed source entries.
+
+    Args:
+        config: Resolved manifest-backed data config.
+
+    Returns:
+        Source revision lock entries keyed by source name.
+    """
+    locked_sources = {}
+    for key, source in require_mapping(config, 'sources').items():
+        name = source.get('name', key)
+        locked_sources[name] = {
+            'dataset': source['dataset'],
+            'requested_revision': source.get('requested_revision'),
+            'resolved_revision': source['commit_id'],
+        }
+
+    return locked_sources
+
+
+def load_json(path: str) -> dict[str, Any]:
+    """Load a JSON object from disk.
+
+    Args:
+        path: JSON file path.
+
+    Returns:
+        Parsed JSON object.
+    """
+    with open(path, 'r', encoding='utf-8') as handle:
+        data = json.load(handle)
+
+    if not isinstance(data, dict):
+        raise ValueError(f'JSON file must contain an object: {path}')
+
+    return data
+
+
+def load_selection_tokens(selection_path: str) -> tuple[dict[str, int], int, int]:
+    """Load selected document ids, token counts, and totals from a ledger.
+
+    Args:
+        selection_path: Selection ledger JSONL path.
+
+    Returns:
+        Tuple of selected token counts by id, document count, and token count.
+
+    Raises:
+        RuntimeError: If a selection ledger contains duplicate ids.
+    """
+    tokens_by_id = {}
+    documents = 0
+    tokens = 0
+    for row in stream_jsonl(selection_path):
+        doc_id = row['id']
+        if doc_id in tokens_by_id:
+            raise RuntimeError(f'Duplicate document id in {selection_path}: {doc_id}')
+        doc_tokens = int(row['tokens'])
+        tokens_by_id[doc_id] = doc_tokens
+        documents += 1
+        tokens += doc_tokens
+
+    return tokens_by_id, documents, tokens
+
+
+def stream_component_records(
+    component_path: str, selection_path: str
+) -> Iterator[tuple[dict[str, Any], dict[str, Any]]]:
+    """Yield aligned train component records and selection metadata.
+
+    Args:
+        component_path: Train component JSONL path containing text records.
+        selection_path: Component selection ledger path containing token metadata.
+
+    Returns:
+        Iterator over record and selection pairs.
+
+    Raises:
+        RuntimeError: If record ids and selection ids are not aligned.
+    """
+    for record, selection in zip(
+        stream_jsonl(component_path), stream_jsonl(selection_path), strict=True
+    ):
+        if record['id'] != selection['id']:
+            raise RuntimeError(
+                f'Component and selection ids differ for {component_path}: '
+                f'{record["id"]} != {selection["id"]}.'
+            )
+        yield record, selection
+
+
+def write_kuatia_manifest_records(
+    output_handle: Any,
+    *,
+    output_dir: str,
+    source_config: dict[str, Any],
+    allowed_corpus_ids: set[str],
+) -> tuple[int, int]:
+    """Write Kuatia records whose corpus ids belong to a manifest split.
+
+    Args:
+        output_handle: Open JSONL output handle.
+        output_dir: Root directory containing train components.
+        source_config: Kuatia source configuration.
+        allowed_corpus_ids: Corpus ids included in the target split.
+
+    Returns:
+        Pair of written document and token counts.
+    """
+    selection_path = source_config['selection_path']
+    component_path = component_path_from_selection(output_dir, selection_path)
+    documents = 0
+    tokens = 0
+
+    for record, selection in stream_component_records(component_path, selection_path):
+        if selection.get('corpus_id') not in allowed_corpus_ids:
+            continue
+        output_handle.write(json.dumps(record, ensure_ascii=False) + '\n')
+        documents += 1
+        tokens += int(selection['tokens'])
+
+    return documents, tokens
+
+
+def write_selected_source_records(
+    output_handle: Any,
+    *,
+    output_dir: str,
+    source_config: dict[str, Any],
+    selected_tokens: dict[str, int],
+) -> tuple[int, int]:
+    """Write source records selected by a split-specific ledger.
+
+    Args:
+        output_handle: Open JSONL output handle.
+        output_dir: Root directory containing train components.
+        source_config: Source configuration for the component pool.
+        selected_tokens: Selected document token counts keyed by document id.
+
+    Returns:
+        Pair of written document and token counts.
+
+    Raises:
+        RuntimeError: If the component pool does not contain every selected id.
+    """
+    selection_path = source_config['selection_path']
+    component_path = component_path_from_selection(output_dir, selection_path)
+    documents = 0
+    tokens = 0
+    found_ids = set()
+
+    for record in stream_jsonl(component_path):
+        doc_id = record['id']
+        if doc_id not in selected_tokens:
+            continue
+        output_handle.write(json.dumps(record, ensure_ascii=False) + '\n')
+        documents += 1
+        tokens += selected_tokens[doc_id]
+        found_ids.add(doc_id)
+
+        if len(found_ids) == len(selected_tokens):
+            break
+
+    missing_ids = set(selected_tokens) - found_ids
+    if missing_ids:
+        examples = ', '.join(sorted(missing_ids)[:5])
+        raise RuntimeError(
+            f'Source component {component_path} is missing {len(missing_ids):,} '
+            f'selected documents. Examples: {examples}'
+        )
+
+    return documents, tokens
+
+
+def validate_manifest_source_config(
+    source_name: str, source_config: dict[str, Any], manifest_source: dict[str, Any]
+) -> None:
+    """Validate that a config source matches manifest source metadata.
+
+    Args:
+        source_name: Source key used in the manifest-backed config.
+        source_config: Source metadata from the config.
+        manifest_source: Source metadata from a manifest.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: If source metadata conflicts.
+    """
+    checks = {
+        'dataset': source_config.get('dataset'),
+        'version': source_config.get('version'),
+        'loader': source_config.get('loader'),
+        'commit_id': source_config.get('commit_id'),
+    }
+    for key, expected in checks.items():
+        if manifest_source.get(key) != expected:
+            raise RuntimeError(
+                f'Source mismatch for {source_name}.{key}: config has {expected}, '
+                f'manifest has {manifest_source.get(key)}.'
+            )
+
+
+def validate_manifest_config_sources(
+    config: dict[str, Any], manifest: dict[str, Any]
+) -> None:
+    """Validate manifest source metadata against the active config.
+
+    Args:
+        config: Resolved manifest-backed config.
+        manifest: Corpus manifest data.
+
+    Returns:
+        None.
+    """
+    sources_config = require_mapping(config, 'sources')
+    if 'source' in manifest:
+        validate_manifest_source_config('kuatia', sources_config['kuatia'], manifest['source'])
+        return
+
+    for source_name, manifest_source in manifest['sources'].items():
+        validate_manifest_source_config(
+            source_name, sources_config[source_name], manifest_source
+        )
+
+
+def source_spec_from_manifest_source(
+    source_name: str, source_config: dict[str, Any]
+) -> SourceSpec:
+    """Build a source descriptor from a manifest-backed source config.
+
+    Args:
+        source_name: Source key in the data config.
+        source_config: Manifest-backed source configuration.
+
+    Returns:
+        SourceSpec pinned to the configured source commit.
+    """
+    return SourceSpec(
+        name=source_config.get('name', source_name),
+        dataset=source_config['dataset'],
+        config=optional_config(source_config.get('config') or source_config.get('version')),
+        split=source_config.get('split', 'train'),
+        text_column=source_config.get('text_column', 'text'),
+        id_column=optional_config(source_config.get('id_column', 'id')),
+        loader=source_config.get('loader', 'datasets'),
+        revision=optional_config(
+            source_config.get('revision') or source_config.get('commit_id')
+        ),
+    )
+
+
+def add_selection_tokens(
+    selected_tokens: dict[str, int], selection_path: str
+) -> tuple[int, int]:
+    """Merge selection ledger ids into a source-level selection map.
+
+    Args:
+        selected_tokens: Mutable token map keyed by document id.
+        selection_path: Selection ledger to merge.
+
+    Returns:
+        Pair of document and token counts from the selection ledger.
+
+    Raises:
+        RuntimeError: If a repeated id has a different token count.
+    """
+    tokens_by_id, documents, tokens = load_selection_tokens(selection_path)
+    for doc_id, doc_tokens in tokens_by_id.items():
+        existing_tokens = selected_tokens.get(doc_id)
+        if existing_tokens is not None and existing_tokens != doc_tokens:
+            raise RuntimeError(
+                f'Conflicting token counts for {doc_id}: '
+                f'{existing_tokens} != {doc_tokens}.'
+            )
+        selected_tokens[doc_id] = doc_tokens
+
+    return documents, tokens
+
+
+def required_manifest_source_selections(
+    config: dict[str, Any], manifests: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Collect source selections needed by active manifest-backed corpora.
+
+    Args:
+        config: Resolved manifest-backed data config.
+        manifests: Loaded corpus manifests.
+
+    Returns:
+        Mapping from source name to output component metadata and selected ids.
+    """
+    required = {}
+    sources = require_mapping(config, 'sources')
+    for source_name, source_config in sources.items():
+        required[source_name] = {
+            'source_config': source_config,
+            'component_path': component_path_from_selection(
+                config['output_dir'],  # type: ignore
+                source_config['selection_path'],
+            ),
+            'selected_tokens': {},
+        }
+
+    kuatia_source = required.get('kuatia')
+    if kuatia_source is not None:
+        add_selection_tokens(
+            kuatia_source['selected_tokens'],
+            kuatia_source['source_config']['selection_path'],
+        )
+
+    for manifest in manifests.values():
+        for split in manifest['splits'].values():
+            for component in split['corpora']:
+                source_name = component.get('source')
+                if not source_name:
+                    continue
+                if source_name not in required:
+                    raise ValueError(
+                        f'Manifest component references unknown source: {source_name}'
+                    )
+                add_selection_tokens(
+                    required[source_name]['selected_tokens'],
+                    component['selection_path'],
+                )
+
+    return {
+        source_name: metadata
+        for source_name, metadata in required.items()
+        if metadata['selected_tokens']
+    }
+
+
+def write_manifest_source_component(
+    source_name: str,
+    metadata: dict[str, Any],
+    tokenizer: PreTrainedTokenizerBase,
+) -> None:
+    """Write one source component pool from current selection ledgers.
+
+    Args:
+        source_name: Source key being rebuilt.
+        metadata: Source config, selected token map, and component path.
+        tokenizer: Tokenizer used to verify source token counts.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: If selected ids cannot be found or token counts changed.
+    """
+    source_config = metadata['source_config']
+    component_path = metadata['component_path']
+    selected_tokens = metadata['selected_tokens']
+    spec = source_spec_from_manifest_source(source_name, source_config)
+    found_ids = set()
+    documents = 0
+    tokens = 0
+
+    os.makedirs(os.path.dirname(component_path), exist_ok=True)
+    with open(component_path, 'w', encoding='utf-8') as output_handle:
+        for index, row in enumerate(
+            load_stream(spec, shuffle=False, seed=0, buffer_size=1)
+        ):
+            doc_id = row_id(row, spec.name, spec.id_column, index)
+            if doc_id not in selected_tokens:
+                continue
+
+            text = clean_text(row.get(spec.text_column))
+            if not text:
+                continue
+
+            doc_tokens = token_count(tokenizer, text)
+            expected_tokens = selected_tokens[doc_id]
+            if doc_tokens != expected_tokens:
+                raise RuntimeError(
+                    f'Cannot rebuild {source_name}: token mismatch for {doc_id}. '
+                    f'Expected {expected_tokens}, got {doc_tokens}.'
+                )
+
+            output_handle.write(
+                json.dumps(
+                    {'id': doc_id, 'source': spec.name, 'text': text},
+                    ensure_ascii=False,
+                )
+                + '\n'
+            )
+            found_ids.add(doc_id)
+            documents += 1
+            tokens += doc_tokens
+
+            if documents % 10000 == 0:
+                print(
+                    f'[component] {source_name}: {documents:,} docs / {tokens:,} tokens',
+                    flush=True,
+                )
+
+            if len(found_ids) == len(selected_tokens):
+                break
+
+    missing_ids = set(selected_tokens) - found_ids
+    if missing_ids:
+        examples = ', '.join(sorted(missing_ids)[:5])
+        raise RuntimeError(
+            f'Cannot rebuild {source_name}: source ended before '
+            f'{len(missing_ids):,} selected documents were found. Examples: {examples}'
+        )
+
+    print(
+        f'[component] {source_name}: {documents:,} docs / {tokens:,} tokens',
+        flush=True,
+    )
+
+
+def write_manifest_source_components(
+    required_sources: dict[str, dict[str, Any]],
+    tokenizer: PreTrainedTokenizerBase,
+) -> None:
+    """Write all source component pools required by active manifests.
+
+    Args:
+        required_sources: Source selection metadata keyed by source name.
+        tokenizer: Tokenizer used to verify source token counts.
+
+    Returns:
+        None.
+    """
+    for source_name, metadata in required_sources.items():
+        write_manifest_source_component(source_name, metadata, tokenizer)
+
+
+def source_config_for_manifest_component(
+    config: dict[str, Any], component: dict[str, Any]
+) -> dict[str, Any]:
+    """Return the source config for a non-Kuatia manifest component.
+
+    Args:
+        config: Resolved manifest-backed config.
+        component: Manifest split component.
+
+    Returns:
+        Source config referenced by the component.
+    """
+    source_name = component.get('source')
+    if not source_name:
+        raise ValueError(f'Manifest component has no source: {component}')
+
+    sources = require_mapping(config, 'sources')
+    if source_name not in sources:
+        raise ValueError(f'Manifest component references unknown source: {source_name}')
+
+    return sources[source_name]
+
+
+def write_manifest_split_file(
+    *,
+    config: dict[str, Any],
+    manifest: dict[str, Any],
+    split_name: str,
+    output_path: str,
+) -> dict[str, Any]:
+    """Write one manifest split to a JSONL file.
+
+    Args:
+        config: Resolved manifest-backed config.
+        manifest: Corpus manifest data.
+        split_name: Split name to write, usually train or validation.
+        output_path: Destination JSONL path.
+
+    Returns:
+        Written split summary.
+    """
+    output_dir = config['output_dir']
+    split = manifest['splits'][split_name]
+    kuatia_source = require_mapping(config, 'sources')['kuatia']
+    kuatia_corpus_ids = {
+        corpus['corpus_id']
+        for corpus in split['corpora']
+        if 'corpus_id' in corpus and int(corpus['documents']) > 0
+    }
+    documents = 0
+    tokens = 0
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as output_handle:
+        if kuatia_corpus_ids:
+            docs, toks = write_kuatia_manifest_records(
+                output_handle,
+                output_dir=output_dir,  # type: ignore
+                source_config=kuatia_source,
+                allowed_corpus_ids=kuatia_corpus_ids,
+            )
+            documents += docs
+            tokens += toks
+
+        for component in split['corpora']:
+            if 'source' not in component:
+                continue
+            selected_tokens, expected_docs, expected_tokens = load_selection_tokens(
+                component['selection_path']
+            )
+            if expected_docs != int(component['documents']) or expected_tokens != int(component['tokens']):
+                raise RuntimeError(
+                    f'{manifest["config_name"]} {split_name} selection totals do not '
+                    f'match component {component["name"]}.'
+                )
+            source_config = source_config_for_manifest_component(config, component)
+            docs, toks = write_selected_source_records(
+                output_handle,
+                output_dir=output_dir,  # type: ignore
+                source_config=source_config,
+                selected_tokens=selected_tokens,
+            )
+            if docs != expected_docs or toks != expected_tokens:
+                raise RuntimeError(
+                    f'{manifest["config_name"]} {split_name} wrote {docs:,} docs / '
+                    f'{toks:,} tokens for {component["name"]}, expected '
+                    f'{expected_docs:,} docs / {expected_tokens:,} tokens.'
+                )
+            documents += docs
+            tokens += toks
+
+    expected_documents = int(split['documents'])
+    expected_tokens = int(split['tokens'])
+    if documents != expected_documents or tokens != expected_tokens:
+        raise RuntimeError(
+            f'{manifest["config_name"]} {split_name} wrote {documents:,} docs / '
+            f'{tokens:,} tokens, expected {expected_documents:,} docs / '
+            f'{expected_tokens:,} tokens.'
+        )
+
+    return {
+        'name': manifest['config_name'],
+        'path': output_path,
+        'documents': documents,
+        'tokens': tokens,
+    }
+
+
+def write_manifest_config_outputs(
+    config_path: str,
+    config: dict[str, Any],
+    output_dir: str | None,
+    overwrite: bool,
+) -> None:
+    """Write train and validation files from manifest-backed config.
+
+    Args:
+        config_path: Dataset preparation config file.
+        config: Loaded manifest-backed config.
+        output_dir: Optional output directory override.
+        overwrite: Whether to replace generated outputs.
+
+    Returns:
+        None.
+    """
+    resolved_config = resolve_config(
+        config,
+        output_dir=output_dir,
+        target_scale=1.0,
+        max_kuatia_docs=None,
+        allow_incomplete_samples=False,
+    )
+    corpora_config = require_mapping(resolved_config, 'corpora')
+    output_root = resolved_config['output_dir']
+    manifests = {}
+    for config_name, corpus_config in corpora_config.items():
+        manifest_path = corpus_config['manifest']
+        manifest = load_json(manifest_path)
+        if manifest.get('config_name') != config_name:
+            raise RuntimeError(
+                f'Manifest {manifest_path} has config_name={manifest.get("config_name")}, '
+                f'expected {config_name}.'
+            )
+        expected_config_path = resolved_config.get('split_config', config_path)
+        if manifest.get('config_path') != expected_config_path:
+            raise RuntimeError(
+                f'Manifest {manifest_path} was created from {manifest.get("config_path")}, '
+                f'not {expected_config_path}.'
+            )
+        if manifest.get('tokenizer') != resolved_config.get('tokenizer'):
+            raise RuntimeError(
+                f'Manifest {manifest_path} tokenizer={manifest.get("tokenizer")}, '
+                f'config tokenizer={resolved_config.get("tokenizer")}.'
+            )
+
+        validate_manifest_config_sources(resolved_config, manifest)
+        manifests[config_name] = manifest
+
+    required_sources = required_manifest_source_selections(resolved_config, manifests)
+    paths = ensure_manifest_outputs(
+        output_root,  # type: ignore
+        overwrite,
+        corpora_config.keys(),
+        component_paths=[
+            metadata['component_path'] for metadata in required_sources.values()
+        ],
+    )
+
+    locked_sources = source_lock_from_manifest_config(resolved_config)
+    write_source_revisions_lock(paths['source_lock'], locked_sources)
+    tokenizer_instance = AutoTokenizer.from_pretrained(resolved_config['tokenizer'])
+    write_manifest_source_components(required_sources, tokenizer_instance)
+
+    for config_name, manifest in manifests.items():
+        train_summary = write_manifest_split_file(
+            config=resolved_config,
+            manifest=manifest,
+            split_name='train',
+            output_path=os.path.join(paths['train'], f'{config_name}.jsonl'),
+        )
+        validation_summary = write_manifest_split_file(
+            config=resolved_config,
+            manifest=manifest,
+            split_name='validation',
+            output_path=os.path.join(paths['validation'], f'{config_name}.jsonl'),
+        )
+        print(
+            f'[corpus] {config_name}: {train_summary["documents"]:,} docs / '
+            f'{train_summary["tokens"]:,} tokens',
+            flush=True,
+        )
+        print(
+            f'[validation] {config_name}: {validation_summary["documents"]:,} docs / '
+            f'{validation_summary["tokens"]:,} tokens',
+            flush=True,
+        )
+
+    write_dataset_info(os.path.join(output_root, 'dataset_info.json'), corpora_config.keys())  # type: ignore
+    print(f'[done] wrote manifest-backed corpora under {output_root}', flush=True)
+
+
+def preflight_manifest_config(config: dict[str, Any]) -> None:
+    """Print manifest-backed data config metadata without writing outputs.
+
+    Args:
+        config: Resolved manifest-backed config.
+
+    Returns:
+        None.
+    """
+    print('sources:')
+    for source_name, source in require_mapping(config, 'sources').items():
+        print(f'  {source_name}: {source["dataset"]}@{source["commit_id"]}')
+        print(f'    selection: {source["selection_path"]}')
+    print('corpora:')
+    for corpus_name, corpus in require_mapping(config, 'corpora').items():
+        print(f'  {corpus_name}: {corpus["manifest"]}')
 
 
 def preflight(specs: list[SourceSpec]) -> None:
@@ -1472,13 +2224,18 @@ def reconstruct_from_auxiliary(
     Args:
         config_path: Dataset preparation config file.
         output_dir: Optional output directory override.
-        overwrite: Whether to replace generated processed JSONL files.
+        overwrite: Whether to replace generated train JSONL files.
 
     Returns:
         None.
     """
+    loaded_config = load_config(config_path)
+    if is_manifest_config(loaded_config):
+        write_manifest_config_outputs(config_path, loaded_config, output_dir, overwrite)
+        return
+
     resolved_config = resolve_config(
-        load_config(config_path),
+        loaded_config,
         output_dir=output_dir,
         target_scale=1.0,
         max_kuatia_docs=None,
@@ -1576,8 +2333,8 @@ def reconstruct_from_auxiliary(
         corpus, heldout_corpus = write_corpus_splits(
             config_name,
             components,
-            os.path.join(paths['processed'], f'{config_name}.jsonl'),
-            os.path.join(paths['perplexity'], f'{config_name}.jsonl'),
+            os.path.join(paths['train'], f'{config_name}.jsonl'),
+            os.path.join(paths['validation'], f'{config_name}.jsonl'),
             heldout_config,
         )
         verify_split_manifest(corpus, heldout_corpus, manifest)
@@ -1618,7 +2375,7 @@ def reconstruct_from_auxiliary(
 @click.option(
     '--reconstruct',
     is_flag=True,
-    help='Rebuild processed corpora from manifests, selections, and locked source revisions.',
+    help='Rebuild train corpora from manifests, selections, and locked source revisions.',
 )
 @click.option(
     '--allow-incomplete-samples',
@@ -1667,17 +2424,38 @@ def main(
     Returns:
         None.
     """
+    loaded_config = load_config(config_path)
     if reconstruct:
         reconstruct_from_auxiliary(config_path, output_dir, overwrite)
         return
 
     resolved_config = resolve_config(
-        load_config(config_path),
+        loaded_config,
         output_dir=output_dir,
         target_scale=target_scale,
         max_kuatia_docs=max_kuatia_docs,
         allow_incomplete_samples=allow_incomplete_samples,
     )
+
+    if is_manifest_config(resolved_config):
+        if preflight_only:
+            preflight_manifest_config(resolved_config)
+            return
+        if target_scale != 1.0:
+            raise click.ClickException(
+                '--target-scale is not supported for manifest-backed configs.'
+            )
+        if max_kuatia_docs is not None:
+            raise click.ClickException(
+                '--max-kuatia-docs is not supported for manifest-backed configs.'
+            )
+        if allow_incomplete_samples:
+            raise click.ClickException(
+                '--allow-incomplete-samples is not supported for manifest-backed configs.'
+            )
+        write_manifest_config_outputs(config_path, resolved_config, output_dir, overwrite)
+        return
+
     sources = source_specs_from_config(resolved_config)
     components_config = require_mapping(resolved_config, 'components')
     corpora_config = require_mapping(resolved_config, 'corpora')
@@ -1767,8 +2545,8 @@ def main(
         corpus, heldout_corpus = write_corpus_splits(
             config_name,
             components,
-            os.path.join(paths['processed'], f'{config_name}.jsonl'),
-            os.path.join(paths['perplexity'], f'{config_name}.jsonl'),
+            os.path.join(paths['train'], f'{config_name}.jsonl'),
+            os.path.join(paths['validation'], f'{config_name}.jsonl'),
             heldout_config,
         )
         write_manifest(

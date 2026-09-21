@@ -1,0 +1,183 @@
+test:
+  - Belebele
+  - Flores-200
+  - Multi-wiki-qa
+
+validation:
+  - ApolloMoEBench
+  - ApolloMoEDataset
+  - Joemo
+  - Joff+
+  - Jofun
+  - Josa
+  - Udhr-lid
+  - Tweets-Covid-ES
+  - Tweets-Covid-PY
+  - Tweets-PY-Elections
+
+train:
+  - AmericasNLI
+  - Ancora
+  - Bible
+  - Cc100_gn
+  - CommonVoice
+  - CulturaX
+  - FinePDF
+  - FineWeb2
+  - Grammar
+  - Gua-Spa
+  - HPLT
+  - Jojajovai
+  - MadLad-400
+  - mOSCAR
+  - Opus
+  - OPUS-all-en
+  - OPUS-all-es
+  - Orembae
+  - Scraped
+  - Smolsent__en_gn
+  - Tatoeba
+  - Tweets Giosa
+
+instruction:
+  - Alpaca-gn-gpt3.5
+  - Alpaca-gn-gpt4
+  - Gn-multi-affective-alpaca
+
+excluded:
+  # ---------------------
+  # Excluded datasets are sourced from corpora included in train (e.g., jojajovai,)
+  # NLLB, opus, bible) and from flores-200, the source of the benckmark Belele
+  # ---------------------
+  - AmericasNLP 2022
+  - AmericasNLP 2023
+  - AmericasNLP 2024
+  - Glot500
+  - Mala-monolingual-split
+
+synthetic:
+  - Alpaca-gn-gpt3.5
+  - Alpaca-gn-gpt4
+  - Ancora
+  - ApolloMoEBench
+  - ApolloMoEDataset
+  - Grammar
+  - multi-wiki-qa
+  - Opus
+  - OPUS-all-en
+  - OPUS-all-es
+
+datasets:
+  - name: Alpaca-gn-gpt3.5
+    corpus_id: Alpaca-gn-gpt3.5
+
+  - name: Alpaca-gn-gpt4
+    corpus_id: Alpaca-gn-gpt4
+
+  - name: AmericasNLI
+    corpus_id: americasnli
+
+  - name: Ancora
+    corpus_id: ancora
+
+  - name: ApolloMoEBench
+    corpus_id: apollomoebench
+
+  - name: ApolloMoEDataset
+    corpus_id: apollomoedataset
+
+  - name: Belebele
+    corpus_id: belele
+  
+  - name: Bible
+    corpus_id: bible
+
+  - name: Cc100_gn
+    corpus_id: cc100_gn
+
+  - name: CommonVoice
+    corpus_id: commonvoice
+
+  - name: CulturaX
+    corpus_id: culturax
+
+  - name: FinePDF
+    corpus_id: FinePDF
+
+  - name: FineWeb2
+    corpus_id: fineweb-2
+
+  - name: Flores-200
+    corpus_id: flores-200
+
+  - name: Gn-multi-affective-alpaca
+    corpus_id: gn-multi-affective-alpaca
+  
+  - name: Grammar
+    corpus_id: grammar
+
+  - name: Gua-Spa
+    corpus_id: gua_spa
+
+  - name: HPLT
+    corpus_id: hplt-3
+
+  - name: Joemo
+    corpus_id: joemo
+
+  - name: Joff+
+    corpus_id: joff+
+
+  - name: Jofun
+    corpus_id: jofun
+
+  - name: Jojajovai
+    corpus_id: jojajovai
+
+  - name: Josa
+    corpus_id: josa
+  
+  - name: MadLad-400
+    corpus_id: madlad400
+
+  - name: mOSCAR
+    corpus_id: moscar
+
+  - name: Multi-wiki-qa
+    corpus_id: multi-wiki-qa
+
+  - name: Opus
+    corpus_id: opus
+
+  - name: OPUS-all-en
+    corpus_id: opus-all-en
+
+  - name: OPUS-all-es
+    corpus_id: opus-all-es
+
+  - name: Orembae
+    corpus_id: orembae
+
+  - name: Scraped
+    corpus_id: guarania-scraped
+
+  - name: Smolsent__en_gn
+    corpus_id: smolsent__en_gn
+
+  - name: Tatoeba
+    corpus_id: tatoeba
+
+  - name: Tweets-Covid-ES
+    corpus_id: twitter_covid_es
+
+  - name: Tweets-Covid-PY
+    corpus_id: twitter_covid_py
+
+  - name: Tweets Giosa
+    corpus_id: twitter_giossa_october
+
+  - name: Tweets-PY-Elections
+    corpus_id: twitter_politic_bots
+  
+  - name: Udhr-lid
+    corpus_id: udhr-lid

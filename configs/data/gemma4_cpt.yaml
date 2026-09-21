@@ -1,91 +1,123 @@
 output_dir: data
-tokenizer: google/gemma-4-26B-A4B
+tokenizer: google/gemma-4-E4B
 seed: 20260721
-shuffle_buffer_size: 10000
-allow_incomplete_samples: false
 
-heldout:
-  enabled: true
-  ratio: 0.01
-  seed: 20260721
+split_config: data/kuatia_config.yaml
+manifest_dir: data/manifests
 
 sources:
   kuatia:
     name: kuatia
     dataset: guaran-ia/kuatia
-    config: compiled_full
-    split: train
-    text_column: text
-    id_column: id
+    version: compiled_full
     loader: datasets
-    revision: null
+    requested_revision: null
+    commit_id: 5045d1bd67d2ea6d40d9c2a30d109ddc0a508a94
+    selection_path: data/selections/kuatia.selection.jsonl.gz
 
   fineweb_edu_es:
     name: fineweb_edu_es
     dataset: Helsinki-NLP/fineweb-edu-translated
-    config: spa
-    split: train
-    text_column: text
-    id_column: id
+    version: spa
     loader: hf_parquet
-    revision: null
+    requested_revision: null
+    commit_id: d82b075a4a8152727b232876aade2ade003e12b9
+    selection_path: data/selections/fineweb_edu_es20.selection.jsonl.gz
 
   fineweb_edu_en:
     name: fineweb_edu_en
     dataset: HuggingFaceFW/fineweb-edu
-    config: null
-    split: train
-    text_column: text
-    id_column: id
+    version: null
     loader: datasets
-    revision: null
-
-components:
-  kuatia:
-    kind: all
-    source: kuatia
-
-  fineweb_edu_es20:
-    kind: sample
-    source: fineweb_edu_es
-    target_ratio_of_kuatia: 0.25
-
-  fineweb_edu_en20:
-    kind: sample
-    source: fineweb_edu_en
-    target_ratio_of_kuatia: 0.25
-
-  fineweb_edu_es10:
-    kind: fixed_subsample
-    source_component: fineweb_edu_es20
-    target_ratio_of_kuatia: 0.125
-
-  fineweb_edu_en10:
-    kind: fixed_subsample
-    source_component: fineweb_edu_en20
-    target_ratio_of_kuatia: 0.125
+    requested_revision: null
+    commit_id: 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9
+    selection_path: data/selections/fineweb_edu_en20.selection.jsonl.gz
 
 corpora:
   C1_kuatia:
-    kuatia_share_target: 1.0
-    components:
-      - kuatia
+    manifest: data/manifests/C1_kuatia.manifest.json
+    kuatia:
+      include_synthetic: true
+    augmentations: []
 
-  C2_kuatia_es20:
-    kuatia_share_target: 0.8
-    components:
-      - kuatia
-      - fineweb_edu_es20
+  C2_kuatia_no_synthetic:
+    manifest: data/manifests/C2_kuatia_no_synthetic.manifest.json
+    kuatia:
+      include_synthetic: false
+    augmentations: []
 
-  C3_kuatia_en20:
-    kuatia_share_target: 0.8
-    components:
-      - kuatia
-      - fineweb_edu_en20
+  C3_kuatia_es20:
+    manifest: data/manifests/C3_kuatia_es20.manifest.json
+    kuatia:
+      include_synthetic: true
+    augmentations:
+      - source: fineweb_edu_es
+        ratio: 0.2
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.validation.selection.jsonl.gz
 
-  C4_kuatia_es10_en10:
-    kuatia_share_target: 0.8
-    components:
-      - kuatia
-      - fineweb_edu_es10
-      - fineweb_edu_en10
+  C4_kuatia_no_synthetic_es20:
+    manifest: data/manifests/C4_kuatia_no_synthetic_es20.manifest.json
+    kuatia:
+      include_synthetic: false
+    augmentations:
+      - source: fineweb_edu_es
+        ratio: 0.2
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C3_kuatia_es20.fineweb_edu_es.validation.selection.jsonl.gz
+
+  C5_kuatia_en20:
+    manifest: data/manifests/C5_kuatia_en20.manifest.json
+    kuatia:
+      include_synthetic: true
+    augmentations:
+      - source: fineweb_edu_en
+        ratio: 0.2
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.validation.selection.jsonl.gz
+
+  C6_kuatia_no_synthetic_en20:
+    manifest: data/manifests/C6_kuatia_no_synthetic_en20.manifest.json
+    kuatia:
+      include_synthetic: false
+    augmentations:
+      - source: fineweb_edu_en
+        ratio: 0.2
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C5_kuatia_en20.fineweb_edu_en.validation.selection.jsonl.gz
+
+  C7_kuatia_es10_en10:
+    manifest: data/manifests/C7_kuatia_es10_en10.manifest.json
+    kuatia:
+      include_synthetic: true
+    augmentations:
+      - source: fineweb_edu_es
+        ratio: 0.1
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_es.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_es.validation.selection.jsonl.gz
+      - source: fineweb_edu_en
+        ratio: 0.1
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_en.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_en.validation.selection.jsonl.gz
+
+  C8_kuatia_no_synthetic_es10_en10:
+    manifest: data/manifests/C8_kuatia_no_synthetic_es10_en10.manifest.json
+    kuatia:
+      include_synthetic: false
+    augmentations:
+      - source: fineweb_edu_es
+        ratio: 0.1
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_es.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_es.validation.selection.jsonl.gz
+      - source: fineweb_edu_en
+        ratio: 0.1
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_en.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C7_C8_kuatia_es10_en10.fineweb_edu_en.validation.selection.jsonl.gz

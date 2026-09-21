@@ -1,23 +1,38 @@
 {
-  "config_name": "C1_kuatia",
-  "created_at": "2026-09-18T19:26:45.694883+00:00",
+  "config_name": "C3_kuatia_es20",
+  "created_at": "2026-09-18T19:54:25.592876+00:00",
   "config_path": "data/kuatia_config.yaml",
   "selection_path": "data/selections/kuatia.selection.jsonl.gz",
   "tokenizer": "google/gemma-4-E4B",
-  "source": {
-    "name": "kuatia",
-    "dataset": "guaran-ia/kuatia",
-    "version": "compiled_full",
-    "loader": "datasets",
-    "requested_revision": null,
-    "commit_id": "5045d1bd67d2ea6d40d9c2a30d109ddc0a508a94",
-    "documents": 959936,
-    "tokens": 109275685
+  "sources": {
+    "kuatia": {
+      "name": "kuatia",
+      "dataset": "guaran-ia/kuatia",
+      "version": "compiled_full",
+      "loader": "datasets",
+      "requested_revision": null,
+      "commit_id": "5045d1bd67d2ea6d40d9c2a30d109ddc0a508a94",
+      "documents": 959936,
+      "tokens": 109275685
+    },
+    "fineweb_edu_es": {
+      "name": "fineweb_edu_es",
+      "dataset": "Helsinki-NLP/fineweb-edu-translated",
+      "version": "spa",
+      "loader": "hf_parquet",
+      "requested_revision": null,
+      "commit_id": "d82b075a4a8152727b232876aade2ade003e12b9",
+      "selection_path": "data/selections/fineweb_edu_es20.selection.jsonl.gz",
+      "documents": 24411,
+      "tokens": 27319878
+    }
   },
+  "sample_seed": 20260721,
+  "augmentation_ratio": 0.2,
   "splits": {
     "train": {
-      "documents": 731267,
-      "tokens": 78583759,
+      "documents": 745238,
+      "tokens": 94300879,
       "corpora": [
         {
           "name": "AmericasNLI",
@@ -172,12 +187,22 @@
           "synthetic": false,
           "documents": 4369,
           "tokens": 118611
+        },
+        {
+          "name": "FineWeb-Edu Spanish 20%",
+          "source": "fineweb_edu_es",
+          "selection": "sampled_document_level",
+          "target_tokens": 15716752,
+          "documents": 13971,
+          "tokens": 15717120,
+          "seed": 20260721,
+          "selection_path": "data/selections/C3_kuatia_es20.fineweb_edu_es.train.selection.jsonl.gz"
         }
       ]
     },
     "validation": {
-      "documents": 9025,
-      "tokens": 1910738,
+      "documents": 9304,
+      "tokens": 2293651,
       "corpora": [
         {
           "name": "ApolloMoEBench",
@@ -248,6 +273,16 @@
           "synthetic": false,
           "documents": 35,
           "tokens": 1377
+        },
+        {
+          "name": "FineWeb-Edu Spanish 20%",
+          "source": "fineweb_edu_es",
+          "selection": "sampled_document_level",
+          "target_tokens": 382148,
+          "documents": 279,
+          "tokens": 382913,
+          "seed": 20260721,
+          "selection_path": "data/selections/C3_kuatia_es20.fineweb_edu_es.validation.selection.jsonl.gz"
         }
       ]
     }
@@ -263,6 +298,7 @@
         "name": "OPUS-all-es",
         "corpus_id": "opus-all-es"
       }
-    ]
+    ],
+    "fineweb_train_validation_overlap": []
   }
 }
