@@ -10,6 +10,9 @@ import yaml
 from typing import Any, Iterator
 
 
+INSTRUCTION_SUITE_NAME = 'instruction'
+
+
 def load_yaml(path: str) -> dict[str, Any]:
     """Load a YAML file as a dictionary.
 
@@ -67,6 +70,125 @@ def merge_dicts(*items: dict[str, Any]) -> dict[str, Any]:
                 merged[key] = value
 
     return merged
+
+
+def bool_setting(
+    key: str, defaults: dict[str, Any], suite: dict[str, Any], profile: dict[str, Any]
+) -> bool:
+    """Resolve a boolean setting across default, suite, and profile scopes.
+
+    Args:
+        key: Setting name.
+        defaults: Matrix default settings.
+        suite: Suite-specific settings.
+        profile: Profile-specific settings.
+
+    Returns:
+        Resolved boolean value.
+    """
+    for source in (profile, suite, defaults):
+        if key in source:
+            return bool(source[key])
+
+    return False
+
+
+def instruction_tasks(matrix: dict[str, Any]) -> tuple[str, ...]:
+    """Read task IDs that require instruction-following behavior.
+
+    Args:
+        matrix: Loaded evaluation matrix.
+
+    Returns:
+        Instruction-following task IDs.
+    """
+    value = matrix.get('instruction_tasks')
+    if value is None:
+        suites = require_mapping(matrix, 'suites')
+        instruction_suite = suites.get(INSTRUCTION_SUITE_NAME, {})
+        if isinstance(instruction_suite, dict):
+            value = instruction_suite.get('tasks')
+
+    if value is None:
+        return ()
+
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(
+            'Instruction tasks must be defined as a task list in '
+            '`suites.instruction.tasks` or `instruction_tasks`.'
+        )
+
+    return tuple(str(task) for task in value)
+
+
+def has_instruction_suite(matrix: dict[str, Any]) -> bool:
+    """Return whether the matrix defines a dedicated instruction suite.
+
+    Args:
+        matrix: Loaded evaluation matrix.
+
+    Returns:
+        True when `suites.instruction` exists.
+    """
+    suites = require_mapping(matrix, 'suites')
+    return INSTRUCTION_SUITE_NAME in suites
+
+
+def is_instruction_suite(suite_name: str, suite: dict[str, Any]) -> bool:
+    """Return whether a suite is dedicated to instruction-following tasks.
+
+    Args:
+        suite_name: Suite name.
+        suite: Suite configuration.
+
+    Returns:
+        True for the dedicated instruction suite.
+    """
+    return suite_name == INSTRUCTION_SUITE_NAME or bool(suite.get('instruction_suite', False))
+
+
+def filtered_tasks_for_variant(
+    matrix: dict[str, Any],
+    defaults: dict[str, Any],
+    suite_name: str,
+    suite: dict[str, Any],
+    profile: dict[str, Any],
+) -> tuple[list[str], bool]:
+    """Filter suite tasks for one evaluated model variant.
+
+    Args:
+        matrix: Loaded evaluation matrix.
+        defaults: Matrix default settings.
+        suite_name: Evaluation suite name.
+        suite: Suite-specific settings.
+        profile: Profile-specific settings.
+
+    Returns:
+        Filtered task list and resolved instruction-task inclusion flag.
+    """
+    tasks = [str(task) for task in suite.get('tasks', [])]
+    instruction_task_set = set(instruction_tasks(matrix))
+    include_instruction_tasks = bool_setting(
+        'include_instruction_tasks', defaults, suite, profile
+    )
+
+    if is_instruction_suite(suite_name, suite):
+        if include_instruction_tasks:
+            return tasks, include_instruction_tasks
+
+        return [], include_instruction_tasks
+
+    if has_instruction_suite(matrix):
+        return [
+            task for task in tasks if task not in instruction_task_set
+        ], include_instruction_tasks
+
+    if include_instruction_tasks:
+        return tasks, include_instruction_tasks
+
+    return [
+        task for task in tasks if task not in instruction_task_set
+    ], include_instruction_tasks
 
 
 def write_yaml(path: str, data: dict[str, Any], overwrite: bool) -> None:
@@ -188,6 +310,34 @@ def model_args_for_variant(
     raise ValueError(f'Unsupported variant kind: {variant_kind}')
 
 
+def variant_overrides(
+    profile: dict[str, Any], variant_kind: str
+) -> dict[str, Any]:
+    """Read profile overrides for one model variant kind.
+
+    Args:
+        profile: Evaluation profile mapping.
+        variant_kind: Variant type: base, full, or lora.
+
+    Returns:
+        Variant-specific profile override mapping.
+
+    Raises:
+        ValueError: If variant overrides are not mappings.
+    """
+    overrides = profile.get('variant_overrides', {})
+    if not isinstance(overrides, dict):
+        raise ValueError('variant_overrides must be a mapping when provided.')
+
+    variant_config = overrides.get(variant_kind, {})
+    if variant_config is None:
+        return {}
+    if not isinstance(variant_config, dict):
+        raise ValueError(f'variant_overrides.{variant_kind} must be a mapping.')
+
+    return variant_config
+
+
 def variant_name(
     variant_kind: str, corpus: str | None, rank: int | None
 ) -> str:
@@ -225,13 +375,16 @@ def iter_variants(
     if bool(profile.get('include_base', False)):
         yield 'base', None, None
 
-    corpora = profile.get('corpora', [])
+    training_corpora = profile.get('training_corpora')
+    if training_corpora is None:
+        training_corpora = profile.get('corpora', [])
+
     if bool(profile.get('include_full', False)):
-        for corpus in corpora:
+        for corpus in training_corpora:
             yield 'full', corpus, None
 
     for rank in profile.get('lora_ranks', []):
-        for corpus in corpora:
+        for corpus in training_corpora:
             yield 'lora', corpus, int(rank)
 
 
@@ -260,23 +413,26 @@ def evaluation_config(
     defaults = require_mapping(matrix, 'defaults')
     profiles = require_mapping(matrix, 'profiles')
     profile = require_mapping(profiles, profile_name)
+    effective_profile = merge_dicts(profile, variant_overrides(profile, variant_kind))
     suites = require_mapping(matrix, 'suites')
     suite = require_mapping(suites, suite_name)
-    profile_overrides = profile.get('overrides', {})
+    profile_overrides = effective_profile.get('overrides', {})
     if not isinstance(profile_overrides, dict):
         raise ValueError(f'Profile overrides must be a mapping: {profile_name}')
 
+    tasks, include_instruction_tasks = filtered_tasks_for_variant(
+        matrix, defaults, suite_name, suite, effective_profile
+    )
     variant = variant_name(variant_kind, corpus, rank)
     name = run_name(model['key'], variant, suite_name)
     output_path = os.path.join(
         matrix['outputs_root'], profile_name, model['key'], variant, suite_name
     )
 
-    return merge_dicts(
+    config = merge_dicts(
         defaults,
         {
             'model_args': model_args_for_variant(matrix, variant_kind, corpus, rank),
-            'tasks': suite['tasks'],
             'include_path': matrix['task_include_path'],
             'output_path': output_path,
             'device': model.get('device'),
@@ -297,6 +453,9 @@ def evaluation_config(
         suite,
         profile_overrides,
     )
+    config['tasks'] = tasks
+    config['include_instruction_tasks'] = include_instruction_tasks
+    return config
 
 
 def iter_configs(
@@ -313,17 +472,27 @@ def iter_configs(
     """
     profiles = require_mapping(matrix, 'profiles')
     profile = require_mapping(profiles, profile_name)
+    defaults = require_mapping(matrix, 'defaults')
     output_dir = matrix.get('generated_config_dir', 'configs/evaluation/generated')
     model = require_mapping(matrix, 'model')
+    suite_names = list(profile['suites'])
+    if (
+        has_instruction_suite(matrix)
+        and INSTRUCTION_SUITE_NAME not in suite_names
+        and bool_setting('include_instruction_tasks', defaults, {}, profile)
+    ):
+        suite_names.append(INSTRUCTION_SUITE_NAME)
 
     for variant_kind, corpus, rank in iter_variants(profile):
         variant = variant_name(variant_kind, corpus, rank)
-        for suite_name in profile['suites']:
+        for suite_name in suite_names:
             name = run_name(model['key'], variant, suite_name)
             path = os.path.join(output_dir, profile_name, model['key'], f'{name}.yaml')
-            yield path, evaluation_config(
+            config = evaluation_config(
                 matrix, profile_name, suite_name, variant_kind, corpus, rank
             )
+            if config.get('tasks'):
+                yield path, config
 
 
 @click.command(

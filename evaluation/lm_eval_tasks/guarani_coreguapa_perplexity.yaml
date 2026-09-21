@@ -1,9 +1,9 @@
-task: guarani_cpt_perplexity_c1_kuatia
+task: guarani_coreguapa_perplexity
 dataset_path: json
 dataset_name: null
 dataset_kwargs:
   data_files:
-    test: data/evaluation/perplexity/C1_kuatia.jsonl
+    test: data/evaluation/coreguapa_identified_all.jsonl
 test_split: test
 output_type: loglikelihood_rolling
 doc_to_text: ""

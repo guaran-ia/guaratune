@@ -197,7 +197,7 @@ def exist_trained_variant(config_path: str) -> bool | None:
             return False
         else:
             return True
-    
+
     return None
 
 
@@ -244,7 +244,7 @@ def main(profile: str, model_key: str | None, exclude_patterns: tuple[str, ...])
         except Exception as exc:
             raise click.ClickException(str(exc)) from exc
 
-        if exist_train_model:
+        if exist_train_model is not False:
             print(f'[run] {config_path}', flush=True)
             run_evaluation(config_path)
 

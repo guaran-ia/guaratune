@@ -42,10 +42,12 @@ httpcore==1.0.9
 httpx==0.28.1
 huggingface_hub==1.24.0
 idna==3.18
+iso639-lang==2.6.0
 jieba==0.42.1
 Jinja2==3.1.6
 joblib==1.5.3
 kiwisolver==1.5.0
+langdetect==1.0.9
 -e git+https://github.com/hiyouga/LlamaFactory.git@ef2d8f9da66ef13378dc8068dabc99cfe89a9736#egg=llamafactory
 -e git+https://github.com/EleutherAI/lm-evaluation-harness@f4d4b3de3ee6741a7151a9fe74945ee515262f4c#egg=lm_eval
 lxml==6.1.1
@@ -103,6 +105,7 @@ setuptools==83.0.0
 shellingham==1.5.4
 shtab==1.8.1
 six==1.17.0
+spacy==3.8.7
 sqlitedict==2.1.0
 sse-starlette==3.4.6
 starlette==0.52.1
@@ -134,3 +137,6 @@ websockets==15.0.1
 word2number==1.1
 xxhash==3.8.1
 yarl==1.24.5
+https://github.com/explosion/spacy-models/releases/download/ca_core_news_sm-3.8.0/ca_core_news_sm-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0-py3-none-any.whl

@@ -1,0 +1,23 @@
+task: spanish_multiwikiqa
+dataset_path: alexandrainst/multi-wiki-qa
+dataset_name: es
+test_split: train
+output_type: generate_until
+doc_to_text: "Usa el pasaje para responder la pregunta. Da solo una respuesta corta.\n\nTítulo: {{title.strip()}}\n\nPasaje: {{context.strip()}}\n\nPregunta: {{question.strip()}}\n\nRespuesta:"
+doc_to_target: !function utils.doc_to_multiwikiqa_target
+generation_kwargs:
+  until:
+    - "\n"
+  do_sample: false
+  temperature: 0.0
+  max_gen_toks: 64
+process_results: !function utils.process_multiwikiqa_results
+metric_list:
+  - metric: exact_match
+    aggregation: mean
+    higher_is_better: true
+  - metric: f1
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

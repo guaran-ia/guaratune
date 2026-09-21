@@ -193,10 +193,17 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     """
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
+    tasks = config.get('tasks', [])
+    if not isinstance(tasks, list):
+        raise ValueError('tasks must be a list.')
+    if not tasks:
+        print('[skip] no evaluation tasks configured', flush=True)
+        return
+
     results = lm_eval.simple_evaluate(
         model=config['model'],
         model_args=config.get('model_args'),
-        tasks=config['tasks'],
+        tasks=tasks,
         num_fewshot=config.get('num_fewshot'),
         batch_size=config.get('batch_size'),
         max_batch_size=config.get('max_batch_size'),

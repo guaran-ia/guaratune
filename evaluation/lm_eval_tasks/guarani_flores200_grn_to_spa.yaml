@@ -1,0 +1,25 @@
+task: guarani_flores200_grn_to_spa
+dataset_path: facebook/flores
+dataset_name: all
+test_split: devtest
+fewshot_split: dev
+output_type: generate_until
+target_delimiter: ''
+doc_to_text: "Traduce la siguiente oración en guaraní al español.\nGuaraní: {{sentence_grn_Latn}}\nEspañol:"
+doc_to_target: "{{sentence_spa_Latn}}"
+generation_kwargs:
+  until:
+    - "\n"
+    - "</s>"
+  do_sample: false
+  temperature: 0.0
+  max_gen_toks: 256
+metric_list:
+  - metric: bleu
+    aggregation: bleu
+    higher_is_better: true
+  - metric: !function utils.chrf_plus_plus
+    aggregation: !function utils.aggregate_chrf_plus_plus
+    higher_is_better: true
+metadata:
+  version: 1.0
