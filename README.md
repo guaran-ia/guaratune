@@ -168,18 +168,18 @@ This writes:
 - `data/manifests/*.manifest.json`
 - `data/dataset_info.json`
 
-Each final corpus is split into a training file under `data/train/` and a validation file under `data/validation/`. Source component pools are regenerated under `data/train/components/` from the current selection ledgers before final corpora are assembled, so stale component files are not reused. With the active manifest-backed config, train/validation membership comes from the manifests generated from `data/kuatia_config.yaml` and the split-specific FineWeb-Edu selections. Legacy component-style configs can still use deterministic held-out splits.
+Each final corpus is split into a training file under `data/train/` and a validation file under `data/validation/`. With the active manifest-backed config, train/validation membership comes from the manifests generated from `data/kuatia_config.yaml`. `src.prepare_data` regenerates the local source selection ledgers under `data/selections/` and source component pools under `data/train/components/` before final corpora are assembled, so stale local files are not reused. Legacy component-style configs can still use deterministic held-out splits.
 
 Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, dataset sources, manifest paths, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. The manifest files include the config path plus train/validation corpus and component accounting for each generated JSONL file.
 
 > [!NOTE]
-> The large generated corpora under `data/train/` and generated validation splits under `data/validation/` are ignored by Git. To reconstruct them from tracked auxiliary files, use:
+> The generated corpora under `data/train/`, generated validation splits under `data/validation/`, source revision lock, and selection ledgers are ignored by Git. To reconstruct them from tracked manifests and pinned source metadata, use:
 
 ```bash
 python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml --overwrite
 ```
 
-Reconstruction reads `data/source_revisions.lock.json`, `data/selections/*.selection.jsonl.gz`, and `data/manifests/*.manifest.json`. If any locked Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version. The validation files are reconstructed from the same manifests and split-specific selection ledgers.
+For manifest-backed configs, reconstruction reads `configs/data/gemma4_cpt.yaml` and `data/manifests/*.manifest.json`, regenerates `data/source_revisions.lock.json` and `data/selections/*.selection.jsonl.gz`, and then rebuilds train and validation files. If any pinned Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version.
 
 The `data/validation/` files are reserved for in-training validation. Post-training evaluation inputs, including Global-MMLU-Lite and perplexity evaluation sets, live under `data/evaluation/`.
 

@@ -1153,6 +1153,7 @@ def ensure_manifest_outputs(
     generated.extend(component_paths)
     generated.extend(selection_paths)
     generated.append(os.path.join(output_dir, 'dataset_info.json'))
+    generated.append(paths['source_lock'])
 
     existing = [path for path in generated if os.path.exists(path)]
     if existing and not overwrite:
@@ -2648,7 +2649,10 @@ def reconstruct_from_auxiliary(
     output_dir: str | None,
     overwrite: bool,
 ) -> None:
-    """Rebuild generated corpora from manifests, selections, and locked sources.
+    """Rebuild generated corpora from tracked auxiliary metadata.
+
+    Manifest-backed configs regenerate selection ledgers from pinned source
+    revisions. Legacy component-style configs replay existing selection ledgers.
 
     Args:
         config_path: Dataset preparation config file.
@@ -2804,7 +2808,10 @@ def reconstruct_from_auxiliary(
 @click.option(
     '--reconstruct',
     is_flag=True,
-    help='Rebuild train corpora from manifests, selections, and locked source revisions.',
+    help=(
+        'Rebuild generated corpora from auxiliary metadata. Manifest-backed '
+        'configs regenerate selection ledgers from pinned source revisions.'
+    ),
 )
 @click.option(
     '--allow-incomplete-samples',
@@ -2844,7 +2851,7 @@ def main(
         config_path: Dataset preparation config file.
         output_dir: Optional output directory override.
         overwrite: Whether to replace existing generated files.
-        reconstruct: Whether to rebuild generated corpora from auxiliary files.
+        reconstruct: Whether to rebuild generated corpora from auxiliary metadata.
         allow_incomplete_samples: Whether undersized FineWeb samples are allowed.
         preflight_only: Whether to inspect source metadata without writing outputs.
         max_kuatia_docs: Optional development cap for Kuatia documents.

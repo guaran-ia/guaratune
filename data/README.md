@@ -1,6 +1,6 @@
 # Add a Dataset
 
-New source datasets are registered in `configs/data/gemma4_cpt.yaml`. The active data configuration is manifest-backed: each final corpus points to a manifest under `data/manifests/`, and `src.prepare_data` materializes train and validation JSONL files from those manifests and selection ledgers.
+New source datasets are registered in `configs/data/gemma4_cpt.yaml`. The active data configuration is manifest-backed: each final corpus points to a manifest under `data/manifests/`, and `src.prepare_data` materializes train and validation JSONL files from those manifests. Selection ledgers under `data/selections/` are generated locally during preparation.
 
 The relevant sections are:
 
@@ -8,7 +8,7 @@ The relevant sections are:
 - `corpora`: final CPT dataset configurations, each with a `manifest` path.
 - `data/kuatia_config.yaml`: Kuatia corpus split policy, including train, validation, and synthetic corpus membership.
 - `data/manifests/*.manifest.json`: reproducible corpus definitions used by data preparation.
-- `data/selections/*.selection.jsonl.gz`: selected document ledgers for Kuatia and FineWeb-Edu additions.
+- `data/selections/*.selection.jsonl.gz`: local generated document-selection ledgers for Kuatia and FineWeb-Edu additions.
 
 To add a new source, first add it under `sources`:
 
@@ -57,7 +57,7 @@ Regenerate the data artifacts:
 python -m src.prepare_data --config configs/data/gemma4_cpt.yaml --overwrite
 ```
 
-This writes train corpora, validation splits, source component pools under `data/train/components/`, source revision locks, manifests, selection ledgers, and `data/dataset_info.json`.
+This writes train corpora, validation splits, source component pools under `data/train/components/`, local source revision locks, local selection ledgers, and `data/dataset_info.json`.
 
 The new corpus name must also be added to any training matrix profile that should train on it, for example `profiles.experiments.corpora` in `configs/train/gemma4-12_cpt_matrix.yaml`. For evaluation, add the same corpus name to `profiles.experiments.training_corpora` in `configs/evaluation/gemma4-12_eval_matrix.yaml` so trained variants can be evaluated. Then regenerate train and evaluation configs:
 
