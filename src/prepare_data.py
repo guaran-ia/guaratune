@@ -666,6 +666,7 @@ def write_kuatia_component(
     selection_path: str,
     *,
     max_docs: int | None,
+    corpus_id_by_name: dict[str, str] | None = None,
 ) -> ComponentStats:
     """Write the Kuatia component and its document-selection ledger.
 
@@ -676,6 +677,7 @@ def write_kuatia_component(
         output_path: Destination component JSONL path.
         selection_path: Destination selection ledger JSONL path.
         max_docs: Optional development cap on the number of documents written.
+        corpus_id_by_name: Optional mapping from Kuatia corpus names to stable ids.
 
     Returns:
         Component statistics for the written Kuatia corpus.
@@ -704,7 +706,10 @@ def write_kuatia_component(
             if row.get('url'):
                 selection['url'] = row['url']
             source_corpus = row.get('source_corpus') or row.get('corpus')
-            corpus_id = row.get('corpus_id') or source_corpus
+            corpus_id = row.get('corpus_id')
+            if corpus_id_by_name is not None and source_corpus:
+                corpus_id = corpus_id_by_name.get(source_corpus, corpus_id)
+            corpus_id = corpus_id or source_corpus
             if source_corpus:
                 selection['corpus'] = source_corpus
                 selection['source_corpus'] = source_corpus
@@ -1239,6 +1244,29 @@ def split_dataset_metadata(split_config: dict[str, Any]) -> dict[str, dict[str, 
         for item in split_config.get('datasets', [])
         if isinstance(item, dict) and 'name' in item
     }
+
+
+def kuatia_corpus_id_map(config: dict[str, Any]) -> dict[str, str]:
+    """Return Kuatia corpus-name to corpus-id mappings from the split config.
+
+    Args:
+        config: Resolved config-backed data recipe.
+
+    Returns:
+        Mapping from configured Kuatia corpus names and ids to stable corpus ids.
+    """
+    split_config = load_config(config['split_config'])
+    mapping = {}
+    for item in split_config.get('datasets', []):
+        if not isinstance(item, dict):
+            continue
+        name = item.get('name')
+        corpus_id = item.get('corpus_id')
+        if name and corpus_id:
+            mapping[name] = corpus_id
+            mapping[corpus_id] = corpus_id
+
+    return mapping
 
 
 def kuatia_split_components(
@@ -1892,6 +1920,7 @@ def selection_entry_from_row(
     selection = {
         'id': row_id(row, spec.name, spec.id_column, index),
         'source': spec.name,
+        'text': text,
         'tokens': token_count(tokenizer, text),
     }
     raw_metadata = row.get('metadata')
@@ -2135,6 +2164,7 @@ def write_manifest_selection_ledgers(
             component_path,
             kuatia_config['selection_path'],
             max_docs=None,
+            corpus_id_by_name=kuatia_corpus_id_map(config),
         )
         print(
             f'[selection] {kuatia_config["selection_path"]}: '
@@ -2319,6 +2349,7 @@ def required_manifest_source_selections(
                 source_config['selection_path'],
             ),
             'selected_tokens': {},
+            'selection_paths': [],
         }
 
     for manifest in manifests.values():
@@ -2335,12 +2366,119 @@ def required_manifest_source_selections(
                     required[source_name]['selected_tokens'],
                     component['selection_path'],
                 )
+                if component['selection_path'] not in required[source_name]['selection_paths']:
+                    required[source_name]['selection_paths'].append(component['selection_path'])
 
     return {
         source_name: metadata
         for source_name, metadata in required.items()
         if metadata['selected_tokens']
     }
+
+
+def selection_ledgers_include_text(selection_paths: list[str]) -> bool:
+    """Return whether every row in selection ledgers includes text.
+
+    Args:
+        selection_paths: Selection ledger paths to inspect.
+
+    Returns:
+        True when every non-empty selected row has text.
+    """
+    for selection_path in selection_paths:
+        for row in stream_jsonl(selection_path):
+            if not clean_text(row.get('text')):
+                return False
+
+    return True
+
+
+def write_manifest_source_component_from_selection_text(
+    source_name: str,
+    metadata: dict[str, Any],
+) -> bool:
+    """Write one source component pool from text-bearing selection ledgers.
+
+    Args:
+        source_name: Source key being rebuilt.
+        metadata: Source config, selected token map, selection paths, and component path.
+
+    Returns:
+        True if the component was written from selection text; otherwise False.
+
+    Raises:
+        RuntimeError: If selected ids or token counts are inconsistent.
+    """
+    selection_paths = metadata['selection_paths']
+    if not selection_paths or not selection_ledgers_include_text(selection_paths):
+        return False
+
+    component_path = metadata['component_path']
+    selected_tokens = metadata['selected_tokens']
+    found_ids = set()
+    documents = 0
+    tokens = 0
+
+    print(
+        f'[component] {source_name}: writing {len(selected_tokens):,} selected docs '
+        f'from local selection ledgers',
+        flush=True,
+    )
+    os.makedirs(os.path.dirname(component_path), exist_ok=True)
+    with open(component_path, 'w', encoding='utf-8') as output_handle:
+        for selection_path in selection_paths:
+            for row in stream_jsonl(selection_path):
+                doc_id = row['id']
+                if doc_id in found_ids:
+                    continue
+                if doc_id not in selected_tokens:
+                    raise RuntimeError(
+                        f'{selection_path} contains unrequested document id {doc_id}.'
+                    )
+
+                doc_tokens = int(row['tokens'])
+                expected_tokens = selected_tokens[doc_id]
+                if doc_tokens != expected_tokens:
+                    raise RuntimeError(
+                        f'Cannot rebuild {source_name}: token mismatch for {doc_id}. '
+                        f'Expected {expected_tokens}, got {doc_tokens}.'
+                    )
+
+                output_handle.write(
+                    json.dumps(
+                        {
+                            'id': doc_id,
+                            'source': row.get('source', source_name),
+                            'text': clean_text(row['text']),
+                        },
+                        ensure_ascii=False,
+                    )
+                    + '\n'
+                )
+                found_ids.add(doc_id)
+                documents += 1
+                tokens += doc_tokens
+
+                if documents % 1000 == 0:
+                    print(
+                        f'[component] {source_name}: {documents:,} docs / '
+                        f'{tokens:,} tokens',
+                        flush=True,
+                    )
+
+    missing_ids = set(selected_tokens) - found_ids
+    if missing_ids:
+        examples = ', '.join(sorted(missing_ids)[:5])
+        raise RuntimeError(
+            f'Cannot rebuild {source_name}: selection ledgers are missing '
+            f'{len(missing_ids):,} selected documents. Examples: {examples}'
+        )
+
+    print(
+        f'[component] {source_name}: {documents:,} docs / {tokens:,} tokens',
+        flush=True,
+    )
+    return True
 
 
 def write_manifest_source_component(
@@ -2361,6 +2499,9 @@ def write_manifest_source_component(
     Raises:
         RuntimeError: If selected ids cannot be found or token counts changed.
     """
+    if write_manifest_source_component_from_selection_text(source_name, metadata):
+        return
+
     source_config = metadata['source_config']
     component_path = metadata['component_path']
     selected_tokens = metadata['selected_tokens']
@@ -2369,11 +2510,23 @@ def write_manifest_source_component(
     documents = 0
     tokens = 0
 
+    print(
+        f'[component] {source_name}: scanning source for '
+        f'{len(selected_tokens):,} selected docs',
+        flush=True,
+    )
     os.makedirs(os.path.dirname(component_path), exist_ok=True)
     with open(component_path, 'w', encoding='utf-8') as output_handle:
         for index, row in enumerate(
             load_stream(spec, shuffle=False, seed=0, buffer_size=1)
         ):
+            if index > 0 and index % 500000 == 0:
+                print(
+                    f'[component] {source_name}: scanned {index:,} rows, '
+                    f'found {documents:,}/{len(selected_tokens):,} docs',
+                    flush=True,
+                )
+
             doc_id = row_id(row, spec.name, spec.id_column, index)
             if doc_id not in selected_tokens:
                 continue
@@ -2401,7 +2554,7 @@ def write_manifest_source_component(
             documents += 1
             tokens += doc_tokens
 
-            if documents % 10000 == 0:
+            if documents % 1000 == 0:
                 print(
                     f'[component] {source_name}: {documents:,} docs / {tokens:,} tokens',
                     flush=True,
