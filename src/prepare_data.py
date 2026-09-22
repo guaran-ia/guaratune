@@ -3446,14 +3446,6 @@ def reconstruct_from_auxiliary(
 )
 @click.option('--overwrite', is_flag=True)
 @click.option(
-    '--reconstruct',
-    is_flag=True,
-    help=(
-        'Rebuild generated corpora from auxiliary metadata. Manifest-backed '
-        'configs regenerate selection ledgers from pinned source revisions.'
-    ),
-)
-@click.option(
     '--allow-incomplete-samples',
     is_flag=True,
     help='Write smaller FineWeb samples if a source is exhausted before reaching the target.',
@@ -3479,7 +3471,6 @@ def main(
     config_path: str,
     output_dir: str | None,
     overwrite: bool,
-    reconstruct: bool,
     allow_incomplete_samples: bool,
     preflight_only: bool,
     max_kuatia_docs: int | None,
@@ -3491,7 +3482,6 @@ def main(
         config_path: Dataset preparation config file.
         output_dir: Optional output directory override.
         overwrite: Whether to replace existing generated files.
-        reconstruct: Whether to rebuild generated corpora from auxiliary metadata.
         allow_incomplete_samples: Whether undersized FineWeb samples are allowed.
         preflight_only: Whether to inspect source metadata without writing outputs.
         max_kuatia_docs: Optional development cap for Kuatia documents.
@@ -3501,9 +3491,6 @@ def main(
         None.
     """
     loaded_config = load_config(config_path)
-    if reconstruct:
-        reconstruct_from_auxiliary(config_path, output_dir, overwrite)
-        return
 
     resolved_config = resolve_config(
         loaded_config,
