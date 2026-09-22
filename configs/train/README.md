@@ -75,7 +75,7 @@ profiles:
 Generate configs from the new matrix:
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/<new_model>_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --model <model_key> --overwrite
 ```
 
 This writes model-scoped configs under `configs/train/generated/<profile>/<model_key>/`.

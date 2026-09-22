@@ -238,7 +238,7 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
             print(f'W&B env file not found: {wandb_env_file}', file=sys.stderr)
             print(
                 'Generate it with:\n'
-                '  python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite',
+                '  python -m src.generate_train_configs --model gemma4_12b --overwrite',
                 file=sys.stderr,
             )
 

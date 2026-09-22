@@ -64,7 +64,7 @@ def generated_configs(profile: str, model: str | None) -> list[str]:
         raise FileNotFoundError(
             f'Generated config profile not found: {profile_dir}\n'
             'Generate configs with:\n'
-            '  python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite'
+            '  python -m src.generate_train_configs --model gemma4_12b --overwrite'
         )
 
     if model is not None:

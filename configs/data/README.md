@@ -24,7 +24,7 @@ python -m src.prepare_data --config configs/data/<new_config_name>.yaml --overwr
 If the new configuration writes to `output_dir: data`, the generated `data/dataset_info.json` will expose the new `corpora` names to the framework. Add those corpus names to the relevant training matrix profile, and regenerate training configs.
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --model gemma4_12b --overwrite
 ```
 
 For evaluation, add the same corpus names to the relevant evaluation matrix and regenerate evaluation configs:
