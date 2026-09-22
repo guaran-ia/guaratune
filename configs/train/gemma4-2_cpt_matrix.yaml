@@ -19,9 +19,6 @@ defaults:
   common:
     stage: pt
     do_train: true
-    do_eval: true
-    eval_strategy: epoch
-    eval_steps: 500
     dataset_dir: data
     preprocessing_num_workers: 16
     dataloader_num_workers: 4
@@ -49,6 +46,11 @@ defaults:
     bf16: true
     ddp_timeout: 180000000
     resume_from_checkpoint: null
+    do_eval: true
+    eval_strategy: epoch
+    eval_steps: 500
+    per_device_eval_batch_size: 1
+    eval_accumulation_steps: 1
 
   full:
     finetuning_type: full
