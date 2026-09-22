@@ -16,6 +16,7 @@ import json
 import os
 import pyarrow.parquet as pq
 import random
+import shutil
 import yaml
 
 from collections.abc import Iterable, Iterator
@@ -1554,6 +1555,78 @@ def write_kuatia_manifest_records(
     return documents, tokens
 
 
+def kuatia_cache_path(output_dir: str, allowed_corpus_ids: set[str]) -> str:
+    """Build a cache path for a reusable Kuatia split component.
+
+    Args:
+        output_dir: Root directory for generated dataset artifacts.
+        allowed_corpus_ids: Corpus ids included in the cached split component.
+
+    Returns:
+        Cache JSONL path.
+    """
+    joined_ids = '\n'.join(sorted(allowed_corpus_ids))
+    digest = hashlib.sha256(joined_ids.encode('utf-8')).hexdigest()[:16]
+    return os.path.join(
+        output_dir,
+        'train',
+        'components',
+        f'kuatia_split_{digest}.jsonl',
+    )
+
+
+def write_kuatia_manifest_records_cached(
+    output_handle: Any,
+    *,
+    output_dir: str,
+    source_config: dict[str, Any],
+    allowed_corpus_ids: set[str],
+    cache: dict[tuple[str, ...], dict[str, Any]],
+) -> tuple[int, int]:
+    """Write Kuatia records using a reusable cached split component.
+
+    Args:
+        output_handle: Open JSONL output handle.
+        output_dir: Root directory containing generated dataset artifacts.
+        source_config: Kuatia source configuration.
+        allowed_corpus_ids: Corpus ids included in the target split.
+        cache: Mutable cache metadata keyed by selected corpus ids.
+
+    Returns:
+        Pair of written document and token counts.
+    """
+    key = tuple(sorted(allowed_corpus_ids))
+    if key not in cache:
+        cache_path = kuatia_cache_path(output_dir, allowed_corpus_ids)
+        print(
+            f'[component] kuatia split cache: writing {cache_path}',
+            flush=True,
+        )
+        with open(cache_path, 'w', encoding='utf-8') as cache_handle:
+            documents, tokens = write_kuatia_manifest_records(
+                cache_handle,
+                output_dir=output_dir,
+                source_config=source_config,
+                allowed_corpus_ids=allowed_corpus_ids,
+            )
+        cache[key] = {
+            'path': cache_path,
+            'documents': documents,
+            'tokens': tokens,
+        }
+        print(
+            f'[component] kuatia split cache: {documents:,} docs / '
+            f'{tokens:,} tokens',
+            flush=True,
+        )
+
+    cached = cache[key]
+    with open(cached['path'], 'r', encoding='utf-8') as cache_handle:
+        shutil.copyfileobj(cache_handle, output_handle)
+
+    return int(cached['documents']), int(cached['tokens'])
+
+
 def write_selected_source_records(
     output_handle: Any,
     *,
@@ -2623,6 +2696,7 @@ def write_manifest_split_file(
     manifest: dict[str, Any],
     split_name: str,
     output_path: str,
+    kuatia_cache: dict[tuple[str, ...], dict[str, Any]],
 ) -> dict[str, Any]:
     """Write one manifest split to a JSONL file.
 
@@ -2631,6 +2705,7 @@ def write_manifest_split_file(
         manifest: Corpus manifest data.
         split_name: Split name to write, usually train or validation.
         output_path: Destination JSONL path.
+        kuatia_cache: Reusable Kuatia split component cache.
 
     Returns:
         Written split summary.
@@ -2649,11 +2724,12 @@ def write_manifest_split_file(
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w', encoding='utf-8') as output_handle:
         if kuatia_corpus_ids:
-            docs, toks = write_kuatia_manifest_records(
+            docs, toks = write_kuatia_manifest_records_cached(
                 output_handle,
                 output_dir=output_dir,  # type: ignore
                 source_config=kuatia_source,
                 allowed_corpus_ids=kuatia_corpus_ids,
+                cache=kuatia_cache,
             )
             documents += docs
             tokens += toks
@@ -2746,18 +2822,21 @@ def write_manifest_config_outputs(
     required_sources = required_manifest_source_selections(resolved_config, manifests)
     write_manifest_source_components(required_sources, tokenizer_instance)
 
+    kuatia_cache: dict[tuple[str, ...], dict[str, Any]] = {}
     for config_name, manifest in manifests.items():
         train_summary = write_manifest_split_file(
             config=resolved_config,
             manifest=manifest,
             split_name='train',
             output_path=os.path.join(paths['train'], f'{config_name}.jsonl'),
+            kuatia_cache=kuatia_cache,
         )
         validation_summary = write_manifest_split_file(
             config=resolved_config,
             manifest=manifest,
             split_name='validation',
             output_path=os.path.join(paths['validation'], f'{config_name}.jsonl'),
+            kuatia_cache=kuatia_cache,
         )
         print(
             f'[corpus] {config_name}: {train_summary["documents"]:,} docs / '
