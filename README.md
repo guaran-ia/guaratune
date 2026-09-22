@@ -35,13 +35,18 @@ Before starting, follow the installation instructions below.
 
 ### Supported Models
 
-The active checked-in training and evaluation matrices target Gemma 4 12B. New models can be added by following the instructions described in [configs/train/README.md](configs/train/README.md).
+Currently, the framework supports the training and evaluation of the following 
+Gemma 4 variants. 
 
 | Model                        | Parameters | Minimum GPU Memory |
 | ---------------------------- | ---------- | ------------------ | 
 | google/gemma-4-E2B           | 2B         | ~4 GB (bf16)       |
 | google/gemma-4-E4B           | 4B         | ~8 GB (bf16)       |
 | google/gemma-4-12B           | 12B        | ~24 GB (bf16)      |
+
+> [!Note]
+> New models can be added by following the instructions described in 
+> [configs/train/README.md](configs/train/README.md).
 
 ## 0. Installation
 
