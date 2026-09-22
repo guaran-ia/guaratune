@@ -503,7 +503,7 @@ def iter_configs(
     '--matrix',
     'matrix_path',
     type=click.Path(exists=True, dir_okay=False),
-    default='configs/evaluation/gemma4-12_eval_matrix.yaml',
+    required=True,
     help='Evaluation matrix YAML file.',
 )
 @click.option(
