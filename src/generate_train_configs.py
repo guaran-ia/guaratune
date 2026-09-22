@@ -100,7 +100,8 @@ def shell_quote(value: Any) -> str:
     Returns:
         Single-quoted shell string.
     """
-    return f'\'{str(value).replace("\'", "\'\"\'\"\'")}\''
+    escaped = str(value).replace('\'', '\'\"\'\"\'')
+    return f'\'{escaped}\''
 
 
 def write_wandb_env(
@@ -320,7 +321,7 @@ def generated_config_path(
     '--matrix',
     'matrix_path',
     type=click.Path(exists=True, dir_okay=False),
-    default='configs/train/gemma4-12_cpt_matrix.yaml',
+    required=True,
     help='Training matrix YAML file.',
 )
 @click.option(
