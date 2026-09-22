@@ -8,12 +8,12 @@ cp configs/data/gemma4_cpt.yaml configs/data/<new_config_name>.yaml
 
 Then edit the new YAML file. The main fields to review are:
 
-- `output_dir`: where processed corpora, held-out files, manifests, selections, and `dataset_info.json` are written. Use `data` by default otherwise the train and evaluation configs should be updated to read from that directory.
+- `output_dir`: where train corpora, validation files, manifests, selections, and `dataset_info.json` are written. Use `data` by default otherwise the train and evaluation configs should be updated to read from that directory.
 - `tokenizer`: tokenizer used only for token accounting during data preparation.
-- `seed`, `shuffle_buffer_size`, and `heldout`: deterministic sampling and train/held-out split settings.
-- `sources`: Hugging Face datasets or Parquet-backed sources.
-- `components`: reusable selections built from sources.
-- `corpora`: final CPT dataset configurations exposed to training and perplexity evaluation.
+- `seed`: deterministic sampling seed used by source selection routines.
+- `split_config`: Kuatia split policy file, currently `data/kuatia_config.yaml`.
+- `sources`: Hugging Face datasets or Parquet-backed sources pinned by `commit_id`.
+- `corpora`: final CPT dataset configurations exposed to training and in-training validation. Each corpus declares Kuatia synthetic-data handling plus optional augmentation ratios and selection paths. Manifests are generated under `data/manifests/` during preparation.
 
 After editing the new configuration, run data preparation with the new file:
 
@@ -21,7 +21,7 @@ After editing the new configuration, run data preparation with the new file:
 python -m src.prepare_data --config configs/data/<new_config_name>.yaml --overwrite
 ```
 
-If the new configuration writes to `output_dir: data`, the generated `data/dataset_info.json` will expose the new `corpora` names to the framework. Add those corpus names to the relevant training matrix profile, such as `profiles.experiments.corpora` in `configs/train/gemma4-12_cpt_matrix.yaml` or `configs/train/gemma4-26_cpt_matrix.yaml`, and regenerate training configs.
+If the new configuration writes to `output_dir: data`, the generated `data/dataset_info.json` will expose the new `corpora` names to the framework. Add those corpus names to the relevant training matrix profile, and regenerate training configs.
 
 ```bash
 python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
@@ -33,4 +33,4 @@ For evaluation, add the same corpus names to the relevant evaluation matrix and 
 python -m src.generate_eval_configs --matrix configs/evaluation/gemma4-12_eval_matrix.yaml --overwrite
 ```
 
-The current evaluation task definitions expect held-out files under `data/evaluation/perplexity/`. If the new data configuration uses a different `output_dir`, either make that directory the active `data` directory before evaluation or add matching lm-eval task definitions that point to the alternate held-out paths.
+The data preparation step writes in-training validation files under `data/validation/`. Post-training evaluation tasks should use files under `data/evaluation/`, so add or update lm-eval task definitions separately when a new evaluation set is introduced.

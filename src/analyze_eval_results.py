@@ -16,7 +16,16 @@ from typing import Any
 DEFAULT_EVALUATION_ROOT = 'outputs/evaluation'
 DEFAULT_RESULTS_DIR = 'results'
 SUMMARY_FILE_PREFIX = 'evaluation_summary'
+BENCHMARK_TABLE_FILE_PREFIX = 'evaluation_benchmark_table'
+LANGUAGE_AVERAGE_TABLE_FILE_PREFIX = 'evaluation_language_average_table'
+PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity_table'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
+BENCHMARK_LANGUAGE_CHOICES = (
+    'all',
+    'en',
+    'es',
+    'gn',
+)
 IGNORED_METRIC_SUFFIXES = (
     '_stderr',
     '_stderr,none',
@@ -38,6 +47,265 @@ IDENTITY_COLUMNS = (
     'eval_corpus',
     'lora_rank',
     'profiles',
+)
+BENCHMARK_SCORE_SPECS = (
+    {
+        'label': 'Global MMLU Lite GN (acc_norm)',
+        'languages': ('gn',),
+        'metrics': ('global_mmlu_lite_acc_norm', 'global_mmlu_lite_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Global MMLU Lite EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('english_global_mmlu_lite_acc_norm', 'english_global_mmlu_lite_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Global MMLU Lite ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('spanish_global_mmlu_lite_acc_norm', 'spanish_global_mmlu_lite_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele GN (acc_norm)',
+        'languages': ('gn',),
+        'metrics': ('guarani_2m_belebele_acc_norm', 'guarani_2m_belebele_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('english_2m_belebele_acc_norm', 'english_2m_belebele_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('spanish_2m_belebele_acc_norm', 'spanish_2m_belebele_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'MultiWikiQA GN (F1)',
+        'languages': ('gn',),
+        'metrics': ('guarani_multiwikiqa_f1', 'guarani_multiwikiqa_exact_match'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'MultiWikiQA EN (F1)',
+        'languages': ('en',),
+        'metrics': ('english_multiwikiqa_f1', 'english_multiwikiqa_exact_match'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'MultiWikiQA ES (F1)',
+        'languages': ('es',),
+        'metrics': ('spanish_multiwikiqa_f1', 'spanish_multiwikiqa_exact_match'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'FLORES-200 EN->GN (BLEU)',
+        'languages': ('en', 'gn'),
+        'metrics': ('guarani_flores200_eng_to_grn_bleu',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 EN->GN (chrF++)',
+        'languages': ('en', 'gn'),
+        'metrics': ('guarani_flores200_eng_to_grn_chrf_plus_plus',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 GN->EN (BLEU)',
+        'languages': ('gn', 'en'),
+        'metrics': ('guarani_flores200_grn_to_eng_bleu',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 GN->EN (chrF++)',
+        'languages': ('gn', 'en'),
+        'metrics': ('guarani_flores200_grn_to_eng_chrf_plus_plus',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 ES->GN (BLEU)',
+        'languages': ('es', 'gn'),
+        'metrics': ('guarani_flores200_spa_to_grn_bleu',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 ES->GN (chrF++)',
+        'languages': ('es', 'gn'),
+        'metrics': ('guarani_flores200_spa_to_grn_chrf_plus_plus',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 GN->ES (BLEU)',
+        'languages': ('gn', 'es'),
+        'metrics': ('guarani_flores200_grn_to_spa_bleu',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'FLORES-200 GN->ES (chrF++)',
+        'languages': ('gn', 'es'),
+        'metrics': ('guarani_flores200_grn_to_spa_chrf_plus_plus',),
+        'scale': 1.0,
+    },
+    {
+        'label': 'ARC Easy EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('arc_easy_acc_norm', 'arc_easy_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'ARC Challenge EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('arc_challenge_acc_norm', 'arc_challenge_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'PIQA EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('piqa_acc_norm', 'piqa_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'HellaSwag EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('hellaswag_acc_norm', 'hellaswag_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'WinoGrande EN (acc)',
+        'languages': ('en',),
+        'metrics': ('winogrande_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'XNLI EN (acc)',
+        'languages': ('en',),
+        'metrics': ('xnli_en_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'XStoryCloze EN (acc)',
+        'languages': ('en',),
+        'metrics': ('xstorycloze_en_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'MGSM EN (exact_match)',
+        'languages': ('en',),
+        'metrics': ('mgsm_direct_en_exact_match',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'BBH EN (exact_match)',
+        'languages': ('en',),
+        'metrics': ('bbh_exact_match',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'GPQA Diamond EN (acc_norm)',
+        'languages': ('en',),
+        'metrics': ('gpqa_diamond_zeroshot_acc_norm', 'gpqa_diamond_zeroshot_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'TruthfulQA-MC1 EN (acc)',
+        'languages': ('en',),
+        'metrics': ('truthfulqa_mc1_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'HumanEval EN (pass@1)',
+        'languages': ('en',),
+        'metrics': ('humaneval_pass@1',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'IFEval EN (prompt strict acc)',
+        'languages': ('en',),
+        'metrics': ('ifeval_prompt_level_strict_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'ARC Easy ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('spanish_arc_easy_acc_norm', 'spanish_arc_easy_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'ARC Challenge ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('spanish_arc_challenge_acc_norm', 'spanish_arc_challenge_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'PIQA ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': (
+            'global_piqa_nonparallel_cloze_spa_latn_spai_acc_norm',
+            'global_piqa_nonparallel_cloze_spa_latn_spai_acc',
+        ),
+        'scale': 100.0,
+    },
+    {
+        'label': 'HellaSwag ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('hellaswag_es_acc_norm', 'hellaswag_es_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'COPA ES (acc)',
+        'languages': ('es',),
+        'metrics': ('copa_es_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'XStoryCloze ES (acc)',
+        'languages': ('es',),
+        'metrics': ('xstorycloze_es_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'TruthfulQA-MC1 ES (acc)',
+        'languages': ('es',),
+        'metrics': ('truthfulqa_es_mc1_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'XNLI ES (acc)',
+        'languages': ('es',),
+        'metrics': ('xnli_es_acc', 'xnli_es_spanish_bench_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'MGSM ES (exact_match)',
+        'languages': ('es',),
+        'metrics': (
+            'mgsm_direct_es_spanish_bench_exact_match',
+            'mgsm_direct_es_exact_match',
+        ),
+        'scale': 100.0,
+    },
+    {
+        'label': 'IFEval ES (prompt strict acc)',
+        'languages': ('es',),
+        'metrics': ('ifeval_es_prompt_level_strict_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'GPQA Diamond ES (acc_norm)',
+        'languages': ('es',),
+        'metrics': ('spanish_gpqa_diamond_acc_norm', 'spanish_gpqa_diamond_acc'),
+        'scale': 100.0,
+    },
+)
+PERPLEXITY_METRICS = (
+    ('word_perplexity', 'word perplexity'),
+    ('byte_perplexity', 'byte perplexity'),
+    ('bits_per_byte', 'bits per byte'),
 )
 
 
@@ -343,12 +611,17 @@ def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[
     row = base_result_row(model_key, variant, profile, parsed_variant)
 
     results = data.get('results', {})
+    groups = data.get('groups', {})
     if not isinstance(results, dict):
+        results = {}
+    if not isinstance(groups, dict):
+        groups = {}
+    if not results and not groups:
         return [row]
 
     global_metrics = {}
     perplexity_rows: dict[str, dict[str, Any]] = {}
-    for task_name, task_metrics in results.items():
+    for task_name, task_metrics in (results | groups).items():
         if not isinstance(task_metrics, dict):
             continue
 
@@ -691,6 +964,419 @@ def write_markdown(path: str, rows: list[dict[str, Any]], columns: list[str]) ->
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
 
+def model_column_label(row: dict[str, Any]) -> str:
+    """Build a display label for one model variant column.
+
+    Args:
+        row: Summary row.
+
+    Returns:
+        Human-readable model variant label.
+    """
+    return f'{row.get("model_key")}/{row.get("variant")}'
+
+
+def first_numeric_metric(row: dict[str, Any], metric_names: tuple[str, ...]) -> Any:
+    """Return the first numeric metric value found in a row.
+
+    Args:
+        row: Summary row.
+        metric_names: Candidate metric columns in preference order.
+
+    Returns:
+        First finite numeric value, or None when no candidate is available.
+    """
+    for metric_name in metric_names:
+        value = row.get(metric_name)
+        if is_number(value):
+            return value
+
+    return None
+
+
+def unique_variant_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse duplicate rows for the same model variant.
+
+    Perplexity-specific rows can duplicate global benchmark metrics across
+    `eval_corpus` values. This function keeps one row per model variant and
+    copies the first available value for each metric.
+
+    Args:
+        rows: Summary rows.
+
+    Returns:
+        One merged row per model variant.
+    """
+    grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+    order = []
+    for row in rows:
+        key = variant_key(row)
+        if key not in grouped:
+            grouped[key] = {column: row.get(column) for column in IDENTITY_COLUMNS}
+            order.append(key)
+
+        for column, value in metric_values(row).items():
+            if grouped[key].get(column) is None:
+                grouped[key][column] = value
+
+    return [grouped[key] for key in order]
+
+
+def benchmark_score(row: dict[str, Any], spec: dict[str, Any]) -> float | None:
+    """Read and scale one benchmark score for a model variant.
+
+    Args:
+        row: Summary row.
+        spec: Benchmark score specification.
+
+    Returns:
+        Score on a 0-100 scale, or None when unavailable.
+    """
+    value = first_numeric_metric(row, spec['metrics'])
+    if value is None:
+        return None
+
+    return float(value) * float(spec['scale'])
+
+
+def format_benchmark_score(value: Any) -> str:
+    """Format one benchmark table score.
+
+    Args:
+        value: Numeric score or None.
+
+    Returns:
+        Score rounded to two decimals, or an empty string.
+    """
+    if value is None:
+        return ''
+
+    return f'{float(value):.2f}'
+
+
+def benchmark_specs_for_language(language: str) -> list[dict[str, Any]]:
+    """Filter benchmark score specs by language.
+
+    Args:
+        language: Language code to include, or all.
+
+    Returns:
+        Benchmark score specs matching the selected language.
+    """
+    if language == 'all':
+        return list(BENCHMARK_SCORE_SPECS)
+
+    return [
+        spec
+        for spec in BENCHMARK_SCORE_SPECS
+        if language in spec.get('languages', ())
+    ]
+
+
+def benchmark_table(
+    rows: list[dict[str, Any]], language: str
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build a benchmark-by-model markdown table.
+
+    Args:
+        rows: Summary rows.
+        language: Language code to include, or all.
+
+    Returns:
+        Table rows and column names.
+    """
+    variants = unique_variant_rows(rows)
+    model_labels = [model_column_label(row) for row in variants]
+    table_rows = []
+    scores_by_model: dict[str, list[float]] = {label: [] for label in model_labels}
+
+    for spec in benchmark_specs_for_language(language):
+        table_row = {'benchmark': spec['label']}
+        has_score = False
+        for variant_row, model_label in zip(variants, model_labels):
+            score = benchmark_score(variant_row, spec)
+            table_row[model_label] = score
+            if score is not None:
+                scores_by_model[model_label].append(score)
+                has_score = True
+
+        if has_score:
+            table_rows.append(table_row)
+
+    average_row = {'benchmark': 'Average'}
+    for model_label, scores in scores_by_model.items():
+        average_row[model_label] = sum(scores) / len(scores) if scores else None
+
+    table_rows.append(average_row)
+    return table_rows, ['benchmark'] + model_labels
+
+
+def language_average_score(row: dict[str, Any], language: str) -> float | None:
+    """Compute the average benchmark score for one language.
+
+    Args:
+        row: Summary row.
+        language: Language code to average.
+
+    Returns:
+        Average score on a 0-100 scale, or None when unavailable.
+    """
+    scores = [
+        score
+        for spec in benchmark_specs_for_language(language)
+        if (score := benchmark_score(row, spec)) is not None
+    ]
+    if not scores:
+        return None
+
+    return sum(scores) / len(scores)
+
+
+def format_gain(value: Any, is_base: bool) -> str:
+    """Format one base-relative score gain.
+
+    Args:
+        value: Score-point gain.
+        is_base: Whether the row is the base variant.
+
+    Returns:
+        Formatted gain, `--` for base rows, or empty string for missing values.
+    """
+    if is_base:
+        return '--'
+    if value is None:
+        return ''
+
+    return f'{float(value):+.2f}'
+
+
+def language_average_table(
+    rows: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build a language-average benchmark table by model variant.
+
+    Args:
+        rows: Summary rows.
+
+    Returns:
+        Table rows and column names.
+    """
+    variants = unique_variant_rows(rows)
+    base_by_model = {
+        str(row.get('model_key')): row
+        for row in variants
+        if row.get('variant') == 'base'
+    }
+    table_rows = []
+
+    for row in variants:
+        model_key = str(row.get('model_key'))
+        base_row = base_by_model.get(model_key)
+        is_base = row.get('variant') == 'base'
+        table_row = {'model': model_column_label(row)}
+
+        for language, prefix in (
+            ('gn', 'guarani'),
+            ('en', 'english'),
+            ('es', 'spanish'),
+        ):
+            score = language_average_score(row, language)
+            base_score = (
+                language_average_score(base_row, language)
+                if base_row is not None
+                else None
+            )
+            gain = (
+                score - base_score
+                if score is not None and base_score is not None
+                else None
+            )
+            table_row[f'{prefix}_average'] = score
+            table_row[f'{prefix}_gain_vs_base'] = gain
+            table_row[f'{prefix}_is_base'] = is_base
+
+        table_rows.append(table_row)
+
+    return table_rows, [
+        'model',
+        'guarani_average',
+        'guarani_gain_vs_base',
+        'english_average',
+        'english_gain_vs_base',
+        'spanish_average',
+        'spanish_gain_vs_base',
+    ]
+
+
+def write_language_average_markdown(
+    path: str, rows: list[dict[str, Any]], columns: list[str]
+) -> None:
+    """Write a rounded language-average benchmark markdown table.
+
+    Args:
+        path: Destination markdown path.
+        rows: Language-average table rows.
+        columns: Output columns.
+
+    Returns:
+        None.
+    """
+    with open(path, 'w', encoding='utf-8') as handle:
+        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        for row in rows:
+            values = []
+            for column in columns:
+                if column == 'model':
+                    value = str(row.get(column, '')).replace('|', '\\|')
+                elif column.endswith('_gain_vs_base'):
+                    prefix = column.removesuffix('_gain_vs_base')
+                    value = format_gain(row.get(column), bool(row.get(f'{prefix}_is_base')))
+                else:
+                    value = format_benchmark_score(row.get(column))
+
+                values.append(value)
+
+            handle.write('| ' + ' | '.join(values) + ' |\n')
+
+
+def write_benchmark_markdown(
+    path: str, rows: list[dict[str, Any]], columns: list[str]
+) -> None:
+    """Write a rounded benchmark-by-model markdown table.
+
+    Args:
+        path: Destination markdown path.
+        rows: Benchmark table rows.
+        columns: Output columns.
+
+    Returns:
+        None.
+    """
+    with open(path, 'w', encoding='utf-8') as handle:
+        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        for row in rows:
+            values = []
+            for column in columns:
+                if column == 'benchmark':
+                    value = str(row.get(column, '')).replace('|', '\\|')
+                else:
+                    value = format_benchmark_score(row.get(column))
+
+                values.append(value)
+
+            handle.write('| ' + ' | '.join(values) + ' |\n')
+
+
+def sorted_variant_labels(rows: list[dict[str, Any]]) -> list[str]:
+    """List model variant labels in stable row order.
+
+    Args:
+        rows: Summary rows.
+
+    Returns:
+        Unique model variant labels.
+    """
+    labels = []
+    seen = set()
+    for row in rows:
+        label = model_column_label(row)
+        if label not in seen:
+            labels.append(label)
+            seen.add(label)
+
+    return labels
+
+
+def perplexity_metric_label(eval_corpus: Any, metric_label: str) -> str:
+    """Build the first-column label for a perplexity table row.
+
+    Args:
+        eval_corpus: Evaluation corpus name.
+        metric_label: Human-readable metric label.
+
+    Returns:
+        Perplexity table row label.
+    """
+    if eval_corpus is None:
+        return metric_label
+
+    return f'{eval_corpus} {metric_label}'
+
+
+def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build a perplexity-by-model markdown table.
+
+    Args:
+        rows: Summary rows.
+
+    Returns:
+        Table rows and column names.
+    """
+    model_labels = sorted_variant_labels(rows)
+    eval_corpora = sorted(
+        {
+            row.get('eval_corpus')
+            for row in rows
+            if any(is_number(row.get(metric)) for metric, _ in PERPLEXITY_METRICS)
+        },
+        key=lambda value: str(value or ''),
+    )
+    table_rows = []
+
+    for eval_corpus in eval_corpora:
+        corpus_rows = [
+            row
+            for row in rows
+            if row.get('eval_corpus') == eval_corpus
+        ]
+        rows_by_model = {model_column_label(row): row for row in corpus_rows}
+        for metric, metric_label in PERPLEXITY_METRICS:
+            table_row = {
+                'perplexity_metric': perplexity_metric_label(eval_corpus, metric_label)
+            }
+            has_score = False
+            for model_label in model_labels:
+                value = rows_by_model.get(model_label, {}).get(metric)
+                table_row[model_label] = value
+                has_score = has_score or is_number(value)
+
+            if has_score:
+                table_rows.append(table_row)
+
+    return table_rows, ['perplexity_metric'] + model_labels
+
+
+def write_perplexity_markdown(
+    path: str, rows: list[dict[str, Any]], columns: list[str]
+) -> None:
+    """Write a rounded perplexity-by-model markdown table.
+
+    Args:
+        path: Destination markdown path.
+        rows: Perplexity table rows.
+        columns: Output columns.
+
+    Returns:
+        None.
+    """
+    with open(path, 'w', encoding='utf-8') as handle:
+        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        for row in rows:
+            values = []
+            for column in columns:
+                if column == 'perplexity_metric':
+                    value = str(row.get(column, '')).replace('|', '\\|')
+                else:
+                    value = format_benchmark_score(row.get(column))
+
+                values.append(value)
+
+            handle.write('| ' + ' | '.join(values) + ' |\n')
+
+
 def output_name_suffix(model_keys: tuple[str, ...]) -> str:
     """Build the default output filename suffix for analyzed models.
 
@@ -717,6 +1403,54 @@ def default_output_name(model_keys: tuple[str, ...], extension: str) -> str:
         Default model-scoped output filename.
     """
     return f'{SUMMARY_FILE_PREFIX}_{output_name_suffix(model_keys)}.{extension}'
+
+
+def default_benchmark_table_name(language: str) -> str:
+    """Build a default benchmark table filename.
+
+    Args:
+        language: Benchmark language filter.
+
+    Returns:
+        Default benchmark markdown filename.
+    """
+    if language == 'all':
+        return f'{BENCHMARK_TABLE_FILE_PREFIX}.md'
+
+    return f'{BENCHMARK_TABLE_FILE_PREFIX}_{language}.md'
+
+
+def default_language_average_table_name() -> str:
+    """Build a default language-average table filename.
+
+    Returns:
+        Default language-average markdown filename.
+    """
+    return f'{LANGUAGE_AVERAGE_TABLE_FILE_PREFIX}.md'
+
+
+def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
+    """Build a default perplexity table filename.
+
+    Args:
+        model_keys: Model keys passed to the analyzer.
+
+    Returns:
+        Default perplexity markdown filename.
+    """
+    return f'{PERPLEXITY_TABLE_FILE_PREFIX}.md'
+
+
+def has_multiple_models(rows: list[dict[str, Any]]) -> bool:
+    """Return whether rows contain more than one model key.
+
+    Args:
+        rows: Summary rows.
+
+    Returns:
+        True when at least two model keys are present.
+    """
+    return len({row.get('model_key') for row in rows}) > 1
 
 
 def analyze_results(
@@ -778,6 +1512,27 @@ def analyze_results(
     default=None,
     help='Markdown output filename.',
 )
+@click.option(
+    '--benchmark-markdown-name',
+    default=None,
+    help='Benchmark-by-model markdown output filename.',
+)
+@click.option(
+    '--benchmark-language',
+    default='all',
+    type=click.Choice(BENCHMARK_LANGUAGE_CHOICES),
+    help='Benchmark language to include in the comparison table.',
+)
+@click.option(
+    '--perplexity-markdown-name',
+    default=None,
+    help='Perplexity-by-model markdown output filename.',
+)
+@click.option(
+    '--language-average-markdown-name',
+    default=None,
+    help='Language-average benchmark markdown output filename.',
+)
 def main(
     model_keys: tuple[str, ...],
     evaluation_root: str,
@@ -785,6 +1540,10 @@ def main(
     output_dir: str,
     csv_name: str | None,
     markdown_name: str | None,
+    benchmark_markdown_name: str | None,
+    benchmark_language: str,
+    perplexity_markdown_name: str | None,
+    language_average_markdown_name: str | None,
 ) -> None:
     """Summarize available evaluation results.
 
@@ -795,6 +1554,10 @@ def main(
         output_dir: Analysis output directory.
         csv_name: Optional CSV output filename.
         markdown_name: Optional markdown output filename.
+        benchmark_markdown_name: Optional benchmark markdown output filename.
+        benchmark_language: Benchmark language to include.
+        perplexity_markdown_name: Optional perplexity markdown output filename.
+        language_average_markdown_name: Optional language-average output filename.
 
     Returns:
         None.
@@ -811,12 +1574,49 @@ def main(
     os.makedirs(output_dir, exist_ok=True)
     resolved_csv_name = csv_name or default_output_name(model_keys, 'csv')
     resolved_markdown_name = markdown_name or default_output_name(model_keys, 'md')
+    resolved_benchmark_markdown_name = (
+        benchmark_markdown_name or default_benchmark_table_name(benchmark_language)
+    )
     csv_path = os.path.join(output_dir, resolved_csv_name)
     markdown_path = os.path.join(output_dir, resolved_markdown_name)
+    benchmark_markdown_path = os.path.join(output_dir, resolved_benchmark_markdown_name)
     write_csv(csv_path, rows, columns)
     write_markdown(markdown_path, rows, columns)
+    benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
+    write_benchmark_markdown(
+        benchmark_markdown_path, benchmark_rows, benchmark_columns
+    )
+    resolved_language_average_markdown_name = (
+        language_average_markdown_name or default_language_average_table_name()
+    )
+    language_average_markdown_path = os.path.join(
+        output_dir, resolved_language_average_markdown_name
+    )
+    language_average_rows, language_average_columns = language_average_table(rows)
+    write_language_average_markdown(
+        language_average_markdown_path,
+        language_average_rows,
+        language_average_columns,
+    )
     print(csv_path)
     print(markdown_path)
+    print(benchmark_markdown_path)
+    print(language_average_markdown_path)
+    if has_multiple_models(rows):
+        resolved_perplexity_markdown_name = (
+            perplexity_markdown_name or default_perplexity_table_name(model_keys)
+        )
+        perplexity_markdown_path = os.path.join(
+            output_dir, resolved_perplexity_markdown_name
+        )
+        perplexity_rows, perplexity_columns = perplexity_table(rows)
+        write_perplexity_markdown(
+            perplexity_markdown_path, perplexity_rows, perplexity_columns
+        )
+        print(perplexity_markdown_path)
+    else:
+        print('[skip] perplexity comparison table requires multiple models')
+
     print(f'[done] wrote {len(rows)} row(s)')
 
 

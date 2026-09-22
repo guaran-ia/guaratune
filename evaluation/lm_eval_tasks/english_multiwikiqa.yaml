@@ -1,0 +1,23 @@
+task: english_multiwikiqa
+dataset_path: alexandrainst/multi-wiki-qa
+dataset_name: en
+test_split: train
+output_type: generate_until
+doc_to_text: "Use the passage to answer the question. Give only a short answer.\n\nTitle: {{title.strip()}}\n\nPassage: {{context.strip()}}\n\nQuestion: {{question.strip()}}\n\nAnswer:"
+doc_to_target: !function utils.doc_to_multiwikiqa_target
+generation_kwargs:
+  until:
+    - "\n"
+  do_sample: false
+  temperature: 0.0
+  max_gen_toks: 64
+process_results: !function utils.process_multiwikiqa_results
+metric_list:
+  - metric: exact_match
+    aggregation: mean
+    higher_is_better: true
+  - metric: f1
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

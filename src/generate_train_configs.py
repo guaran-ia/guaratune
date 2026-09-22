@@ -257,6 +257,9 @@ def training_config(
         config['lora_alpha'] = rank * alpha_multiplier
         config.pop('lora_alpha_multiplier', None)
 
+    if config.get('do_eval') and 'eval_dataset' not in config:
+        config['eval_dataset'] = f'{corpus}_validation'
+
     if 'cutoff_len' not in config:
         raise ValueError(
             f'Missing cutoff_len for {method} run. Set model.cutoff_len or '

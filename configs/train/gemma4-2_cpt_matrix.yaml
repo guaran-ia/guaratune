@@ -1,16 +1,16 @@
 generated_config_dir: configs/train/generated
-runs_root: outputs/train/gemma4_12b
+runs_root: outputs/train/gemma4_2b
 
 reporting:
   report_to: wandb
   wandb_project: guarania-models-cpt
-  wandb_run_group: gemma4_12b
+  wandb_run_group: gemma4_2b
   wandb_mode: online
   wandb_tags: gemma4,cpt,guarani,text-only
 
 model:
-  key: gemma4_12b
-  model_name_or_path: google/gemma-4-12B
+  key: gemma4_2b
+  model_name_or_path: google/gemma-4-E2B
   model_revision: main
   trust_remote_code: true
   cutoff_len: 2048

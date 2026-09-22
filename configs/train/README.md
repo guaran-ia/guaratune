@@ -58,7 +58,13 @@ profiles:
       - lora
     corpora:
       - C1_kuatia
-      - C2_kuatia_es20
+      - C2_kuatia_no_synthetic
+      - C3_kuatia_es20
+      - C4_kuatia_no_synthetic_es20
+      - C5_kuatia_en20
+      - C6_kuatia_no_synthetic_en20
+      - C7_kuatia_es10_en10
+      - C8_kuatia_no_synthetic_es10_en10
     lora_ranks:
       - 64
       - 128
@@ -73,3 +79,5 @@ python -m src.generate_train_configs --matrix configs/train/<new_model>_cpt_matr
 ```
 
 This writes model-scoped configs under `configs/train/generated/<profile>/<model_key>/`.
+
+Generated configs write training artifacts under `outputs/train/<model_key>/<profile>/`. Full CPT runs use `outputs/train/<model_key>/<profile>/full/<corpus>/<run_name>`, while LoRA runs use `outputs/train/<model_key>/<profile>/lora/rank_<rank>/<corpus>`.

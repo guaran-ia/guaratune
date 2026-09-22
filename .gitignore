@@ -121,10 +121,14 @@ ipython_config.py
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 
 # Generated CPT dataset artifacts
-data/processed/
+data/train/
 data/cache/
+data/evaluation/coreguapa*
 data/evaluation/perplexity/
-data/selections/*.selection.jsonl
+data/selections/*.selection.jsonl*
+data/source_revisions.lock.json
+data/manifests/
+
 outputs/evaluation/
 outputs/train/
 results/
@@ -187,4 +191,8 @@ cython_debug/
 .pypirc
 
 configs/train/generated
+configs/train/legacy
 configs/evaluation/generated
+configs/evaluation/legacy
+
+evaluation/lm_eval_tasks/legacy

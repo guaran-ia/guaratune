@@ -1,0 +1,25 @@
+task: guarani_flores200_eng_to_grn
+dataset_path: facebook/flores
+dataset_name: all
+test_split: devtest
+fewshot_split: dev
+output_type: generate_until
+target_delimiter: ''
+doc_to_text: "Translate the following English sentence into Guarani.\nEnglish: {{sentence_eng_Latn}}\nGuarani:"
+doc_to_target: "{{sentence_grn_Latn}}"
+generation_kwargs:
+  until:
+    - "\n"
+    - "</s>"
+  do_sample: false
+  temperature: 0.0
+  max_gen_toks: 256
+metric_list:
+  - metric: bleu
+    aggregation: bleu
+    higher_is_better: true
+  - metric: !function utils.chrf_plus_plus
+    aggregation: !function utils.aggregate_chrf_plus_plus
+    higher_is_better: true
+metadata:
+  version: 1.0

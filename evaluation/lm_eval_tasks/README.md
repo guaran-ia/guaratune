@@ -41,7 +41,7 @@ If the raw JSONL rows do not already match lm-eval's expected fields, add a prep
 process_docs: !function utils.process_new_task_docs
 ```
 
-For a plain perplexity task over a held-out JSONL file with a `text` column, use `loglikelihood_rolling`:
+For a plain perplexity task over a post-training evaluation JSONL file with a `text` column, use `loglikelihood_rolling`. The active Guarani perplexity task is `guarani_coreguapa_perplexity` and reads `data/evaluation/coreguapa_identified_all.jsonl`.
 
 ```yaml
 task: new_perplexity_task
@@ -49,7 +49,7 @@ dataset_path: json
 dataset_name: null
 dataset_kwargs:
   data_files:
-    test: data/evaluation/perplexity/<dataset>.jsonl
+    test: data/evaluation/<dataset>.jsonl
 test_split: test
 output_type: loglikelihood_rolling
 doc_to_text: ""
@@ -96,3 +96,7 @@ python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<config
 ```
 
 If the new task introduces metrics that are not accuracy or perplexity-like, review `src/analyze_eval_results.py` before using percentage improvement columns. The analyzer treats metrics containing `perplexity`, `bits_per_byte`, or `loss` as lower-is-better and treats other numeric metrics as higher-is-better.
+
+Instruction-following tasks such as IFEval should be placed in the evaluation matrix's `instruction` suite. Use `include_instruction_tasks` and `variant_overrides` in the matrix to decide which profiles and variant kinds receive those tasks.
+
+Tasks that execute code, such as HumanEval, require `confirm_run_unsafe_code: true` in the suite or generated config. Keep that option off for normal multiple-choice, QA, translation, and perplexity tasks.

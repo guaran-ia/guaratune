@@ -22,27 +22,86 @@ defaults:
   cache_requests: true
   log_samples: false
   show_config: true
+  include_instruction_tasks: false
   limit: null
 
 suites:
   global_mmlu_lite:
     tasks:
       - guarani_global_mmlu_lite
+      - english_global_mmlu_lite
+      - spanish_global_mmlu_lite
+    log_samples: true
+
+  belebele:
+    tasks:
+      - guarani_2m_belebele
+      - english_2m_belebele
+      - spanish_2m_belebele
+    log_samples: true
+
+  flores200:
+    tasks:
+      - guarani_flores200_eng_to_grn
+      - guarani_flores200_grn_to_eng
+      - guarani_flores200_grn_to_spa
+      - guarani_flores200_spa_to_grn
+    log_samples: true
+
+  multiwikiqa:
+    tasks:
+      - guarani_multiwikiqa
+      - english_multiwikiqa
+      - spanish_multiwikiqa
+    log_samples: true
+
+  english_benchmarks:
+    tasks:
+      - arc_easy
+      - arc_challenge
+      - piqa
+      - hellaswag
+      - winogrande
+      - xnli_en
+      - xstorycloze_en
+      - mgsm_direct_en
+      - bbh
+      - gpqa_diamond_zeroshot
+      - truthfulqa_mc1
+      - humaneval
+    log_samples: true
+    confirm_run_unsafe_code: true
+
+  spanish_benchmarks:
+    tasks:
+      - spanish_arc_easy
+      - spanish_arc_challenge
+      - global_piqa_nonparallel_cloze_spa_latn_spai
+      - hellaswag_es
+      - copa_es
+      - xstorycloze_es
+      - truthfulqa_es_mc1
+      - xnli_es
+      - mgsm_direct_es_spanish_bench
+      - spanish_gpqa_diamond
     log_samples: true
 
   perplexity:
     tasks:
-      - guarani_cpt_perplexity_c1_kuatia
-      - guarani_cpt_perplexity_c2_kuatia_es20
-      - guarani_cpt_perplexity_c3_kuatia_en20
-      - guarani_cpt_perplexity_c4_kuatia_es10_en10
+      - guarani_coreguapa_perplexity
     log_samples: false
+
+  instruction:
+    tasks:
+      - ifeval
+      - ifeval_es
+    log_samples: true
 
 profiles:
   smoke:
     suites:
       - global_mmlu_lite
-    corpora:
+    training_corpora:
       - C1_kuatia
     include_base: true
     include_full: false
@@ -55,12 +114,22 @@ profiles:
   experiments:
     suites:
       - global_mmlu_lite
+      - belebele
+      - flores200
+      - multiwikiqa
+      - english_benchmarks
+      - spanish_benchmarks
       - perplexity
-    corpora:
+      - instruction
+    training_corpora:
       - C1_kuatia
-      - C2_kuatia_es20
-      - C3_kuatia_en20
-      - C4_kuatia_es10_en10
+      - C2_kuatia_no_synthetic
+      - C3_kuatia_es20
+      - C4_kuatia_no_synthetic_es20
+      - C5_kuatia_en20
+      - C6_kuatia_no_synthetic_en20
+      - C7_kuatia_es10_en10
+      - C8_kuatia_no_synthetic_es10_en10
     include_base: true
     include_full: true
     lora_ranks:

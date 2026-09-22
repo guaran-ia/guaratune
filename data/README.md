@@ -1,59 +1,57 @@
 # Add a Dataset
 
-New datasets can be added to the dataset configuration `configs/data/gemma4_cpt.yaml`. The file has three related sections:
+New source datasets are registered in `configs/data/gemma4_cpt.yaml`. The active data configuration is config-backed: final corpora are declared in the tracked YAML config, and `src.prepare_data` generates manifests, train files, validation files, and selection ledgers locally during preparation.
 
-- `sources`: Hugging Face datasets or Parquet-backed dataset repositories to read from.
-- `components`: reusable document selections built from one source or from another component.
-- `corpora`: final CPT dataset configurations written under `data/processed/` and `data/evaluation/perplexity/`.
+The relevant sections are:
 
-First, add a source under `sources`. Use `loader: datasets` for normal Hugging Face datasets that work with `datasets.load_dataset(..., streaming=True)`. Use `loader: hf_parquet` when the source should be read directly from Hugging Face Parquet files under a repository path such as a language/config directory.
+- `sources`: Hugging Face datasets or Hugging Face Parquet-backed repositories.
+- `corpora`: final CPT dataset configurations, including Kuatia synthetic-data handling and optional augmentation ratios.
+- `data/kuatia_config.yaml`: Kuatia corpus split policy, including train, validation, and synthetic corpus membership.
+- `data/manifests/*.manifest.json`: generated run summaries and accounting files.
+- `data/selections/*.selection.jsonl.gz`: local generated document-selection ledgers for Kuatia and FineWeb-Edu additions.
+
+To add a new source, first add it under `sources`:
 
 ```yaml
 sources:
   new_dataset:
     name: new_dataset
     dataset: organization/dataset-name
-    config: null
-    split: train
-    text_column: text
-    id_column: id
+    version: null
     loader: datasets
-    revision: null
+    requested_revision: null
+    commit_id: <resolved_hugging_face_commit>
+    selection_path: data/selections/new_dataset.selection.jsonl.gz
 ```
 
-Set `revision` to a branch, tag, or commit if a specific source version should be requested. When `revision: null`, preparation resolves the current default revision and records the immutable commit in `data/source_revisions.lock.json`.
+Use `loader: datasets` for sources that work through `datasets.load_dataset(...)`. Use `loader: hf_parquet` when the source should be read directly from Hugging Face Parquet shards under a repository path or language/config directory. `commit_id` pins the exact source revision used for reproducibility.
 
-Then add a component under `components`. The common options are:
-
-- `kind: all`: include all documents from a source.
-- `kind: sample`: make a deterministic document-level sample from a source.
-- `kind: fixed_subsample`: make a deterministic prefix-sized subsample from an existing component.
-
-For a sampled component, `target_ratio_of_kuatia` is relative to the Kuatia token count. For example, `0.25` means the component targets 25% as many tokens as Kuatia. Because the final corpus target is 80% Kuatia and 20% added data, this is the ratio used by the existing `C2` and `C3` components.
-
-```yaml
-components:
-  new_dataset_20:
-    kind: sample
-    source: new_dataset
-    target_ratio_of_kuatia: 0.25
-```
-
-Finally, include the component in a final corpus under `corpora`. If the new corpus should keep Kuatia at 80% of the total, set `kuatia_share_target: 0.8` and add Kuatia plus the new component.
+Then add a corpus entry to `configs/data/gemma4_cpt.yaml`:
 
 ```yaml
 corpora:
-  C5_kuatia_new20:
-    kuatia_share_target: 0.8
-    components:
-      - kuatia
-      - new_dataset_20
+  C9_kuatia_new20:
+    kuatia:
+      include_synthetic: true
+    augmentations:
+      - source: new_dataset
+        ratio: 0.2
+        ratio_reference: C1_kuatia
+        train_selection_path: data/selections/C9_kuatia_new20.new_dataset.train.selection.jsonl.gz
+        validation_selection_path: data/selections/C9_kuatia_new20.new_dataset.validation.selection.jsonl.gz
 ```
 
-After editing the config, regenerate the data artifacts:
+Regenerate the data artifacts:
 
 ```bash
 python -m src.prepare_data --config configs/data/gemma4_cpt.yaml --overwrite
 ```
 
-This updates the processed corpora, held-out perplexity splits, selection ledgers, manifests, source revision lock, and `data/dataset_info.json`. The new corpus name must also be added to any training and evaluation matrices that should use it, for example the `profiles.*.corpora` lists in `configs/train/gemma4-12_cpt_matrix.yaml`, `configs/train/gemma4-26_cpt_matrix.yaml`, `configs/evaluation/gemma4-12_eval_matrix.yaml`, and `configs/evaluation/gemma4-26_eval_matrix.yaml`. After updating those matrices, regenerate the train and evaluation configs with `src.generate_train_configs` and `src.generate_eval_configs`.
+This writes train corpora, validation splits, generated manifests under `data/manifests/`, source component pools under `data/train/components/`, local source revision locks, local selection ledgers, and `data/dataset_info.json`.
+
+The new corpus name must also be added to any training matrix profile that should train on it, for example `profiles.experiments.corpora` in `configs/train/gemma4-12_cpt_matrix.yaml`. For evaluation, add the same corpus name to `profiles.experiments.training_corpora` in `configs/evaluation/gemma4-12_eval_matrix.yaml` so trained variants can be evaluated. Then regenerate train and evaluation configs:
+
+```bash
+python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
+python -m src.generate_eval_configs --matrix configs/evaluation/gemma4-12_eval_matrix.yaml --overwrite
+```

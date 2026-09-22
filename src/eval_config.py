@@ -182,7 +182,7 @@ def write_results(output_path: str, results: dict[str, Any]) -> None:
             )
 
 
-def run_evaluation(config: dict[str, Any]) -> None:
+def do_run_evaluation(config: dict[str, Any]) -> None:
     """Run one lm-evaluation-harness config through the Python API.
 
     Args:
@@ -193,10 +193,17 @@ def run_evaluation(config: dict[str, Any]) -> None:
     """
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
+    tasks = config.get('tasks', [])
+    if not isinstance(tasks, list):
+        raise ValueError('tasks must be a list.')
+    if not tasks:
+        print('[skip] no evaluation tasks configured', flush=True)
+        return
+
     results = lm_eval.simple_evaluate(
         model=config['model'],
         model_args=config.get('model_args'),
-        tasks=config['tasks'],
+        tasks=tasks,
         num_fewshot=config.get('num_fewshot'),
         batch_size=config.get('batch_size'),
         max_batch_size=config.get('max_batch_size'),
@@ -227,6 +234,19 @@ def run_evaluation(config: dict[str, Any]) -> None:
         write_results(str(config['output_path']), results)
 
 
+def run_evaluation(config_path: str) -> None:
+    """Run one lm-evaluation-harness config through the Python API.
+
+    Args:
+        config_path: Path to the evaluation config file.
+    """
+    require_lm_eval()
+    require_evaluation_inputs(config_path)
+    config = load_yaml(config_path)
+    prepare_environment(config)
+    do_run_evaluation(config)
+
+
 @click.command(
     context_settings={'show_default': True},
     help='Run one generated lm-evaluation-harness config.',
@@ -246,7 +266,7 @@ def main(config_path: str) -> None:
         require_evaluation_inputs(config_path)
         config = load_yaml(config_path)
         prepare_environment(config)
-        run_evaluation(config)
+        do_run_evaluation(config)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
 

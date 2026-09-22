@@ -1,0 +1,22 @@
+task: spanish_arc_easy
+dataset_path: BSC-LT/arc_es
+dataset_name: ARC_Easy_es
+test_split: validation
+output_type: multiple_choice
+process_docs: !function utils.process_spanish_arc_docs
+doc_to_text: "{{question.strip()}}\nA. {{choices[0]}}\nB. {{choices[1]}}\nC. {{choices[2]}}\nD. {{choices[3]}}\nRespuesta:"
+doc_to_choice:
+  - A
+  - B
+  - C
+  - D
+doc_to_target: gold
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0
