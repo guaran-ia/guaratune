@@ -17,34 +17,36 @@
 ## Overview
 
 This repository contains the code, data, and configurations developed to
-conduct both full and LoRA **continual pretraining (CPT)** on state-of-the-art 
-open-source base models (check [supported models](#supported-models)). 
-
-Training is based on a composition of three datasets: [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia), a Guarani/Jopara-based corpus created by the Guarania project; [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), a collection of high-quality educational web pages developed by Hugging Face; and a Spanish version of [FineWeb-Edu](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated), automatically translated by the [HPLT](https://hplt-project.org) project.
-
-Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the evaluation is 
-based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
+conduct both full and LoRA **continued pre-training (CPT)** of state-of-the-art 
+open-source base models (check [supported models](#supported-models)) on the 
+[Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia) corpus, which is 
+a Guarani/Jopara-based corpus created by the Guarania project.
 
 ### Pipeline
 
-The full training pipeline consists of three steps:
+The full training pipeline consists of four steps:
 
 1. Data preparation
 2. CPT execution
 3. Model evaluation
+4. Performance analysis
 
 Before starting, follow the installation instructions below.
 
 ### Supported Models
 
-The active checked-in training and evaluation matrices target Gemma 4 12B. New models can be added by following the instructions described in [configs/train/README.md](configs/train/README.md) and [configs/evaluation/README.md](configs/evaluation/README.md).
+The active checked-in training and evaluation matrices target Gemma 4 12B. New models can be added by following the instructions described in [configs/train/README.md](configs/train/README.md).
 
 | Model                        | Parameters | Minimum GPU Memory |
 | ---------------------------- | ---------- | ------------------ | 
+| google/gemma-4-E2B           | 2B         | ~4 GB (bf16)       |
+| google/gemma-4-E4B           | 4B         | ~8 GB (bf16)       |
 | google/gemma-4-12B           | 12B        | ~24 GB (bf16)      |
 
 ## 0. Installation
 
+Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the 
+evaluation is based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness). 
 Follow the steps below to install the project dependencies.
 
 > [!Note]
@@ -68,9 +70,11 @@ pip install -r requirements/metrics.txt
 ```
 
 > [!Note]
-> Keep the local `LlamaFactory/` checkout at the project root. Some training matrices may reference files under `LlamaFactory/examples/`, for example DeepSpeed configs.
+> Keep the local `LlamaFactory/` checkout at the project root. Some training matrices 
+> may reference files under `LlamaFactory/examples/`, for example DeepSpeed configs.
 
-**Optional.** If a training matrix enables DeepSpeed for full-parameter multi-GPU training, install LlamaFactory's DeepSpeed dependencies on the GPU VM:
+**Optional.** If a training matrix enables DeepSpeed for full-parameter multi-GPU 
+training, install LlamaFactory's DeepSpeed dependencies on the GPU VM:
 
 ```bash
 cd LlamaFactory
@@ -109,37 +113,39 @@ python -c "import lm_eval; print('lm_eval ok')"
 
 ## 1. Data preparation
 
-> [!Note]
-> The default Spanish source is [Helsinki-NLP](https://huggingface.co/datasets/Helsinki-NLP/fineweb-edu-translated) with version/config path `spa` and reads directly from the Hugging Face Parquet shards. To use a smaller version, like the one produced by [Token Haven](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), edit the Spanish source block in `configs/data/gemma4_cpt.yaml`:
+To avoid "catastrophic forgetting" where the model forgets its old knowledge as 
+it learns new things, CPT is proposed to be conducted through several data mixture
+configurations that combine Guarani with Spanish and English. A refined 
+version of [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), 
+the collection of high-quality educational web pages developed by Hugging Face, is 
+used to include English in the training process. Similarly, a refined version of the 
+Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), 
+is used in some configurations of the training set.
 
-```yaml
-fineweb_edu_es:
-  name: fineweb_edu_es
-  dataset: TokenHaven/FineWeb-Edu-Spanish
-  loader: datasets
-  version: null
-  requested_revision: null
-  commit_id: <resolved_hugging_face_commit>
-  selection_path: data/selections/fineweb_edu_es20.selection.jsonl.gz
-```
+The current data mixture configurations are:
 
-The active data preparation flow is config-backed. Kuatia train and validation splits are defined in `data/kuatia_config.yaml` to avoid train/validation leakage, and each final corpus is declared in `configs/data/gemma4_cpt.yaml`.
-
-The current CPT corpus configurations are:
-
-- `C1_kuatia`: Kuatia with synthetic corpora included.
-- `C2_kuatia_no_synthetic`: Kuatia excluding synthetic corpora.
+- `C1_kuatia`: Full Kuatia.
+- `C2_kuatia_no_synthetic`: Kuatia but excluding synthetic documents.
 - `C3_kuatia_es20`: `C1` plus Spanish FineWeb-Edu at 20% of `C1` tokens.
-- `C4_kuatia_no_synthetic_es20`: `C2` plus Spanish FineWeb-Edu at 20% of `C1` tokens.
+- `C4_kuatia_no_synthetic_es20`: `C2` plus Spanish FineWeb-Edu at 20% of `C2` tokens.
 - `C5_kuatia_en20`: `C1` plus English FineWeb-Edu at 20% of `C1` tokens.
-- `C6_kuatia_no_synthetic_en20`: `C2` plus English FineWeb-Edu at 20% of `C1` tokens.
+- `C6_kuatia_no_synthetic_en20`: `C2` plus English FineWeb-Edu at 20% of `C2` tokens.
 - `C7_kuatia_es10_en10`: `C1` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
-- `C8_kuatia_no_synthetic_es10_en10`: `C2` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
+- `C8_kuatia_no_synthetic_es10_en10`: `C2` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C2` tokens.
 
-FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. The configured percentages are approximate token proportions: the sampler keeps complete documents and stops after reaching the requested proportion, so the final token count can be slightly above the requested amount. Train and validation FineWeb-Edu selections are stored separately so the same selected document is not used in both splits.
+Kuatia train and validation splits are pre-defined in `data/kuatia_config.yaml` to 
+avoid train/validation leakage, and each final corpus is declared in 
+`configs/data/gemma4_cpt.yaml`.
+
+FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. 
+The configured percentages are approximate token proportions: the sampler keeps complete 
+documents and stops after reaching the requested proportion, so the final token count can 
+be slightly above the requested amount. Train and validation FineWeb-Edu selections are 
+stored separately so the same selected document is not used in both splits.
 
 > [!IMPORTANT]  
-> To create the dataset configurations, run the following command:
+> The data preparation procedure is config-backed and can be executed by running 
+> the following command:
 
 ```bash
 python -m src.prepare_data --config configs/data/gemma4_cpt.yaml --overwrite
@@ -168,40 +174,47 @@ This writes:
 - `data/manifests/*.manifest.json`
 - `data/dataset_info.json`
 
-Each final corpus is split into a training file under `data/train/` and a validation file under `data/validation/`. With the active config-backed flow, train/validation membership comes from `data/kuatia_config.yaml` and augmentation ratios from `configs/data/gemma4_cpt.yaml`. `src.prepare_data` regenerates local manifests, source selection ledgers under `data/selections/`, and source component pools under `data/train/components/` before final corpora are assembled, so stale local files are not reused. Legacy component-style configs can still use deterministic held-out splits.
+Each final corpus is split into a training file under `data/train/` and a validation 
+file under `data/validation/`. With the active config-backed procedur, train/validation 
+membership comes from `data/kuatia_config.yaml` and augmentation ratios from 
+`configs/data/gemma4_cpt.yaml`. 
 
-Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, seed, dataset sources, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. The source revision lock records the exact Hugging Face dataset commits used by a preparation run. Generated manifest files include the config path plus train/validation corpus and component accounting for each generated JSONL file.
+The script `src.prepare_data` regenerates local manifests, source selection ledgers 
+under `data/selections/`, and source component pools under `data/train/components/` 
+before final corpora are assembled.
 
-> [!NOTE]
-> The generated corpora under `data/train/`, generated validation splits under `data/validation/`, manifests, source revision lock, and selection ledgers are ignored by Git. To reconstruct them from tracked config files and pinned source metadata, use:
-
-```bash
-python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml --overwrite
-```
-
-For config-backed data preparation, reconstruction reads `configs/data/gemma4_cpt.yaml` and `data/kuatia_config.yaml`, regenerates `data/manifests/*.manifest.json`, `data/source_revisions.lock.json`, and `data/selections/*.selection.jsonl.gz`, and then rebuilds train and validation files. If any pinned Hugging Face dataset revision is no longer accessible, reconstruction stops instead of falling back to the latest dataset version.
-
-The `data/validation/` files are reserved for in-training validation. Post-training evaluation inputs, including Global-MMLU-Lite and perplexity evaluation sets, live under `data/evaluation/`.
+Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, 
+seed, dataset sources, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. 
+The source revision lock records the exact Hugging Face dataset commits used by a 
+preparation run. Generated manifest files include the config path plus train/validation 
+corpus and component accounting for each generated JSONL file.
 
 > [!NOTE]
 > Token counts are computed with the tokenizer configured in `configs/data/gemma4_cpt.yaml`.
 
-The remaining optional CLI flags are operational or debug controls: `--output-dir`, `--overwrite`, `--reconstruct`, `--preflight-only`, `--max-kuatia-docs`, `--target-scale`, and `--allow-incomplete-samples`.
+### CLI reference
 
-> [!Note]
-> New datasets can be added by following the instructions in [data/README.md](data/README.md), and new data configurations can be included after implementing the steps listed in [configs/data/README.md](configs/data/README.md).
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--output-dir` | `None` | Override the output directory defined in the data config. |
+| `--overwrite` | `False` | Replace existing generated data artifacts. |
+| `--preflight-only` | `False` | Print source and corpus metadata and exit without writing artifacts. |
 
-## 2. Continual Pre-Training (CPT)
+### Add new datasets
+
+New datasets can be added by following the instructions in [data/README.md](data/README.md), 
+and new data configurations can be included after implementing the steps listed in 
+[configs/data/README.md](configs/data/README.md).
+
+## 2. Continued Pre-Training (CPT)
 
 ### Prepare CPT
-
-The commands below assume CPT on `Gemma 4 12B`.
 
 > [!Important]
 > To prepare CPT, generate the training configurations from the target model matrix by running:
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --matrix configs/train/<model_key>_cpt_matrix.yaml --overwrite
 ```
 
 This creates:
@@ -215,21 +228,40 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 - LoRA CPT over the same corpora with ranks `64`, `128`, `256`, and `512`
 
 > [!Note]
-> Training configs report to [Weights & Biases](https://wandb.ai) by default through `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are generated into `configs/train/generated/wandb.env`. The project is intentionally broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in `.env` to authenticate into Weights & Biases before training. The launcher sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` for disconnected runs, then sync later with `wandb sync`.
+> Training configs report to [Weights & Biases](https://wandb.ai) by default through 
+> `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are 
+> generated into `configs/train/generated/wandb.env`. The project is intentionally 
+> broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in 
+> `.env` to authenticate into Weights & Biases before training. The launcher 
+> sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. 
+> Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` 
+> for disconnected runs, then sync later with `wandb sync`.
 
->[!Note]
-> New training configurations can be added by following the instructions presented in [configs/train/README.md](configs/train/README.md).
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--matrix` | Required | Training matrix YAML file used to generate LLaMA Factory configs. |
+| `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
+| `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
 
 
-### Run CPT
+#### Add new training configuration
 
-After preparing the CPT configuration, CPT experiments can be run both individually or by model-scoped profile. 
+New training configurations can be added by following the instructions presented 
+in [configs/train/README.md](configs/train/README.md).
+
+
+### Run CPT through profile
+
+After preparing the CPT configuration, CPT experiments can be run both individually 
+or by model-scoped profile. 
 
 > [!Important]
 > To execute an entire profile for one model, run
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b
+python -m src.train_profile experiments --model <model_key>
 ```
 
 Generated profile runs can skip specific configs by indicating the: 
@@ -237,44 +269,69 @@ Generated profile runs can skip specific configs by indicating the:
 - Filename stem
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_C1_kuatia
+python -m src.train_profile experiments --model <model_key> --exclude <model_key>_full_C1_kuatia
 ```
 
 - Filename
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude gemma4_12b_full_C1_kuatia.yaml
+python -m src.train_profile experiments --model <model_key> --exclude <model_key>_full_C1_kuatia.yaml
 ```
 
 - Full path
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude configs/train/generated/experiments/gemma4_12b/gemma4_12b_full_C1_kuatia.yaml
+python -m src.train_profile experiments --model <model_key> --exclude configs/train/generated/experiments/<model_key>/<model_key>_full_C1_kuatia.yaml
 ```
 
 - Glob pattern:
 
 ```bash
-python -m src.train_profile experiments --model gemma4_12b --exclude 'gemma4_12b_full_*'
+python -m src.train_profile experiments --model <model_key> --exclude '<model_key>_full_*'
 ```
+
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `profile` | `experiments` | Generated training profile to run. |
+| `--model` | `None` | Model key to run inside the generated profile, for example `<model_key>`. Required when a profile contains multiple model directories. |
+| `--env-file` | `.env` | Local secret environment file forwarded to each training run. |
+| `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after each training run to save disk space. |
+
+### Run CPT through config
 
 Alternatively, an individual CPT experiment can be run by executing:
 
 ```bash
-python -m src.train_config configs/train/generated/experiments/gemma4_12b/gemma4_12b_full_C1_kuatia.yaml
+python -m src.train_config configs/train/generated/experiments/<model_key>/<model_key>_full_C1_kuatia.yaml
 ```
 
 `train_config` can also run a group of configs by passing a quoted glob pattern:
 
 ```bash
-python -m src.train_config 'configs/train/generated/experiments/gemma4_12b/gemma4_12b_lora_r64_*'
+python -m src.train_config 'configs/train/generated/experiments/<model_key>/<model_key>_lora_r64_*'
 ```
 
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `config_patterns` | Required | One or more generated LLaMA Factory training config paths or glob patterns. |
+| `--env-file` | `.env` | Local secret environment file containing values such as `HF_TOKEN` and `WANDB_API_KEY`. |
+| `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after training completes to save disk space. |
+
 > [!Tip]
-> For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment variables before launching: `CUDA_VISIBLE_DEVICES=0,1,2,3 FORCE_TORCHRUN=1`
+> For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment 
+> variables before launching: `CUDA_VISIBLE_DEVICES=0,1,2,3 FORCE_TORCHRUN=1`
 
 > [!Note]
-> Tune the target model matrix under `configs/train/` for the actual VM memory before long runs. Set `model.cutoff_len` as the model-level default, or override it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, and the full/LoRA learning rates.
+> Tune the target model matrix under `configs/train/` for the actual VM memory 
+> before long runs. Set `model.cutoff_len` as the model-level default, or override 
+> it per method with `defaults.full.cutoff_len` or `defaults.lora.cutoff_len`. The 
+> other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, 
+> and the full/LoRA learning rates.
 
 ## 3. Evaluation
 
@@ -298,31 +355,67 @@ This writes config files under:
 > - `guarani_coreguapa_perplexity` reads `data/evaluation/coreguapa_identified_all.jsonl`
 > - Guarani, English, and Spanish benchmark tasks are grouped in the evaluation matrix suites.
 
-Evaluation results, samples, and request caches are stored under `outputs/evaluation/`. The launchers use the lm-evaluation-harness Python API.
+Evaluation results, samples, and request caches are stored under `outputs/evaluation/`. 
 
-### Run evaluation
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--matrix` | Required | Evaluation matrix YAML file used to generate lm-evaluation-harness configs. |
+| `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
+| `--overwrite` | `False` | Replace existing generated YAML files. |
+
+### Run evaluation from config
 
 > [!Important]
 > To run an evaluation from a config, execute:
 
 ```bash
-python -m src.eval_config configs/evaluation/generated/smoke/gemma4_12b/gemma4_12b_base_global_mmlu_lite.yaml
+python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_key>_base_global_mmlu_lite.yaml
 ```
+
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
+
+### Run evaluation from profile
 
 Alternatively, a full generated profile can be executed:
 
 ```bash
-python -m src.eval_profile experiments --model gemma4_12b
+python -m src.eval_profile experiments --model <model_key>
 ```
 
 Generated evaluation profiles also support exclusions:
 
 ```bash
-python -m src.eval_profile experiments --model gemma4_12b --exclude 'gemma4_12b_full_C1_kuatia_*'
+python -m src.eval_profile experiments --model <model_key> --exclude '<model_key>_full_C1_kuatia_*'
 ```
 
 > [!Note]
-> The generated experiment profile evaluates the base model, full CPT checkpoints, and LoRA adapters against the benchmark suites listed in `configs/evaluation/gemma4-12_eval_matrix.yaml`. Instruction-following tasks live in the `instruction` suite and are controlled from the matrix through `include_instruction_tasks` and `variant_overrides`. The full and LoRA configs expect training outputs under the model-specific `outputs/train/<model_key>/experiments` directory.
+> The generated experiment profile evaluates the base model, full CPT checkpoints, 
+> and LoRA adapters against the benchmark suites listed in 
+> `configs/evaluation/<model_key>_matrix.yaml`. 
+> 
+> Instruction-following tasks live in the `instruction` suite and are controlled 
+> from the matrix through `include_instruction_tasks` and `variant_overrides`. 
+> 
+> The full and LoRA configs expect training outputs under the model-specific 
+> `outputs/train/<model_key>/experiments` directory.
+
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `profile` | `experiments` | Generated evaluation profile to run. |
+| `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
+| `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+
+#### Add evaluation
+
+Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation configurations. Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md).
 
 ### Analyze evaluation results
 
@@ -330,29 +423,49 @@ python -m src.eval_profile experiments --model gemma4_12b --exclude 'gemma4_12b_
 > After evaluation runs finish, summarize all available results for one or more models:
 
 ```bash
-python -m src.analyze_eval_results --model gemma4_12b --model another_model_key --profile experiments
+python -m src.analyze_eval_results --model <model_key> --model another_model_key --profile experiments
 ```
 
 The benchmark comparison table can be restricted to one evaluation language:
 
 ```bash
-python -m src.analyze_eval_results --model gemma4_12b --profile experiments --benchmark-language en
+python -m src.analyze_eval_results --model <model_key> --profile experiments --benchmark-language en
 ```
 
-The analyzer writes:
+The analyzer produces:
 
-- `results/evaluation_summary_gemma4_12b.csv` for one model
+- `results/evaluation_summary_<model_key>.csv` for one model
 - `results/evaluation_summary_combined_<model_keys>.csv` for multiple models
 - matching `.md` files with the same filename stem
 - `results/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
 - `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
 - `results/evaluation_perplexity_table.md` when multiple models are analyzed, a cross-model perplexity comparison table with rounded values
 
-The summary has one row per model variant and evaluated corpus, including `base` when available. The `corpus` column identifies the training corpus configuration, while `eval_corpus` identifies the post-training corpus used for perplexity evaluation when the task name encodes one. Metric columns include benchmark accuracy, F1, exact match, translation, instruction-following, code, and perplexity metrics, plus percentage improvement versus the model's base evaluation when base results exist. Perplexity metrics are also compared across models in `results/evaluation_perplexity_table.md` when multiple models are analyzed.
+The summary has one row per model variant and evaluated corpus, including `base` 
+when available. The `corpus` column identifies the training corpus configuration, 
+while `eval_corpus` identifies the post-training corpus used for perplexity evaluation 
+when the task name encodes one. Metric columns include benchmark accuracy, F1, 
+exact match, translation, instruction-following, code, and perplexity metrics, 
+plus percentage improvement versus the model's base evaluation when base results 
+exist. Perplexity metrics are also compared across models in 
+`results/evaluation_perplexity_table.md` when multiple models are analyzed.
 
-> [!Note]
-> Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation configurations. Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md).
+#### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--model` | Required | Model key to analyze. Repeat the option to analyze multiple models. |
+| `--evaluation-root` | `outputs/evaluation` | Root directory containing evaluation outputs. |
+| `--profile` | All profiles | Evaluation profile to include. Repeat the option to include multiple profiles. |
+| `--output-dir` | `results` | Directory where analysis tables are written. |
+| `--csv-name` | Auto-generated | CSV output filename. |
+| `--markdown-name` | Auto-generated | Markdown summary output filename. |
+| `--benchmark-markdown-name` | Auto-generated | Benchmark-by-model markdown output filename. |
+| `--benchmark-language` | `all` | Benchmark language to include in the comparison table. Supported values: `all`, `en`, `es`, `gn`. |
+| `--perplexity-markdown-name` | Auto-generated | Perplexity-by-model markdown output filename. |
+| `--language-average-markdown-name` | Auto-generated | Language-average benchmark markdown output filename. |
 
 ## License
 
-This project is licensed under the GNU GPLv3 License. Model weights are subject to their respective licenses (Gemma 4).
+This project is licensed under the GNU GPLv3 License. Model weights and corpus 
+documentsare subject to their respective licenses.
