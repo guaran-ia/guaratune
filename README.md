@@ -48,7 +48,7 @@ Gemma 4 variants.
 > New models can be added by following the instructions described in 
 > [configs/train/README.md](configs/train/README.md).
 
-## 0. Installation
+## Installation
 
 Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the 
 evaluation is based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness). 
@@ -116,7 +116,59 @@ llamafactory-cli --help
 python -c "import lm_eval; print('lm_eval ok')"
 ```
 
-## 1. Data preparation
+## Quick start (recommended)
+
+Run the full CPT pipeline, including data checks, CPT config generation, training, 
+evaluation, and result analysis, by executing the following command.
+
+```bash
+scripts/run_pipeline.sh --model <model_key>
+```
+
+### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--model MODEL_KEY` | Required | Model key declared in `configs/train/*_cpt_matrix.yaml`. |
+| `--profile PROFILE` | `experiments` | Training and evaluation profile to generate and run. |
+| `--data DATA_CONFIG` | All data configurations | Data configuration to run, for example `C1` or `C1_kuatia`. Repeat to run multiple data configurations. |
+| `--corpus DATA_CONFIG` | All data configurations | Alias for `--data`. |
+| `--config DATA_CONFIG` | All data configurations | Alias for `--data`. |
+| `--data-config-file PATH` | `configs/data/gemma4_cpt.yaml` | Data preparation config file used to resolve corpora and prepare missing data artifacts. |
+| `--method METHOD` | All CPT methods | CPT method to run. Supported forms include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, and quoted forms such as `"lora 64"`. Repeat to run multiple methods. |
+| `--eval-matrix PATH` | Auto-detected by model key | Evaluation matrix file. When omitted, the script finds the matrix in `configs/evaluation/*_eval_matrix.yaml` whose `model.key` matches `--model`. |
+| `--eval-suite SUITE` | All evaluation suites | Evaluation suite to run, for example `perplexity` or `global_mmlu_lite`. Repeat to run multiple suites. |
+| `--no-eval-base` | `False` | Exclude base-model evaluations from the selected evaluation configs. |
+| `--skip-evaluation` | `False` | Skip evaluation config generation and execution. |
+| `--skip-analysis` | `False` | Skip evaluation result analysis. |
+| `--benchmark-language LANG` | `all` | Benchmark language for the comparison table produced by `src.analyze_eval_results`. Supported values are defined by that script. |
+| `--env-file PATH` | `.env` | Local secret env file forwarded to training through `src.train_config`. |
+| `--cleanup-optimizers BOOL` | `true` | Pass optimizer cleanup setting to `src.train_config`. |
+| `--force-data-prep` | `False` | Run data preparation even if required artifacts already exist. |
+| `--no-overwrite` | `False` | Do not overwrite generated training or evaluation configs during preparation. |
+| `--dry-run` | `False` | Print selected training configs without launching training, evaluation, or analysis. |
+| `-h`, `--help` | `False` | Show script help and exit. |
+
+### Examples
+
+To run only selected configurations:
+
+```bash
+scripts/run_pipeline.sh --model <model_key> --data C1 --method full
+scripts/run_pipeline.sh --model <model_key> --data C1 --data C2 --method lora64 --method lora512
+scripts/run_pipeline.sh --model gemma4_4b --data C1 --data C2 --method lora64 --method lora512
+scripts/run_pipeline.sh --model gemma4_12b --data C1 --method full --eval-suite perplexity
+```
+
+Supported method values include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, 
+and quoted forms such as `"lora 64"`.
+
+## Step by step execution
+
+If you prefer greater control over each step of the pipeline, you can also run it 
+step by step.
+
+### 1. Data preparation
 
 To avoid "catastrophic forgetting" where the model forgets its old knowledge as 
 it learns new things, CPT is proposed to be conducted through several data mixture
@@ -197,7 +249,7 @@ corpus and component accounting for each generated JSONL file.
 > [!NOTE]
 > Token counts are computed with the tokenizer configured in `configs/data/gemma4_cpt.yaml`.
 
-### CLI reference
+#### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -205,21 +257,21 @@ corpus and component accounting for each generated JSONL file.
 | `--overwrite` | `False` | Replace existing generated data artifacts. |
 | `--preflight-only` | `False` | Print source and corpus metadata and exit without writing artifacts. |
 
-### Add new datasets
+#### Add new datasets
 
 New datasets can be added by following the instructions in [data/README.md](data/README.md), 
 and new data configurations can be included after implementing the steps listed in 
 [configs/data/README.md](configs/data/README.md).
 
-## 2. Continued Pre-Training (CPT)
+### 2. Continued Pre-Training (CPT)
 
-### Prepare CPT
+#### Prepare CPT
 
 > [!Important]
 > To prepare CPT, generate the training configurations from the target model matrix by running:
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/<model_key>_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --model <model_key> --overwrite
 ```
 
 This creates:
@@ -242,22 +294,22 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 > Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` 
 > for disconnected runs, then sync later with `wandb sync`.
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
-| `--matrix` | Required | Training matrix YAML file used to generate LLaMA Factory configs. |
+| `--model` | Required | Model key (e.g., gemma4_4b) whose training matrix is stored in `configs/train`. |
 | `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
 | `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
 
 
-#### Add new training configuration
+##### Add new training configuration
 
 New training configurations can be added by following the instructions presented 
 in [configs/train/README.md](configs/train/README.md).
 
 
-### Run CPT through profile
+#### Run CPT from profile
 
 After preparing the CPT configuration, CPT experiments can be run both individually 
 or by model-scoped profile. 
@@ -295,17 +347,17 @@ python -m src.train_profile experiments --model <model_key> --exclude configs/tr
 python -m src.train_profile experiments --model <model_key> --exclude '<model_key>_full_*'
 ```
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
 | `profile` | `experiments` | Generated training profile to run. |
-| `--model` | `None` | Model key to run inside the generated profile, for example `<model_key>`. Required when a profile contains multiple model directories. |
+| `--model` | `None` | Model key (e.g., gemma4_4b) to run inside the generated profile, for example `<model_key>`. Required when a profile contains multiple model directories. |
 | `--env-file` | `.env` | Local secret environment file forwarded to each training run. |
 | `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 | `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after each training run to save disk space. |
 
-### Run CPT through config
+#### Run CPT from config
 
 Alternatively, an individual CPT experiment can be run by executing:
 
@@ -319,7 +371,7 @@ python -m src.train_config configs/train/generated/experiments/<model_key>/<mode
 python -m src.train_config 'configs/train/generated/experiments/<model_key>/<model_key>_lora_r64_*'
 ```
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -338,9 +390,9 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 > other likely knobs are `gradient_accumulation_steps`, `flash_attn`, `deepspeed`, 
 > and the full/LoRA learning rates.
 
-## 3. Evaluation
+### 3. Evaluation
 
-### Prepare evaluation
+#### Prepare evaluation
 
 > [!Important]
 > As the first step, generate the evaluation configs from the target model matrix by running:
@@ -362,7 +414,7 @@ This writes config files under:
 
 Evaluation results, samples, and request caches are stored under `outputs/evaluation/`. 
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -370,7 +422,7 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 | `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
 | `--overwrite` | `False` | Replace existing generated YAML files. |
 
-### Run evaluation from config
+#### Run evaluation from config
 
 > [!Important]
 > To run an evaluation from a config, execute:
@@ -379,13 +431,13 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_key>_base_global_mmlu_lite.yaml
 ```
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
 | `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
 
-### Run evaluation from profile
+#### Run evaluation from profile
 
 Alternatively, a full generated profile can be executed:
 
@@ -410,7 +462,7 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 > The full and LoRA configs expect training outputs under the model-specific 
 > `outputs/train/<model_key>/experiments` directory.
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -418,11 +470,11 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 | `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
 | `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
-#### Add evaluation
+##### Add evaluation
 
 Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation configurations. Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md).
 
-### Analyze evaluation results
+#### Analyze evaluation results
 
 > [!Important]
 > After evaluation runs finish, summarize all available results for one or more models:
@@ -455,7 +507,7 @@ plus percentage improvement versus the model's base evaluation when base results
 exist. Perplexity metrics are also compared across models in 
 `results/evaluation_perplexity_table.md` when multiple models are analyzed.
 
-#### CLI reference
+##### CLI reference
 
 | Argument | Default | Description |
 | --- | --- | --- |
