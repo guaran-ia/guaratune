@@ -1,12 +1,15 @@
 # Add a New LM-Eval Task
 
-Local lm-eval task definitions live under `evaluation/lm_eval_tasks/`, and evaluation matrices expose that directory through `task_include_path`. To add a task, create a new YAML file whose `task` value is unique and descriptive:
+Local lm-eval task definitions live under `evaluation/lm_eval_tasks/`, and evaluation 
+matrices expose that directory through `task_include_path`. To add a task, 
+create a new YAML file whose `task` value is unique and descriptive:
 
 ```text
 evaluation/lm_eval_tasks/<task_name>.yaml
 ```
 
-For a local JSONL multiple-choice task, use the `json` dataset loader and point `dataset_kwargs.data_files.test` to the evaluation file:
+For a local JSONL multiple-choice task, use the `json` dataset loader and point 
+`dataset_kwargs.data_files.test` to the evaluation file:
 
 ```yaml
 task: new_task
@@ -35,13 +38,17 @@ metadata:
   version: 1.0
 ```
 
-If the raw JSONL rows do not already match lm-eval's expected fields, add a preprocessing function to `evaluation/lm_eval_tasks/utils.py` and reference it from the task file:
+If the raw JSONL rows do not already match lm-eval's expected fields, add a 
+preprocessing function to `evaluation/lm_eval_tasks/utils.py` and reference it 
+from the task file:
 
 ```yaml
 process_docs: !function utils.process_new_task_docs
 ```
 
-For a plain perplexity task over a post-training evaluation JSONL file with a `text` column, use `loglikelihood_rolling`. The active Guarani perplexity task is `guarani_coreguapa_perplexity` and reads `data/evaluation/coreguapa_identified_all.jsonl`.
+For a plain perplexity task over a post-training evaluation JSONL file with a 
+`text` column, use `loglikelihood_rolling`. The active Guarani perplexity task 
+is `guarani_coreguapa_perplexity` and reads `data/evaluation/coreguapa_identified_all.jsonl`.
 
 ```yaml
 task: new_perplexity_task
@@ -95,8 +102,15 @@ Run one generated config first to validate the task before launching a full prof
 python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<config_name>.yaml
 ```
 
-If the new task introduces metrics that are not accuracy or perplexity-like, review `src/analyze_eval_results.py` before using percentage improvement columns. The analyzer treats metrics containing `perplexity`, `bits_per_byte`, or `loss` as lower-is-better and treats other numeric metrics as higher-is-better.
+If the new task introduces metrics that are not accuracy or perplexity-like, review 
+`src/analyze_eval_results.py` before using percentage improvement columns. The 
+analyzer treats metrics containing `perplexity`, `bits_per_byte`, or `loss` as 
+lower-is-better and treats other numeric metrics as higher-is-better.
 
-Instruction-following tasks such as IFEval should be placed in the evaluation matrix's `instruction` suite. Use `include_instruction_tasks` and `variant_overrides` in the matrix to decide which profiles and variant kinds receive those tasks.
+Instruction-following tasks such as IFEval should be placed in the evaluation 
+matrix's `instruction` suite. Use `include_instruction_tasks` and `variant_overrides` 
+in the matrix to decide which profiles and variant kinds receive those tasks.
 
-Tasks that execute code, such as HumanEval, require `confirm_run_unsafe_code: true` in the suite or generated config. Keep that option off for normal multiple-choice, QA, translation, and perplexity tasks.
+Tasks that execute code, such as HumanEval, require `confirm_run_unsafe_code: true` 
+in the suite or generated config. Keep that option off for normal multiple-choice, 
+QA, translation, and perplexity tasks.

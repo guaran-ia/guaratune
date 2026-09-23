@@ -175,9 +175,7 @@ version of [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-e
 the collection of high-quality educational web pages developed by Hugging Face, is 
 used to include English in the training process. Similarly, a refined version of the 
 Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), 
-is used in some configurations of the training set.
-
-The current data mixture configurations are:
+is used in some configurations of the training set, as shown below
 
 - `C1_kuatia`: Full Kuatia.
 - `C2_kuatia_no_synthetic`: Kuatia but excluding synthetic documents.
@@ -230,19 +228,10 @@ This writes:
 - `data/dataset_info.json`
 
 Each final corpus is split into a training file under `data/train/` and a validation 
-file under `data/validation/`. With the active config-backed procedur, train/validation 
-membership comes from `data/kuatia_config.yaml` and augmentation ratios from 
-`configs/data/gemma4_cpt.yaml`. 
-
-The script `src.prepare_data` regenerates local manifests, source selection ledgers 
-under `data/selections/`, and source component pools under `data/train/components/` 
-before final corpora are assembled.
-
-Stable recipe settings live in `configs/data/gemma4_cpt.yaml`, including tokenizer, 
-seed, dataset sources, synthetic-data inclusion, and FineWeb-Edu augmentation ratios. 
-The source revision lock records the exact Hugging Face dataset commits used by a 
-preparation run. Generated manifest files include the config path plus train/validation 
-corpus and component accounting for each generated JSONL file.
+file under `data/validation/`. The source revision lock records the exact Hugging Face 
+dataset commits used by a preparation run. Generated manifest files include the 
+config path plus train/validation corpus and component accounting for each generated 
+JSONL file.
 
 > [!NOTE]
 > Token counts are computed with the tokenizer configured in `configs/data/gemma4_cpt.yaml`.
@@ -257,13 +246,12 @@ corpus and component accounting for each generated JSONL file.
 
 #### Add new datasets
 
-New datasets can be added by following the instructions in [data/README.md](data/README.md), 
-and new data configurations can be included after implementing the steps listed in 
+New datasets can be added to the pre-defined data mixture configuration by following 
+the instructions in [data/README.md](data/README.md). Also, a totally new data 
+configuration can be included by implementing the steps listed in 
 [configs/data/README.md](configs/data/README.md).
 
 ### 2. Continued Pre-Training (CPT)
-
-#### Prepare CPT
 
 > [!Important]
 > To prepare CPT, generate the training configurations from the target model matrix by running:
@@ -287,10 +275,9 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 > `report_to: wandb`. W&B defaults live in the matrix `reporting` block and are 
 > generated into `configs/train/generated/wandb.env`. The project is intentionally 
 > broad, while `WANDB_RUN_GROUP` separates model families. Set `WANDB_API_KEY` in 
-> `.env` to authenticate into Weights & Biases before training. The launcher 
-> sources `configs/train/generated/wandb.env` when a config has `report_to: wandb`. 
-> Override `WANDB_ENV_FILE` to use a different env file. Use `WANDB_MODE=offline` 
-> for disconnected runs, then sync later with `wandb sync`.
+> `.env` to authenticate into Weights & Biases before training. Override `WANDB_ENV_FILE` 
+> to use a different env file. Use `WANDB_MODE=offline` for disconnected runs, 
+> then sync later with `wandb sync`.
 
 ##### CLI reference
 
@@ -301,16 +288,15 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 | `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
 
 
-##### Add new training configuration
-
-New training configurations can be added by following the instructions presented 
-in [configs/train/README.md](configs/train/README.md).
+[!Note]
+> New training configurations can be added by following the instructions presented 
+> in [configs/train/README.md](configs/train/README.md).
 
 
 #### Run CPT from profile
 
-After preparing the CPT configuration, CPT experiments can be run both individually 
-or by model-scoped profile. 
+After preparing the CPT configuration, CPT experiments can be run by model-scoped 
+profile. 
 
 > [!Important]
 > To execute an entire profile for one model, run
@@ -350,7 +336,8 @@ python -m src.train_profile experiments --model <model_key> --exclude '<model_ke
 | Argument | Default | Description |
 | --- | --- | --- |
 | `profile` | `experiments` | Generated training profile to run. |
-| `--model` | `None` | Model key (e.g., gemma4_4b) to run inside the generated profile, for example `<model_key>`. Required when a profile contains multiple model directories. |
+| `--model` | `None` | Model key to run inside the generated profile, for example 
+`gemma4_4b`. Required when a profile contains multiple model directories. |
 | `--env-file` | `.env` | Local secret environment file forwarded to each training run. |
 | `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 | `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after each training run to save disk space. |
@@ -363,7 +350,7 @@ Alternatively, an individual CPT experiment can be run by executing:
 python -m src.train_config configs/train/generated/experiments/<model_key>/<model_key>_full_C1_kuatia.yaml
 ```
 
-`train_config` can also run a group of configs by passing a quoted glob pattern:
+Also run a group of configs by passing a quoted glob pattern:
 
 ```bash
 python -m src.train_config 'configs/train/generated/experiments/<model_key>/<model_key>_lora_r64_*'
@@ -390,13 +377,11 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 
 ### 3. Evaluation
 
-#### Prepare evaluation
-
 > [!Important]
 > As the first step, generate the evaluation configs from the target model matrix by running:
 
 ```bash
-python -m src.generate_eval_configs --matrix configs/evaluation/gemma4-12_eval_matrix.yaml --overwrite
+python -m src.generate_eval_configs --matrix configs/evaluation/<model_key>_eval_matrix.yaml --overwrite
 ```
 
 This writes config files under:
@@ -420,8 +405,6 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 | `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
 | `--overwrite` | `False` | Replace existing generated YAML files. |
 
-#### Run evaluation from config
-
 > [!Important]
 > To run an evaluation from a config, execute:
 
@@ -435,9 +418,8 @@ python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_
 | --- | --- | --- |
 | `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
 
-#### Run evaluation from profile
-
-Alternatively, a full generated profile can be executed:
+> [!Important]
+> Alternatively, a full generated profile can be executed:
 
 ```bash
 python -m src.eval_profile experiments --model <model_key>
@@ -468,9 +450,11 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 | `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
 | `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
-##### Add evaluation
 
-Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions on how to add new evaluation configurations. Also, new LM-Eval tasks can be included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md).
+> [!Note]
+> Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions 
+> on how to add new evaluation configurations. Also, new LM-Eval tasks can be 
+> included by following steps listed in [evaluation/lm_eval_tasks/README.md](evaluation/lm_eval_tasks/README.md).
 
 #### Analyze evaluation results
 
@@ -494,16 +478,7 @@ The analyzer produces:
 - matching `.md` files with the same filename stem
 - `results/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
 - `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
-- `results/evaluation_perplexity_table.md` when multiple models are analyzed, a cross-model perplexity comparison table with rounded values
-
-The summary has one row per model variant and evaluated corpus, including `base` 
-when available. The `corpus` column identifies the training corpus configuration, 
-while `eval_corpus` identifies the post-training corpus used for perplexity evaluation 
-when the task name encodes one. Metric columns include benchmark accuracy, F1, 
-exact match, translation, instruction-following, code, and perplexity metrics, 
-plus percentage improvement versus the model's base evaluation when base results 
-exist. Perplexity metrics are also compared across models in 
-`results/evaluation_perplexity_table.md` when multiple models are analyzed.
+- `results/evaluation_perplexity_table.md` when multiple models are analyzed, a cross-model perplexity comparison table
 
 ##### CLI reference
 
@@ -523,4 +498,4 @@ exist. Perplexity metrics are also compared across models in
 ## License
 
 This project is licensed under the GNU GPLv3 License. Model weights and corpus 
-documentsare subject to their respective licenses.
+content are subject to their respective licenses.
