@@ -9,7 +9,7 @@
   <a href="#installation">Installation</a> •
   <a href="#quick-start-recommended">Quick start</a> •
   <a href="#1-data-preparation">Data preparation</a> •
-  <a href="#2-continual-pre-training-cpt">Continued pre-training (CPT)</a> •
+  <a href="#2-continued-pre-training-cpt">Continued pre-training (CPT)</a> •
   <a href="#3-evaluation">Evaluation</a>
 </p>
 
@@ -160,9 +160,6 @@ scripts/run_pipeline.sh --model <model_key> --data C1 --data C2 --method lora64 
 scripts/run_pipeline.sh --model <model_key> --data C1 --data C2 --method lora64 --method lora512
 scripts/run_pipeline.sh --model <model_key> --data C1 --method full --eval-suite perplexity
 ```
-
-Supported method values include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, 
-and quoted forms such as `"lora 64"`.
 
 ## Step by step execution
 
