@@ -1,14 +1,15 @@
 # Guarania CPT Framework
 
 <p align="center">
-  <strong>Framework to conduct continual pre-training on open-source base models</strong>
+  <strong>Framework to conduct continued pre-training on open-weight base models</strong>
 </p>
 
 <p align="center">
   <a href="#overview">Overview</a> •
-  <a href="#0-installation">Installation</a> •
-  <a href="#1-data-preparation">Data Preparation</a> •
-  <a href="#2-continual-pre-training-cpt">Continual Pre-Training (CPT)</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start-recommended">Quick start</a> •
+  <a href="#1-data-preparation">Data preparation</a> •
+  <a href="#2-continual-pre-training-cpt">Continued pre-training (CPT)</a> •
   <a href="#3-evaluation">Evaluation</a>
 </p>
 
@@ -119,7 +120,7 @@ python -c "import lm_eval; print('lm_eval ok')"
 ## Quick start (recommended)
 
 Run the full CPT pipeline, including data checks, CPT config generation, training, 
-evaluation, and result analysis, by executing the following command.
+evaluation, and result analysis, by executing the following command
 
 ```bash
 scripts/run_pipeline.sh --model <model_key>
@@ -129,7 +130,7 @@ scripts/run_pipeline.sh --model <model_key>
 
 | Argument | Default | Description |
 | --- | --- | --- |
-| `--model MODEL_KEY` | Required | Model key declared in `configs/train/*_cpt_matrix.yaml`. |
+| `--model MODEL_KEY` | Required | Model key declared in `configs/train/*_cpt_matrix.yaml` (e.g., gemma4_4b). |
 | `--profile PROFILE` | `experiments` | Training and evaluation profile to generate and run. |
 | `--data DATA_CONFIG` | All data configurations | Data configuration to run, for example `C1` or `C1_kuatia`. Repeat to run multiple data configurations. |
 | `--corpus DATA_CONFIG` | All data configurations | Alias for `--data`. |
@@ -156,8 +157,8 @@ To run only selected configurations:
 ```bash
 scripts/run_pipeline.sh --model <model_key> --data C1 --method full
 scripts/run_pipeline.sh --model <model_key> --data C1 --data C2 --method lora64 --method lora512
-scripts/run_pipeline.sh --model gemma4_4b --data C1 --data C2 --method lora64 --method lora512
-scripts/run_pipeline.sh --model gemma4_12b --data C1 --method full --eval-suite perplexity
+scripts/run_pipeline.sh --model <model_key> --data C1 --data C2 --method lora64 --method lora512
+scripts/run_pipeline.sh --model <model_key> --data C1 --method full --eval-suite perplexity
 ```
 
 Supported method values include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, 
@@ -165,8 +166,8 @@ and quoted forms such as `"lora 64"`.
 
 ## Step by step execution
 
-If you prefer greater control over each step of the pipeline, you can also run it 
-step by step.
+If a greater control over each step of the pipeline is preferred, the pipeline 
+can also be run step by step.
 
 ### 1. Data preparation
 
