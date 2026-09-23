@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import click
+import glob
 import os
 import yaml
 
 from typing import Any
+
+
+TRAIN_MATRIX_DIR = 'configs/train'
+TRAIN_MATRIX_PATTERN = '*_cpt_matrix.y*ml'
 
 
 def load_yaml(path: str) -> dict[str, Any]:
@@ -29,6 +34,59 @@ def load_yaml(path: str) -> dict[str, Any]:
         raise ValueError(f'YAML file must contain a mapping: {path}')
 
     return data
+
+
+def iter_train_matrix_paths(matrix_dir: str = TRAIN_MATRIX_DIR) -> list[str]:
+    """List training matrix paths from the train config directory.
+
+    Args:
+        matrix_dir: Directory containing training matrix YAML files.
+
+    Returns:
+        Sorted matrix YAML paths.
+    """
+    return sorted(glob.glob(os.path.join(matrix_dir, TRAIN_MATRIX_PATTERN)))
+
+
+def resolve_train_matrix_path(model_key: str) -> str:
+    """Resolve a model key to its training matrix path.
+
+    Args:
+        model_key: Model key declared in the matrix ``model.key`` field.
+
+    Returns:
+        Matching training matrix path.
+
+    Raises:
+        FileNotFoundError: If no matrix exists for the model key.
+        ValueError: If more than one matrix declares the same model key.
+    """
+    matches = []
+    available_model_keys = []
+    for path in iter_train_matrix_paths():
+        matrix = load_yaml(path)
+        model = matrix.get('model')
+        if not isinstance(model, dict):
+            continue
+
+        current_model_key = model.get('key')
+        if isinstance(current_model_key, str):
+            available_model_keys.append(current_model_key)
+        if current_model_key == model_key:
+            matches.append(path)
+
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            f'Multiple training matrices declare model key {model_key}: {", ".join(matches)}'
+        )
+
+    available = ', '.join(sorted(available_model_keys)) or 'none'
+    raise FileNotFoundError(
+        f'No training matrix found for model key {model_key} in {TRAIN_MATRIX_DIR}. '
+        f'Available model keys: {available}'
+    )
 
 
 def require_mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
@@ -100,7 +158,8 @@ def shell_quote(value: Any) -> str:
     Returns:
         Single-quoted shell string.
     """
-    return f'\'{str(value).replace("\'", "\'\"\'\"\'")}\''
+    escaped = str(value).replace('\'', '\'\"\'\"\'')
+    return f'\'{escaped}\''
 
 
 def write_wandb_env(
@@ -314,14 +373,13 @@ def generated_config_path(
 
 @click.command(
     context_settings={'show_default': True},
-    help='Generate LLaMA Factory YAML configs from a CPT experiment matrix.',
+    help='Generate LLaMA Factory YAML configs from a model CPT experiment matrix.',
 )
 @click.option(
-    '--matrix',
-    'matrix_path',
-    type=click.Path(exists=True, dir_okay=False),
-    default='configs/train/gemma4-12_cpt_matrix.yaml',
-    help='Training matrix YAML file.',
+    '--model',
+    'model_key',
+    required=True,
+    help='Model key whose training matrix is stored in configs/train.',
 )
 @click.option(
     '--profile',
@@ -330,17 +388,18 @@ def generated_config_path(
     help='Profile to generate. Repeat to generate multiple profiles. Defaults to all profiles.',
 )
 @click.option('--overwrite', is_flag=True, help='Overwrite generated YAML files.')
-def main(matrix_path: str, profile_names: tuple[str, ...], overwrite: bool) -> None:
+def main(model_key: str, profile_names: tuple[str, ...], overwrite: bool) -> None:
     """Generate LLaMA Factory training YAML files.
 
     Args:
-        matrix_path: Training matrix YAML file.
+        model_key: Model key whose matrix should be used.
         profile_names: Profile names to generate.
         overwrite: Whether existing generated YAML files can be replaced.
 
     Returns:
         None.
     """
+    matrix_path = resolve_train_matrix_path(model_key)
     matrix = load_yaml(matrix_path)
     profiles = require_mapping(matrix, 'profiles')
     selected_profiles = profile_names or tuple(profiles.keys())
