@@ -288,10 +288,9 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 | `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
 
 
-[!Note]
-> New training configurations can be added by following the instructions presented 
-> in [configs/train/README.md](configs/train/README.md).
-
+>[!Note]
+>New training configurations can be added by following the instructions presented 
+>in [configs/train/README.md](configs/train/README.md).
 
 #### Run CPT from profile
 
