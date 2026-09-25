@@ -163,12 +163,11 @@ def require_training_inputs(config_path: str) -> None:
         raise FileNotFoundError(f'Training config not found: {config_path}')
     if not os.path.isfile('data/dataset_info.json'):
         raise FileNotFoundError(
-            'Missing data/dataset_info.json. Run dataset preparation or reconstruction first.'
+            'Missing data/dataset_info.json. Run dataset preparation first.'
         )
     if not os.path.isdir('data/train'):
         raise FileNotFoundError(
-            'Missing data/train/. Reconstruct generated corpora with:\n'
-            '  python -m src.prepare_data --reconstruct --config configs/data/gemma4_cpt.yaml --overwrite'
+            'Missing data/train/. Run dataset preparation first'
         )
 
 
