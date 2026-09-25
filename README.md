@@ -376,6 +376,21 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 
 ### 3. Evaluation
 
+Evaluation is based on analyzing the model performance on state-of-the-art downstream
+tasks such as: [Flores 200](https://huggingface.co/datasets/facebook/flores), 
+[Belele](https://huggingface.co/datasets/facebook/2M-Belebele), 
+[MultiWiki-QA](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa), 
+Global MMLU Lite, MGSM, and WLNI. For Flores 200, Belele, and MultiWiki-QA the Guarani 
+split of the set is used in the evaluation tasks while for Global MMLU Lite, MGSM, 
+and WLNI a Guarani version were created by language experts and
+are available at `data/evaluation`.
+
+>[!Warning]
+> The evaluation `evaluation/lm_eval_tasks/guarani_coreguapa_perplexity.yaml` 
+> depends on a propetary dataset that cannot be publicly released. The task is 
+> ignore if the set is not available at `data/evaluation`.
+
+
 > [!Important]
 > As the first step, generate the evaluation configs from the target model matrix by running:
 
