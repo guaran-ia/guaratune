@@ -785,6 +785,10 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     Returns:
         Merged rows.
+
+    Raises:
+        ValueError: If results for the same model variant report different values
+            for the same metric.
     """
     grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
     profiles_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
@@ -810,7 +814,15 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for column, value in row.items():
             if column in IDENTITY_COLUMNS:
                 continue
-            grouped[key].setdefault(column, value)
+            existing = grouped[key].get(column)
+            if existing is None:
+                grouped[key][column] = value
+            elif value is not None and existing != value:
+                raise ValueError(
+                    f'Conflicting metric {column} for {key}: '
+                    f'{existing!r} != {value!r}. Analyze different evaluation '
+                    'configurations separately.'
+                )
 
     merged = []
     for key, row in grouped.items():

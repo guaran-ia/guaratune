@@ -157,3 +157,40 @@ def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path
             "skipped_tasks": "guarani_coreguapa_perplexity",
         }
     ]
+
+
+def test_merge_rows_rejects_conflicting_metrics() -> None:
+    row = {
+        "model_key": "gemma4_12b",
+        "variant": "base",
+        "profiles": "experiments",
+        "training_method": "base",
+        "corpus": None,
+        "eval_corpus": None,
+        "lora_rank": None,
+        "evaluation_status": "complete",
+        "skipped_tasks": "",
+        "benchmark_acc": 0.5,
+    }
+
+    with pytest.raises(ValueError, match="Conflicting metric benchmark_acc"):
+        analyze_eval_results.merge_rows([row, row | {"benchmark_acc": 0.6}])
+
+
+def test_merge_rows_combines_non_overlapping_metrics() -> None:
+    row = {
+        "model_key": "gemma4_12b",
+        "variant": "base",
+        "profiles": "experiments",
+        "training_method": "base",
+        "corpus": None,
+        "eval_corpus": None,
+        "lora_rank": None,
+        "evaluation_status": "complete",
+        "skipped_tasks": "",
+        "benchmark_acc": 0.5,
+    }
+
+    assert analyze_eval_results.merge_rows(
+        [row, row | {"benchmark_f1": 0.6}]
+    ) == [row | {"benchmark_f1": 0.6}]
