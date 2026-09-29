@@ -7,10 +7,11 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#installation">Installation</a> •
-  <a href="#quick-start-recommended">Quick start</a> •
-  <a href="#1-data-preparation">Data preparation</a> •
-  <a href="#2-continued-pre-training-cpt">Continued pre-training (CPT)</a> •
-  <a href="#3-evaluation">Evaluation</a>
+   <a href="#quick-start-recommended">Quick start</a> •
+   <a href="#1-data-preparation">Data preparation</a> •
+   <a href="#2-continued-pre-training-cpt">Continued pre-training (CPT)</a> •
+   <a href="#3-evaluation">Evaluation</a> •
+   <a href="#citation">Citation</a>
 </p>
 
 ---
@@ -543,3 +544,21 @@ The analyzer produces:
 
 This project is licensed under the GNU GPLv3 License. Model weights and corpus 
 content are subject to their respective licenses.
+
+## Citation
+
+If you use GuaraTune in research, please cite the repository and identify the
+commit or release used:
+
+```bibtex
+@software{guarania_guaratune,
+  author = {{Saldivar, Jorge}},
+  title = {GuaraTune: Framework to Build GuaranIA Language Models},
+  url = {https://github.com/guaran-ia/models},
+  year = {2026}
+}
+```
+
+Also cite the base models, datasets, benchmarks, and frameworks used in your
+work according to their upstream terms and
+[third-party notices](THIRD_PARTY_NOTICES.md).
