@@ -47,6 +47,8 @@ IDENTITY_COLUMNS = (
     'eval_corpus',
     'lora_rank',
     'profiles',
+    'evaluation_status',
+    'skipped_tasks',
 )
 BENCHMARK_SCORE_SPECS = (
     {
@@ -486,6 +488,8 @@ def base_result_row(
         'corpus': parsed_variant['corpus'],
         'eval_corpus': None,
         'lora_rank': parsed_variant['lora_rank'],
+        'evaluation_status': 'complete',
+        'skipped_tasks': '',
     }
 
 
@@ -609,6 +613,16 @@ def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[
     profile = str(result_metadata.get('profile') or path_metadata['profile'])
     parsed_variant = parse_variant(variant)
     row = base_result_row(model_key, variant, profile, parsed_variant)
+    evaluation = data.get('guarania_evaluation', {})
+    if isinstance(evaluation, dict):
+        row['evaluation_status'] = str(evaluation.get('status') or 'complete')
+        skipped_tasks = evaluation.get('skipped_tasks', [])
+        if isinstance(skipped_tasks, list):
+            row['skipped_tasks'] = ','.join(
+                str(task.get('task'))
+                for task in skipped_tasks
+                if isinstance(task, dict) and task.get('task')
+            )
 
     results = data.get('results', {})
     groups = data.get('groups', {})
@@ -752,6 +766,11 @@ def collapse_global_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 row.setdefault(column, value)
 
             row['profiles'] = merge_profile_values(row.get('profiles'), global_row.get('profiles'))
+            if global_row.get('evaluation_status') == 'incomplete':
+                row['evaluation_status'] = 'incomplete'
+            row['skipped_tasks'] = merge_profile_values(
+                row.get('skipped_tasks'), global_row.get('skipped_tasks')
+            )
 
         collapsed.append(row)
 
@@ -766,9 +785,15 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     Returns:
         Merged rows.
+
+    Raises:
+        ValueError: If results for the same model variant report different values
+            for the same metric.
     """
     grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
     profiles_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
+    statuses_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
+    skipped_tasks_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
     for row in rows:
         key = row_key(row)
         if key not in grouped:
@@ -777,15 +802,35 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         profile = row.get('profiles')
         if profile:
             profiles_by_key[key].add(str(profile))
+        status = row.get('evaluation_status')
+        if status:
+            statuses_by_key[key].add(str(status))
+        skipped = row.get('skipped_tasks')
+        if skipped:
+            skipped_tasks_by_key[key].update(
+                task for task in str(skipped).split(',') if task
+            )
 
         for column, value in row.items():
             if column in IDENTITY_COLUMNS:
                 continue
-            grouped[key].setdefault(column, value)
+            existing = grouped[key].get(column)
+            if existing is None:
+                grouped[key][column] = value
+            elif value is not None and existing != value:
+                raise ValueError(
+                    f'Conflicting metric {column} for {key}: '
+                    f'{existing!r} != {value!r}. Analyze different evaluation '
+                    'configurations separately.'
+                )
 
     merged = []
     for key, row in grouped.items():
         row['profiles'] = ','.join(sorted(profiles_by_key[key]))
+        row['evaluation_status'] = (
+            'incomplete' if 'incomplete' in statuses_by_key[key] else 'complete'
+        )
+        row['skipped_tasks'] = ','.join(sorted(skipped_tasks_by_key[key]))
         merged.append(row)
 
     merged = collapse_global_rows(merged)
@@ -1009,15 +1054,32 @@ def unique_variant_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
     order = []
+    statuses_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
+    skipped_tasks_by_key: dict[tuple[Any, ...], set[str]] = defaultdict(set)
     for row in rows:
         key = variant_key(row)
         if key not in grouped:
             grouped[key] = {column: row.get(column) for column in IDENTITY_COLUMNS}
             order.append(key)
 
+        status = row.get('evaluation_status')
+        if status:
+            statuses_by_key[key].add(str(status))
+        skipped = row.get('skipped_tasks')
+        if skipped:
+            skipped_tasks_by_key[key].update(
+                task for task in str(skipped).split(',') if task
+            )
+
         for column, value in metric_values(row).items():
             if grouped[key].get(column) is None:
                 grouped[key][column] = value
+
+    for key in order:
+        grouped[key]['evaluation_status'] = (
+            'incomplete' if 'incomplete' in statuses_by_key[key] else 'complete'
+        )
+        grouped[key]['skipped_tasks'] = ','.join(sorted(skipped_tasks_by_key[key]))
 
     return [grouped[key] for key in order]
 

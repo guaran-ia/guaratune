@@ -133,3 +133,45 @@ def test_readme_uses_pinned_pip_installation() -> None:
     readme = Path("README.md").read_text(encoding="utf-8")
     assert "python -m pip install -r requirements.txt" in readme
     assert "git clone --depth 1" not in readme
+
+
+def test_third_party_notices_cover_directly_configured_artifacts() -> None:
+    notices = Path("THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    for identifier in (
+        "google/gemma-4-E2B",
+        "google/gemma-4-E4B",
+        "google/gemma-4-12B",
+        "guaran-ia/kuatia",
+        "Helsinki-NLP/fineweb-edu-translated",
+        "HuggingFaceFW/fineweb-edu",
+        "CohereLabs/Global-MMLU-Lite",
+        "facebook/2M-Belebele",
+        "facebook/flores",
+        "alexandrainst/multi-wiki-qa",
+        "BSC-LT/arc_es",
+        "ellamind/gpqa-multilingual",
+        "data/evaluation/gmlgnt.jsonl",
+        "data/evaluation/coreguapa_identified_all.jsonl",
+        "hiyouga/LlamaFactory",
+        "EleutherAI/lm-evaluation-harness",
+    ):
+        assert identifier in notices, f"THIRD_PARTY_NOTICES.md is missing {identifier}"
+
+
+def test_public_command_references_match_current_entry_points() -> None:
+    data_readme = Path("data/README.md").read_text(encoding="utf-8")
+    pipeline_script = Path("scripts/run_pipeline.sh").read_text(encoding="utf-8")
+
+    assert "python -m src.generate_train_configs --model gemma4_12b --overwrite" in data_readme
+    assert "generate_train_configs --matrix" not in data_readme
+    assert "scripts/run_pipeline.sh" in pipeline_script
+    assert "scripts/run_cpt.sh" not in pipeline_script
+
+
+def test_pipeline_documents_and_enforces_bash_requirement() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    pipeline_script = Path("scripts/run_pipeline.sh").read_text(encoding="utf-8")
+
+    assert "Bash 4.3 or later" in readme
+    assert "BASH_VERSINFO" in pipeline_script
+    assert "requires Bash 4.3 or later" in pipeline_script

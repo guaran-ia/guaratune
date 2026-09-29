@@ -53,3 +53,6 @@ def test_generate_eval_configs_smoke_to_temp_dir(tmp_path: Path) -> None:
     loaded = yaml.safe_load(written[0].read_text(encoding="utf-8"))
     assert loaded["include_path"] == "evaluation/lm_eval_tasks"
     assert loaded["output_path"].startswith(str(tmp_path))
+    assert loaded["model_args"]["trust_remote_code"] is True
+    assert "trust_remote_code" not in loaded
+    assert "show_config" not in loaded

@@ -53,6 +53,6 @@ train on it, for example `profiles.experiments.corpora` in `configs/train/gemma4
 For evaluation, add the same corpus name to `profiles.experiments.training_corpora` in `configs/evaluation/gemma4-12_eval_matrix.yaml` so trained variants can be evaluated. Then regenerate train and evaluation configs:
 
 ```bash
-python -m src.generate_train_configs --matrix configs/train/gemma4-12_cpt_matrix.yaml --overwrite
+python -m src.generate_train_configs --model gemma4_12b --overwrite
 python -m src.generate_eval_configs --matrix configs/evaluation/gemma4-12_eval_matrix.yaml --overwrite
 ```

@@ -1,12 +1,12 @@
 generated_config_dir: configs/evaluation/generated
 outputs_root: outputs/evaluation
 task_include_path: evaluation/lm_eval_tasks
-training_outputs_root: outputs/train/gemma4_12b/experiments
+training_outputs_root: outputs/train/gemma4_2b/experiments
 seed: 20260721
 
 model:
-  key: gemma4_12b
-  model_name_or_path: google/gemma-4-12B
+  key: gemma4_2b
+  model_name_or_path: google/gemma-4-E2B
   model_revision: main
   trust_remote_code: true
   dtype: bfloat16
