@@ -141,20 +141,22 @@ def missing_local_json_files(task_name: str, include_path: Any) -> list[str]:
     ]
 
 
-def available_tasks(config: dict[str, Any]) -> list[str]:
+def available_tasks(config: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
     """Filter tasks whose required private local data is unavailable.
 
     Args:
         config: Evaluation config mapping.
 
     Returns:
-        Task names that can be passed to lm-evaluation-harness.
+        Task names that can be passed to lm-evaluation-harness and structured
+        records for skipped tasks.
     """
     tasks = config.get('tasks', [])
     if not isinstance(tasks, list):
         raise ValueError('tasks must be a list.')
 
     available = []
+    skipped = []
     for task in tasks:
         task_name = str(task)
         missing = missing_local_json_files(task_name, config.get('include_path'))
@@ -164,11 +166,18 @@ def available_tasks(config: dict[str, Any]) -> list[str]:
                 f'[skip] {task_name}: missing local evaluation data: {missing_text}',
                 flush=True,
             )
+            skipped.append(
+                {
+                    'task': task_name,
+                    'reason': 'missing_local_evaluation_data',
+                    'paths': missing,
+                }
+            )
             continue
 
         available.append(task_name)
 
-    return available
+    return available, skipped
 
 
 def require_lm_eval() -> None:
@@ -260,21 +269,35 @@ def serializable_results(results: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in results.items() if key != 'samples'}
 
 
-def write_results(output_path: str, results: dict[str, Any]) -> None:
+def write_results(
+    output_path: str,
+    results: dict[str, Any],
+    *,
+    executed_tasks: list[str],
+    skipped_tasks: list[dict[str, Any]],
+) -> None:
     """Write lm-eval results under the configured output directory.
 
     Args:
         output_path: Directory where evaluation artifacts are stored.
         results: Raw lm-eval result dictionary.
+        executed_tasks: Tasks submitted to lm-evaluation-harness.
+        skipped_tasks: Tasks skipped before evaluation with their reasons.
 
     Returns:
         None.
     """
     os.makedirs(output_path, exist_ok=True)
     summary_path = os.path.join(output_path, 'results.json')
+    summary = serializable_results(results)
+    summary['guarania_evaluation'] = {
+        'status': 'incomplete' if skipped_tasks or not executed_tasks else 'complete',
+        'executed_tasks': executed_tasks,
+        'skipped_tasks': skipped_tasks,
+    }
     with open(summary_path, 'w', encoding='utf-8') as handle:
         json.dump(
-            serializable_results(results),
+            summary,
             handle,
             default=handle_non_serializable,
             ensure_ascii=False,
@@ -305,9 +328,19 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     """
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
-    tasks = available_tasks(config)
+    tasks, skipped_tasks = available_tasks(config)
     if not tasks:
         print('[skip] no evaluation tasks configured', flush=True)
+        write_results(
+            str(config['output_path']),
+            {
+                'results': {},
+                'groups': {},
+                'metadata': config.get('metadata', {}),
+            },
+            executed_tasks=[],
+            skipped_tasks=skipped_tasks,
+        )
         return
 
     results = lm_eval.simple_evaluate(
@@ -341,7 +374,12 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     )
 
     if results is not None:
-        write_results(str(config['output_path']), results)
+        write_results(
+            str(config['output_path']),
+            results,
+            executed_tasks=tasks,
+            skipped_tasks=skipped_tasks,
+        )
 
 
 def run_evaluation(config_path: str) -> None:

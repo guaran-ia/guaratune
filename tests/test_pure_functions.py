@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -60,9 +61,17 @@ def test_eval_config_skips_missing_local_json_task(tmp_path: Path, monkeypatch: 
     )
     monkeypatch.chdir(tmp_path)
 
-    assert eval_config.available_tasks(
+    available, skipped = eval_config.available_tasks(
         {"include_path": str(include_path), "tasks": ["private_task", "public_task"]}
-    ) == ["public_task"]
+    )
+    assert available == ["public_task"]
+    assert skipped == [
+        {
+            "task": "private_task",
+            "reason": "missing_local_evaluation_data",
+            "paths": ["private/missing.jsonl"],
+        }
+    ]
 
 
 def test_parse_env_assignment() -> None:
@@ -92,3 +101,59 @@ def test_parse_variant() -> None:
         "corpus": "C1_kuatia",
         "lora_rank": 64,
     }
+
+
+def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path) -> None:
+    evaluation_root = tmp_path / "evaluation"
+    output_path = evaluation_root / "experiments" / "gemma4_12b" / "base" / "perplexity"
+    eval_config.write_results(
+        str(output_path),
+        {
+            "metadata": {
+                "model_key": "gemma4_12b",
+                "variant": "base",
+                "profile": "experiments",
+            },
+            "results": {},
+            "groups": {},
+        },
+        executed_tasks=[],
+        skipped_tasks=[
+            {
+                "task": "guarani_coreguapa_perplexity",
+                "reason": "missing_local_evaluation_data",
+                "paths": ["data/evaluation/coreguapa_identified_all.jsonl"],
+            }
+        ],
+    )
+
+    result_path = output_path / "results.json"
+    persisted = json.loads(result_path.read_text(encoding="utf-8"))
+    assert persisted["guarania_evaluation"] == {
+        "status": "incomplete",
+        "executed_tasks": [],
+        "skipped_tasks": [
+            {
+                "task": "guarani_coreguapa_perplexity",
+                "reason": "missing_local_evaluation_data",
+                "paths": ["data/evaluation/coreguapa_identified_all.jsonl"],
+            }
+        ],
+    }
+
+    rows = analyze_eval_results.analyze_results(
+        str(evaluation_root), ("gemma4_12b",), ("experiments",)
+    )
+    assert rows == [
+        {
+            "model_key": "gemma4_12b",
+            "variant": "base",
+            "profiles": "experiments",
+            "training_method": "base",
+            "corpus": None,
+            "eval_corpus": None,
+            "lora_rank": None,
+            "evaluation_status": "incomplete",
+            "skipped_tasks": "guarani_coreguapa_perplexity",
+        }
+    ]
