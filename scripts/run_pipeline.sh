@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/run_cpt.sh --model MODEL_KEY [options]
+  scripts/run_pipeline.sh --model MODEL_KEY [options]
 
 Run the end-to-end CPT pipeline for one model.
 
@@ -37,9 +37,9 @@ Options:
   -h, --help                Show this help.
 
 Examples:
-  scripts/run_cpt.sh --model gemma4_4b
-  scripts/run_cpt.sh --model gemma4_4b --data C1 --method full
-  scripts/run_cpt.sh --model gemma4_4b --data C1 --data C2 --method lora64 --method lora512
+  scripts/run_pipeline.sh --model gemma4_4b
+  scripts/run_pipeline.sh --model gemma4_4b --data C1 --method full
+  scripts/run_pipeline.sh --model gemma4_4b --data C1 --data C2 --method lora64 --method lora512
 EOF
 }
 
