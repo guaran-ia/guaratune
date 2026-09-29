@@ -54,7 +54,8 @@ Gemma 4 variants.
 > [!Note]
 > The supported runtime is Python 3.12 on Linux with an NVIDIA GPU. The provided GPU
 > dependency file targets CUDA 12.8. Install the matching PyTorch wheel set for a
-> different CUDA version or platform before installing the project lock.
+> different CUDA version or platform before installing the project lock. The pipeline
+> script requires Bash 4.3 or later; verify it with `bash --version`.
 
 1. Create and activate a fresh Python 3.12 environment:
 

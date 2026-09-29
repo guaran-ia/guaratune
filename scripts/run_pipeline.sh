@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3) )); then
+  printf 'scripts/run_pipeline.sh requires Bash 4.3 or later. Found: %s\n' "${BASH_VERSION}" >&2
+  exit 2
+fi
+
 usage() {
   cat <<'EOF'
 Usage:
