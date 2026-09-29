@@ -416,8 +416,8 @@ are available at `data/evaluation`.
 
 >[!Warning]
 > The evaluation `evaluation/lm_eval_tasks/guarani_coreguapa_perplexity.yaml` 
-> depends on a propetary dataset that cannot be publicly released. The task is 
-> ignore if the set is not available at `data/evaluation`.
+> depends on a proprietary dataset that cannot be publicly released. The task is 
+> ignored if the set is not available at `data/evaluation`.
 
 
 > [!Important]
