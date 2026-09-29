@@ -292,6 +292,7 @@ def model_args_for_variant(
         'pretrained': model['model_name_or_path'],
         'revision': model.get('model_revision', 'main'),
         'dtype': model.get('dtype'),
+        'trust_remote_code': bool(model.get('trust_remote_code', False)),
     }
 
     if variant_kind == 'base':
@@ -438,7 +439,6 @@ def evaluation_config(
             'device': model.get('device'),
             'batch_size': model.get('batch_size'),
             'max_batch_size': model.get('max_batch_size'),
-            'trust_remote_code': bool(model.get('trust_remote_code', False)),
             'seed': matrix.get('seed'),
             'metadata': {
                 'run_name': name,

@@ -21,7 +21,6 @@ defaults:
   num_fewshot: 0
   cache_requests: true
   log_samples: false
-  show_config: true
   include_instruction_tasks: false
   limit: null
 
