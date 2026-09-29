@@ -1,0 +1,21 @@
+# Direct runtime dependencies. Compile with pip-tools; do not install this file directly.
+accelerate==1.11.0
+datasets==4.0.0
+evaluate==0.4.6
+huggingface_hub==1.24.0
+peft==0.18.1
+pyarrow==25.0.0
+PyYAML==6.0.3
+sacrebleu==2.6.0
+sentencepiece==0.2.2
+transformers==5.8.0
+trl==0.24.0
+
+# Upstream frameworks are immutable commit pins.
+llamafactory @ git+https://github.com/hiyouga/LlamaFactory.git@ef2d8f9da66ef13378dc8068dabc99cfe89a9736
+lm_eval @ git+https://github.com/EleutherAI/lm-evaluation-harness.git@f4d4b3de3ee6741a7151a9fe74945ee515262f4c
+
+# Language models used by LlamaFactory metrics.
+https://github.com/explosion/spacy-models/releases/download/ca_core_news_sm-3.8.0/ca_core_news_sm-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/xx_sent_ud_sm-3.8.0/xx_sent_ud_sm-3.8.0-py3-none-any.whl

@@ -1,7 +1,7 @@
-# Guarania CPT Framework
+# GuaraTune
 
 <p align="center">
-  <strong>Framework to conduct continued pre-training on open-weight base models</strong>
+  <strong>Framework to build the LLMs of the <a href="https://guarania.org" >GuaranIA</a> project.</strong>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@ This repository contains the code, data, and configurations developed to
 conduct both full and LoRA **continued pre-training (CPT)** of state-of-the-art 
 open-source base models (check [supported models](#supported-models)) on the 
 [Kuatia](https://huggingface.co/datasets/guaran-ia/kuatia) corpus, which is 
-a Guarani/Jopara-based corpus created by the Guarania project.
+a Guarani/Jopara-based corpus created by the [GuaranIA](https://guarania.org) project.
 
 ### Pipeline
 
@@ -51,56 +51,40 @@ Gemma 4 variants.
 
 ## Installation
 
-Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the 
-evaluation is based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness). 
-Follow the steps below to install the project dependencies.
-
 > [!Note]
-> The current development environment uses Python 3.12.
+> The supported runtime is Python 3.12 on Linux with an NVIDIA GPU. The provided GPU
+> dependency file targets CUDA 12.8. Install the matching PyTorch wheel set for a
+> different CUDA version or platform before installing the project lock.
 
-1. Create and activate a fresh environment:
+1. Create and activate a fresh Python 3.12 environment:
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 ```
 
-2. Install the training framework LlamaFactory.
+2. Install the CUDA 12.8 PyTorch build:
 
 ```bash
-git clone --depth 1 https://github.com/hiyouga/LlamaFactory.git
-cd LlamaFactory
-pip install -e .
-pip install -r requirements/metrics.txt
+python -m pip install -r requirements-gpu-cu128.txt
 ```
 
-> [!Note]
-> Keep the local `LlamaFactory/` checkout at the project root. Some training matrices 
-> may reference files under `LlamaFactory/examples/`, for example DeepSpeed configs.
+> [!Important]
+> Do not use `requirements-gpu-cu128.txt` on macOS or a CPU-only environment. Use the
+> [PyTorch installation selector](https://pytorch.org/get-started/locally/) to install
+> a compatible wheel set, then continue with the next step.
 
-**Optional.** If a training matrix enables DeepSpeed for full-parameter multi-GPU 
-training, install LlamaFactory's DeepSpeed dependencies on the GPU VM:
-
-```bash
-cd LlamaFactory
-python -m pip install -r requirements/deepspeed.txt
-cd ..
-```
-
-3. Install the evaluation framework LM-Eval.
-
-```bash
-git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness
-cd lm-evaluation-harness
-pip install -e .
-pip install "lm_eval[hf]"
-```
-
-4. Install the rest of the project dependencies from `requirements.txt`:
+3. Install the pinned runtime lock:
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+4. Install development tooling when changing the project:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 5. Rename the file `.env.sample` to `.env` and set local secrets:
@@ -110,12 +94,46 @@ HF_TOKEN=...
 WANDB_API_KEY=...
 ```
 
-6. Check the installation:
+6. Verify the environment:
 
 ```bash
-llamafactory-cli --help
-python -c "import lm_eval; print('lm_eval ok')"
+python -m src.check_environment --require-cuda
 ```
+
+For full-parameter multi-GPU runs that enable DeepSpeed in a training matrix, install
+DeepSpeed separately on the GPU VM:
+
+```bash
+python -m pip install deepspeed
+```
+
+### Dependency Reproducibility
+
+`requirements.in` is the human-maintained list of direct runtime dependencies.
+`requirements.txt` is its generated, fully pinned lock. `requirements-dev.in` and
+`requirements-dev.txt` extend that lock with development tools. The CUDA-specific
+PyTorch packages are intentionally kept in `requirements-gpu-cu128.txt`, because
+their wheel index and build tags depend on the target platform.
+
+After changing a `.in` file, regenerate both locks from a development environment:
+
+```bash
+python scripts/compile_requirements.py
+```
+
+The lock compiler uses `pip-tools==7.5.2` and `pip<26`, as pinned in
+`requirements-dev.in`. Do not edit generated `.txt` lock files by hand.
+
+### LlamaFactory and LM-Eval
+
+Training employs [LlamaFactory](https://github.com/hiyouga/LlamaFactory) while the
+evaluation is based on [LM-Eval](https://github.com/EleutherAI/lm-evaluation-harness).
+The pip dependency locks pin both upstream frameworks and their Python dependencies.
+
+| Upstream project | Pinned commit | Role |
+| --- | --- | --- |
+| [LlamaFactory](https://github.com/hiyouga/LlamaFactory) | [`ef2d8f9`](https://github.com/hiyouga/LlamaFactory/commit/ef2d8f9da66ef13378dc8068dabc99cfe89a9736) | Continued pre-training |
+| [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) | [`f4d4b3d`](https://github.com/EleutherAI/lm-evaluation-harness/commit/f4d4b3de3ee6741a7151a9fe74945ee515262f4c) | Model evaluation |
 
 ## Quick start (recommended)
 
