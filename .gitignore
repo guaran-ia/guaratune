@@ -194,5 +194,5 @@ configs/train/generated
 configs/train/legacy
 configs/evaluation/generated
 configs/evaluation/legacy
-
 evaluation/lm_eval_tasks/legacy
+evaluation/lm_eval_tasks/coreguapa_perplexity.yaml

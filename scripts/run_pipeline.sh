@@ -27,6 +27,8 @@ Options:
   --skip-analysis           Skip evaluation result analysis.
   --benchmark-language LANG Benchmark language for the comparison table. Default: all.
   --env-file PATH           Local secret env file forwarded to training. Default: .env.
+  --cleanup-checkpoints BOOL Remove checkpoint directories after successful training.
+                            Default: true.
   --cleanup-optimizers BOOL Pass optimizer cleanup setting to src.train_config.
                             Default: true.
   --force-data-prep         Run data preparation even if required artifacts already exist.
@@ -367,6 +369,7 @@ data_config_file="configs/data/gemma4_cpt.yaml"
 eval_matrix_file=""
 env_file=".env"
 cleanup_optimizers="true"
+cleanup_checkpoints="true"
 overwrite="true"
 dry_run="false"
 force_data_prep="false"
@@ -426,6 +429,10 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --env-file)
       env_file="${2:-}"
+      shift 2
+      ;;
+    --cleanup-checkpoints)
+      cleanup_checkpoints="${2:-}"
       shift 2
       ;;
     --cleanup-optimizers)
@@ -520,6 +527,7 @@ printf '[step 4/7] Launching CPT training\n'
 python -m src.train_config \
   --env-file "${env_file}" \
   --cleanup-optimizers "${cleanup_optimizers}" \
+  --cleanup-checkpoints "${cleanup_checkpoints}" \
   "${selected_configs[@]}"
 
 if [[ "${skip_evaluation}" == "true" ]]; then

@@ -1,0 +1,6 @@
+-c requirements.txt
+-r requirements.in
+pip<26
+pip-tools==7.5.2
+pytest==9.0.1
+ruff==0.15.22

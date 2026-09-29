@@ -47,6 +47,30 @@ def load_yaml(path: str) -> dict[str, Any]:
     return data
 
 
+def load_lm_eval_task_yaml(path: str) -> dict[str, Any]:
+    """Load an lm-eval task YAML file.
+
+    Args:
+        path: Task YAML file path.
+
+    Returns:
+        Parsed task configuration.
+    """
+    class Loader(yaml.SafeLoader):
+        pass
+
+    Loader.add_constructor(
+        '!function', lambda loader, node: loader.construct_scalar(node)
+    )
+    with open(path, 'r', encoding='utf-8') as handle:
+        data = yaml.load(handle, Loader=Loader)
+
+    if not isinstance(data, dict):
+        raise ValueError(f'Task YAML file must contain a mapping: {path}')
+
+    return data
+
+
 def looks_like_local_path(path: str) -> bool:
     """Return whether a model argument points to a local project path.
 
@@ -57,6 +81,94 @@ def looks_like_local_path(path: str) -> bool:
         True when the value should exist on the local filesystem.
     """
     return path.startswith(('/', './', '../', 'outputs/'))
+
+
+def iter_data_files(value: Any) -> list[str]:
+    """Return dataset file paths from an lm-eval data_files value.
+
+    Args:
+        value: data_files config value.
+
+    Returns:
+        Flat list of configured dataset file paths.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        paths = []
+        for item in value:
+            paths.extend(iter_data_files(item))
+        return paths
+    if isinstance(value, dict):
+        paths = []
+        for item in value.values():
+            paths.extend(iter_data_files(item))
+        return paths
+
+    return []
+
+
+def missing_local_json_files(task_name: str, include_path: Any) -> list[str]:
+    """Return missing local JSON files required by a task.
+
+    Args:
+        task_name: lm-eval task name.
+        include_path: Local task include directory from the evaluation config.
+
+    Returns:
+        Missing local data file paths. Empty when the task is not a local JSON task
+        or all required files exist.
+    """
+    if not include_path:
+        return []
+
+    task_path = os.path.join(str(include_path), f'{task_name}.yaml')
+    if not os.path.isfile(task_path):
+        return []
+
+    task_config = load_lm_eval_task_yaml(task_path)
+    if task_config.get('dataset_path') != 'json':
+        return []
+
+    dataset_kwargs = task_config.get('dataset_kwargs', {})
+    if not isinstance(dataset_kwargs, dict):
+        return []
+
+    return [
+        path
+        for path in iter_data_files(dataset_kwargs.get('data_files'))
+        if not os.path.exists(path)
+    ]
+
+
+def available_tasks(config: dict[str, Any]) -> list[str]:
+    """Filter tasks whose required private local data is unavailable.
+
+    Args:
+        config: Evaluation config mapping.
+
+    Returns:
+        Task names that can be passed to lm-evaluation-harness.
+    """
+    tasks = config.get('tasks', [])
+    if not isinstance(tasks, list):
+        raise ValueError('tasks must be a list.')
+
+    available = []
+    for task in tasks:
+        task_name = str(task)
+        missing = missing_local_json_files(task_name, config.get('include_path'))
+        if missing:
+            missing_text = ', '.join(missing)
+            print(
+                f'[skip] {task_name}: missing local evaluation data: {missing_text}',
+                flush=True,
+            )
+            continue
+
+        available.append(task_name)
+
+    return available
 
 
 def require_lm_eval() -> None:
@@ -193,9 +305,7 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     """
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
-    tasks = config.get('tasks', [])
-    if not isinstance(tasks, list):
-        raise ValueError('tasks must be a list.')
+    tasks = available_tasks(config)
     if not tasks:
         print('[skip] no evaluation tasks configured', flush=True)
         return

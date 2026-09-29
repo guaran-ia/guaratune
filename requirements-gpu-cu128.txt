@@ -1,0 +1,6 @@
+# NVIDIA CUDA 12.8 PyTorch wheels for Linux GPU training and evaluation.
+# Install this file before requirements.txt. Do not use it on macOS or CPU-only systems.
+--index-url https://download.pytorch.org/whl/cu128
+torch==2.13.0
+torchaudio==2.11.0
+torchvision==0.28.0

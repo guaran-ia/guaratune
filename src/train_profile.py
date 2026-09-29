@@ -163,12 +163,19 @@ def apply_exclusions(configs: list[str], exclude_patterns: tuple[str, ...]) -> l
     default=True,
     help='Remove optimizer.pt files after each training completes to save disk space.',
 )
+@click.option(
+    '--cleanup-checkpoints',
+    type=bool,
+    default=True,
+    help='Remove checkpoint directories after each successful training run.',
+)
 def main(
     profile: str,
     model_key: str | None,
     env_file: str,
     exclude_patterns: tuple[str, ...],
     cleanup_optimizers: bool,
+    cleanup_checkpoints: bool,
 ) -> None:
     """Run all configs in one profile.
 
@@ -177,6 +184,7 @@ def main(
         model_key: Optional model key to run.
         env_file: Local secret env file path.
         exclude_patterns: Config exclusion patterns.
+        cleanup_checkpoints: Whether to remove checkpoint directories after success.
         cleanup_optimizers: Whether to remove optimizer.pt files after each training.
 
     Returns:
@@ -203,6 +211,8 @@ def main(
                 env_file,
                 '--cleanup-optimizers',
                 str(cleanup_optimizers),
+                '--cleanup-checkpoints',
+                str(cleanup_checkpoints),
                 config_path,
             ],
             check=False,
