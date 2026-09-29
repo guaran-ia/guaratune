@@ -144,6 +144,7 @@ scripts/run_pipeline.sh --model <model_key>
 | `--skip-analysis` | `False` | Skip evaluation result analysis. |
 | `--benchmark-language LANG` | `all` | Benchmark language for the comparison table produced by `src.analyze_eval_results`. Supported values are defined by that script. |
 | `--env-file PATH` | `.env` | Local secret env file forwarded to training through `src.train_config`. |
+| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
 | `--cleanup-optimizers BOOL` | `true` | Pass optimizer cleanup setting to `src.train_config`. |
 | `--force-data-prep` | `False` | Run data preparation even if required artifacts already exist. |
 | `--no-overwrite` | `False` | Do not overwrite generated training or evaluation configs during preparation. |
@@ -287,7 +288,6 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 | `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
 | `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
 
-
 >[!Note]
 >New training configurations can be added by following the instructions presented 
 >in [configs/train/README.md](configs/train/README.md).
@@ -335,11 +335,21 @@ python -m src.train_profile experiments --model <model_key> --exclude '<model_ke
 | Argument | Default | Description |
 | --- | --- | --- |
 | `profile` | `experiments` | Generated training profile to run. |
-| `--model` | `None` | Model key to run inside the generated profile, for example 
-`gemma4_4b`. Required when a profile contains multiple model directories. |
+| `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_4b`. |
 | `--env-file` | `.env` | Local secret environment file forwarded to each training run. |
 | `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
 | `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after each training run to save disk space. |
+
+>[!Note]
+>Training wrappers remove `checkpoint-N` directories by default only after the
+>training process exits successfully. Failed or interrupted runs retain their
+>checkpoints for recovery. The final model, tokenizer, configuration, and results
+>in the run's root directory are preserved. To retain checkpoints with their optimizer state, 
+>pass both `--cleanup-checkpoints false --cleanup-optimizers false` to `src.train_config`,
+>`src.train_profile`, or `scripts/run_pipeline.sh`. Using only
+>`--cleanup-checkpoints false` retains checkpoint directories but still applies
+>the existing optimizer cleanup.
 
 #### Run CPT from config
 
@@ -361,6 +371,7 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 | --- | --- | --- |
 | `config_patterns` | Required | One or more generated LLaMA Factory training config paths or glob patterns. |
 | `--env-file` | `.env` | Local secret environment file containing values such as `HF_TOKEN` and `WANDB_API_KEY`. |
+| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
 | `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after training completes to save disk space. |
 
 > [!Tip]

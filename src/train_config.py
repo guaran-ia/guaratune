@@ -7,6 +7,7 @@ import click
 import glob
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import yaml
@@ -268,6 +269,28 @@ def prepare_environment(config_path: str, env_file: str) -> dict[str, str]:
     return env
 
 
+def cleanup_checkpoints(output_dir: str, enabled: bool = True) -> None:
+    """Remove immediate checkpoint-N directories after successful training."""
+    if not enabled or not os.path.isdir(output_dir):
+        return
+
+    with os.scandir(output_dir) as entries:
+        for entry in entries:
+            prefix, _, step = entry.name.partition('-')
+            if (
+                prefix != 'checkpoint'
+                or not step.isascii()
+                or not step.isdigit()
+                or not entry.is_dir(follow_symlinks=False)
+            ):
+                continue
+            try:
+                shutil.rmtree(entry.path)
+                print(f'[cleanup] Removed checkpoint directory {entry.path}', flush=True)
+            except OSError as exc:
+                print(f'[cleanup] Warning: Could not remove {entry.path}: {exc}', file=sys.stderr)
+
+
 def cleanup_optimizers(output_dir: str, enabled: bool = True) -> None:
     """Remove optimizer.pt files from training output directory.
 
@@ -343,8 +366,16 @@ def cleanup_optimizers(output_dir: str, enabled: bool = True) -> None:
     default=True,
     help='Remove optimizer.pt files after training completes to save disk space.',
 )
+@click.option(
+    '--cleanup-checkpoints',
+    'cleanup_checkpoint_dirs',
+    type=bool,
+    default=True,
+    help='Remove checkpoint directories after training succeeds; keep the final root model.',
+)
 def main(
-    config_patterns: tuple[str, ...], env_file: str, cleanup_optimizer_files: bool
+    config_patterns: tuple[str, ...], env_file: str, cleanup_optimizer_files: bool,
+    cleanup_checkpoint_dirs: bool,
 ) -> None:
     """Run training configs through LLaMA Factory.
 
@@ -352,6 +383,7 @@ def main(
         config_patterns: Generated LLaMA Factory training config paths or glob patterns.
         env_file: Local secret env file path.
         cleanup_optimizer_files: Whether to remove optimizer.pt files after training.
+        cleanup_checkpoint_dirs: Whether to remove checkpoint directories after success.
 
     Returns:
         None.
@@ -376,6 +408,7 @@ def main(
 
         output_dir = config.get('output_dir')
         if output_dir:
+            cleanup_checkpoints(output_dir, enabled=cleanup_checkpoint_dirs)
             cleanup_optimizers(output_dir, enabled=cleanup_optimizer_files)  # type:ignore
 
 
