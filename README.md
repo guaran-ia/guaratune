@@ -40,11 +40,13 @@ Before starting, follow the installation instructions below.
 Currently, the framework supports the training and evaluation of the following 
 Gemma 4 variants. 
 
-| Model                        | Parameters | Minimum GPU Memory |
+| Model                        | Parameters | Requiered GPU Memory |
 | ---------------------------- | ---------- | ------------------ | 
-| google/gemma-4-E2B           | 2B         | ~4 GB (bf16)       |
-| google/gemma-4-E4B           | 4B         | ~8 GB (bf16)       |
-| google/gemma-4-12B           | 12B        | ~24 GB (bf16)      |
+| google/gemma-4-E2B           | 2B         | ~55 GB (bf16)      |
+| google/gemma-4-E4B           | 4B         | ~80 GB (bf16)      |
+| google/gemma-4-12B           | 12B        | ~93 GB (bf16)*     |
+
+* Text-only CPT, freezing audio and vision.
 
 > [!Note]
 > New models can be added by following the instructions described in 
