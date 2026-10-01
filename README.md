@@ -191,16 +191,19 @@ can also be run step by step.
 
 ### 1. Data preparation
 
+To prevent training and validation leakage, the Kuatia train and validation splits were defined manually in `data/kuatia_config.yaml`. Before splitting, we excluded corpora included 
+in Kuatia but intended for benchmarking, such as Flores-200, Belebele, and MultiWikiQA, as well as the instruction-tuning corpus Alpaca. We also excluded the AmericasNLP corpora, [Glot500](https://huggingface.co/datasets/cis-lmu/Glot500), and [MaLA-monolingual](https://huggingface.co/datasets/MaLA-LM/mala-monolingual-split) because they are sourced from Flores-200, which provides 
+the passages used in the Belebele benchmark.
+
 To avoid "catastrophic forgetting" where the model forgets its old knowledge as 
 it learns new things, CPT is proposed to be conducted through several data mixture
 configurations that combine Guarani with Spanish and English. A refined 
 version of [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), 
 the collection of high-quality educational web pages developed by Hugging Face, is 
 used to include English in the training process. Similarly, a refined version of the 
-Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), 
-is used in some configurations of the training set, as shown below
+Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), is used in some configurations of the training set, as shown below
 
-- `C1_kuatia`: Full Kuatia.
+- `C1_kuatia`: Kuatia.
 - `C2_kuatia_no_synthetic`: Kuatia but excluding synthetic documents.
 - `C3_kuatia_es20`: `C1` plus Spanish FineWeb-Edu at 20% of `C1` tokens.
 - `C4_kuatia_no_synthetic_es20`: `C2` plus Spanish FineWeb-Edu at 20% of `C2` tokens.
@@ -208,10 +211,6 @@ is used in some configurations of the training set, as shown below
 - `C6_kuatia_no_synthetic_en20`: `C2` plus English FineWeb-Edu at 20% of `C2` tokens.
 - `C7_kuatia_es10_en10`: `C1` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
 - `C8_kuatia_no_synthetic_es10_en10`: `C2` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C2` tokens.
-
-Kuatia train and validation splits are pre-defined in `data/kuatia_config.yaml` to 
-avoid train/validation leakage, and each final corpus is declared in 
-`configs/data/gemma4_cpt.yaml`.
 
 FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. 
 The configured percentages are approximate token proportions: the sampler keeps complete 
@@ -416,7 +415,9 @@ tasks such as: [Flores 200](https://huggingface.co/datasets/facebook/flores),
 Global MMLU Lite, MGSM, and WLNI. For Flores 200, Belele, and MultiWiki-QA the Guarani 
 split of the set is used in the evaluation tasks while for Global MMLU Lite, MGSM, 
 and WLNI a Guarani version were created by language experts and
-are available at `data/evaluation`.
+are available at `data/evaluation`. 
+
+We also evaluate the models on standard English benchmarks and their Spanish translations, including [ARC](gemma4-4_eval_matrix), [PIQA](https://huggingface.co/datasets/ybisk/piqa), [HellaSwag](https://huggingface.co/datasets/Rowan/hellaswag), and [WinoGrande](https://huggingface.co/datasets/allenai/winogrande). The full list is in `configs/evaluation/gemma4-4_eval_matrix.yaml`.
 
 >[!Warning]
 > The evaluation `evaluation/lm_eval_tasks/guarani_coreguapa_perplexity.yaml` 
