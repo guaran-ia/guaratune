@@ -8,7 +8,7 @@ model:
   key: gemma4_12b
   model_name_or_path: google/gemma-4-12B
   model_revision: main
-  trust_remote_code: true
+  trust_remote_code: false
   dtype: bfloat16
   device: cuda:0
   batch_size: 1
@@ -67,7 +67,6 @@ suites:
       - bbh
       - gpqa_diamond_zeroshot
       - truthfulqa_mc1
-      - humaneval
     log_samples: true
     confirm_run_unsafe_code: true
 
