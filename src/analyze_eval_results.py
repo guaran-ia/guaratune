@@ -20,6 +20,7 @@ BENCHMARK_TABLE_FILE_PREFIX = 'evaluation_benchmark_table'
 LANGUAGE_AVERAGE_TABLE_FILE_PREFIX = 'evaluation_language_average_table'
 PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity_table'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
+COREGUAPA_PERPLEXITY_TASK = 'guarani_coreguapa_perplexity'
 BENCHMARK_LANGUAGE_CHOICES = (
     'all',
     'en',
@@ -386,6 +387,8 @@ def task_suffix(task_name: str) -> str:
     """
     if task_name.startswith(PERPLEXITY_TASK_PREFIX):
         return task_name[len(PERPLEXITY_TASK_PREFIX):]
+    if task_name == COREGUAPA_PERPLEXITY_TASK:
+        return 'coreguapa'
     if task_name == 'guarani_global_mmlu_lite':
         return 'global_mmlu_lite'
 
@@ -430,7 +433,10 @@ def is_perplexity_task(task_name: str) -> bool:
     Returns:
         True when the task is a CPT perplexity task.
     """
-    return task_name.startswith(PERPLEXITY_TASK_PREFIX)
+    return (
+        task_name.startswith(PERPLEXITY_TASK_PREFIX)
+        or task_name == COREGUAPA_PERPLEXITY_TASK
+    )
 
 
 def result_metric_column(task_name: str, metric_name: str) -> str:
@@ -459,6 +465,9 @@ def should_include_perplexity_task(task_name: str, row_corpus: str | int | None)
     Returns:
         True when the task should be included in the summary.
     """
+    if task_name == COREGUAPA_PERPLEXITY_TASK:
+        return True
+
     normalized_row_corpus = normalize_corpus(row_corpus)
     if normalized_row_corpus is None:
         return True

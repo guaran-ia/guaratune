@@ -513,6 +513,10 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 python -m src.analyze_eval_results --model <model_key> --model another_model_key --profile experiments
 ```
 
+The evaluation profile runner writes per-variant evaluation results; it does not
+generate summary tables. Run the analyzer after the profile finishes to produce the
+summary and perplexity comparison reports.
+
 The benchmark comparison table can be restricted to one evaluation language:
 
 ```bash
@@ -526,7 +530,7 @@ The analyzer produces:
 - matching `.md` files with the same filename stem
 - `results/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
 - `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
-- `results/evaluation_perplexity_table.md` when multiple models are analyzed, a cross-model perplexity comparison table
+- `results/evaluation_perplexity_table.md` when multiple model variants are available, comparing base and CPT variants for the selected models
 
 ##### CLI reference
 
