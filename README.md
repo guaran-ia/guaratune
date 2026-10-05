@@ -532,6 +532,10 @@ The analyzer produces:
 - `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
 - `results/evaluation_perplexity_table.md` when multiple model variants are available, comparing base and CPT variants for the selected models
 
+The evaluation summary Markdown report is transposed: metrics are rows and model
+variants are columns. Base-relative gain rows follow their corresponding metrics;
+the notes below the table define each metric and report the evaluated sample count.
+
 ##### CLI reference
 
 | Argument | Default | Description |
