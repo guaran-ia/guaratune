@@ -965,27 +965,6 @@ def add_improvement_columns(rows: list[dict[str, Any]], metrics: list[str]) -> l
     return improvement_columns
 
 
-def add_bbh_average(rows: list[dict[str, Any]]) -> str | None:
-    """Add a mean exact-match score over BBH subtasks to every model row."""
-    bbh_metrics = sorted(
-        {
-            column
-            for row in rows
-            for column in row
-            if column.startswith('bbh_cot_fewshot_')
-            and column.endswith('_exact_match')
-        }
-    )
-    if not bbh_metrics:
-        return None
-
-    for row in rows:
-        scores = [float(row[column]) for column in bbh_metrics if is_number(row.get(column))]
-        row['bbh_average'] = sum(scores) / len(scores) if scores else None
-
-    return 'bbh_average'
-
-
 def format_value(value: Any) -> str:
     """Format a value for markdown output.
 
@@ -1088,7 +1067,7 @@ def report_metric_label(metric: str) -> str:
         for code in ('_gn', '_es', '_en'):
             label = label.replace(code, '')
         label = label.rstrip('_')
-        label = f'{label}_{language}'
+        label = f'{language}_{label}'
 
     return label
 
@@ -1150,14 +1129,6 @@ def collect_metric_sample_counts(
                     )
                     counts[metric] = max(count, counts.get(metric, 0))
 
-    bbh_counts = [
-        count
-        for metric, count in counts.items()
-        if metric.startswith('bbh_cot_fewshot_')
-    ]
-    if bbh_counts:
-        counts['bbh_average'] = sum(bbh_counts)
-
     return counts
 
 
@@ -1170,6 +1141,10 @@ def benchmark_name_for_metric(metric: str) -> str:
         return 'BIG-Bench Hard'
 
     base = label
+    for language in ('gn_', 'es_', 'en_'):
+        if base.startswith(language):
+            base = base.removeprefix(language)
+            break
     for language in ('_gn', '_es', '_en'):
         if base.endswith(language):
             base = base.removesuffix(language)
@@ -1222,8 +1197,6 @@ def metric_meaning(metric: str) -> str:
         return 'Byte-level perplexity; lower is better.'
     if 'bits_per_byte' in lowered:
         return 'Bits per byte; lower is better.'
-    if lowered == 'bbh_average':
-        return 'Mean exact-match accuracy across BBH subtasks; higher is better.'
     if 'chrf' in lowered:
         return 'Character n-gram F-score; higher is better.'
     if 'bleu' in lowered:
@@ -1261,19 +1234,6 @@ def report_markdown(
     metric_names = [metric for metric in metrics if not metric.endswith('_gain_base')]
     metric_names = sorted(metric_names, key=report_metric_sort_key)
 
-    bbh_metrics = [metric for metric in metric_names if metric.startswith('bbh_cot_fewshot_')]
-    if bbh_metrics and 'bbh_average' not in metric_names:
-        for row in variants:
-            values = [row.get(metric) for metric in bbh_metrics]
-            numeric = [float(value) for value in values if is_number(value)]
-            row['bbh_average'] = sum(numeric) / len(numeric) if numeric else None
-        metric_names.append('bbh_average')
-        metric_names.sort(key=report_metric_sort_key)
-    if bbh_metrics and not sample_counts.get('bbh_average'):
-        bbh_count = sum(sample_counts.get(metric, 0) for metric in bbh_metrics)
-        if bbh_count:
-            sample_counts['bbh_average'] = bbh_count
-
     columns = ['metric'] + model_labels
     table_rows: list[tuple[str, list[Any], bool]] = []
     for metric in metric_names:
@@ -1306,7 +1266,7 @@ def report_markdown(
                     cells.append('')
                     continue
                 if label.endswith('_gain_base'):
-                    cells.append(f'{float(value):+.3f}%')
+                    cells.append(f'{float(value):+.3f}')
                     continue
                 rendered = f'{float(value):.3f}' if is_number(value) else str(value)
                 if maximum is not None and is_number(value) and float(value) == maximum:
@@ -1322,8 +1282,6 @@ def report_markdown(
             language = report_metric_language(metric)
             language_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[language]
             count = sample_counts.get(metric)
-            if metric == 'bbh_average':
-                count = sample_counts.get('bbh_average', count)
             count_label = f'{count:,}' if count is not None else 'not recorded'
             handle.write(
                 f'| {label} | {benchmark_name_for_metric(metric)} | '
@@ -1353,19 +1311,6 @@ def report_csv(
         (metric for metric in metrics if not metric.endswith('_gain_base')),
         key=report_metric_sort_key,
     )
-    bbh_metrics = [metric for metric in metric_names if metric.startswith('bbh_cot_fewshot_')]
-    if bbh_metrics and 'bbh_average' not in metric_names:
-        for row in variants:
-            values = [row.get(metric) for metric in bbh_metrics]
-            numeric = [float(value) for value in values if is_number(value)]
-            row['bbh_average'] = sum(numeric) / len(numeric) if numeric else None
-        metric_names.append('bbh_average')
-        metric_names.sort(key=report_metric_sort_key)
-    if bbh_metrics and not sample_counts.get('bbh_average'):
-        count = sum(sample_counts.get(metric, 0) for metric in bbh_metrics)
-        if count:
-            sample_counts['bbh_average'] = count
-
     with open(path, 'w', encoding='utf-8', newline='') as handle:
         writer = csv.writer(handle)
         writer.writerow(['Gain rows show relative percentage change from the matching base model; positive values indicate improvement.'])
@@ -1387,7 +1332,7 @@ def report_csv(
                         (
                             '--'
                             if row.get('variant') == 'base'
-                            else f'{float(row[gain_column]):+.3f}%'
+                            else f'{float(row[gain_column]):+.3f}'
                             if is_number(row.get(gain_column))
                             else ''
                         )
@@ -2036,10 +1981,7 @@ def main(
             f'No evaluation results found for models: {", ".join(model_keys)}'
         )
 
-    bbh_average_metric = add_bbh_average(rows)
     metrics = metric_columns(rows)
-    if bbh_average_metric and bbh_average_metric not in metrics:
-        metrics.append(bbh_average_metric)
     add_improvement_columns(rows, metrics)
     os.makedirs(output_dir, exist_ok=True)
     resolved_csv_name = csv_name or default_output_name(model_keys, 'csv')
