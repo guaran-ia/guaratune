@@ -1061,7 +1061,9 @@ def report_metric_label(metric: str) -> str:
     label = label.replace('flores200_grn_to_eng', 'flores200_gn_to_en')
     label = label.replace('flores200_spa_to_grn', 'flores200_es_to_gn')
     label = label.replace('flores200_grn_to_spa', 'flores200_gn_to_es')
-    if label.startswith(('bbh_', 'mgsm_')):
+    if label.startswith('bbh_'):
+        label = label.replace('exact_match', '').rstrip('_')
+    elif label.startswith('mgsm_'):
         label = label.removesuffix('_exact_match')
     if 'flores200' not in label:
         for code in ('_gn', '_es', '_en'):
@@ -1230,7 +1232,10 @@ def report_markdown(
             str(row.get('lora_rank') or ''),
         )
     )
-    model_labels = [model_column_label(row) for row in variants]
+    model_names = sorted(
+        {str(row.get('model_key')) for row in variants if row.get('model_key')}
+    )
+    model_labels = [str(row.get('variant') or 'unknown') for row in variants]
     metric_names = [metric for metric in metrics if not metric.endswith('_gain_base')]
     metric_names = sorted(metric_names, key=report_metric_sort_key)
 
@@ -1259,6 +1264,10 @@ def report_markdown(
         grouped_metrics[category].append(metric)
 
     with open(path, 'w', encoding='utf-8') as handle:
+        if len(model_names) == 1:
+            handle.write(f'# Model: {model_names[0]}\n\n')
+        elif model_names:
+            handle.write(f"# Models: {', '.join(model_names)}\n\n")
         handle.write(
             'Gain rows show relative percentage change from the matching base model; '
             'positive values indicate improvement.\n\n'
@@ -1367,9 +1376,8 @@ def report_csv(
     path: str,
     rows: list[dict[str, Any]],
     metrics: list[str],
-    sample_counts: dict[str, int],
 ) -> None:
-    """Write the same transposed summary and metric notes as CSV sections."""
+    """Write the transposed evaluation summary as CSV."""
     variants = unique_variant_rows(rows)
     variants.sort(
         key=lambda row: (
@@ -1412,26 +1420,6 @@ def report_csv(
                         for row in variants
                     ]
                 )
-
-        writer.writerow([])
-        writer.writerow(['Metric notes'])
-        writer.writerow(
-            ['Metric', 'Benchmark', 'Language', 'Meaning and interpretation', 'Instances']
-        )
-        for metric in metric_names:
-            language = report_metric_language(metric)
-            language_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[language]
-            count = sample_counts.get(metric)
-            writer.writerow(
-                [
-                    report_metric_label(metric),
-                    benchmark_name_for_metric(metric),
-                    f'{language_name} ({language})',
-                    metric_meaning(metric),
-                    count if count is not None else 'not recorded',
-                ]
-            )
-
 
 def model_column_label(row: dict[str, Any]) -> str:
     """Build a display label for one model variant column.
@@ -2068,7 +2056,7 @@ def main(
     sample_counts = collect_metric_sample_counts(
         evaluation_root, model_keys, profile_names
     )
-    report_csv(csv_path, rows, metrics, sample_counts)
+    report_csv(csv_path, rows, metrics)
     report_markdown(markdown_path, rows, metrics, sample_counts)
     benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
     write_benchmark_markdown(
