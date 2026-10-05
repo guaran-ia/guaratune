@@ -1562,6 +1562,7 @@ def benchmark_table(
     variants = unique_variant_rows(rows)
     model_labels = [str(row.get('variant') or 'unknown') for row in variants]
     table_rows = []
+    average_rows = []
     specs = benchmark_specs_for_language(language)
     language_specs = {
         code: [
@@ -1594,7 +1595,7 @@ def benchmark_table(
             average_row = {'benchmark': f'Average of {code} benchmarks'}
             for model_label, scores in average_scores[code].items():
                 average_row[model_label] = sum(scores) / len(scores) if scores else None
-            table_rows.append(average_row)
+            average_rows.append(average_row)
 
     for spec in specs:
         if not str(spec['label']).startswith('FLORES-200'):
@@ -1608,6 +1609,7 @@ def benchmark_table(
         if has_score:
             table_rows.append(table_row)
 
+    table_rows.extend(average_rows)
     return table_rows, ['benchmark'] + model_labels
 
 
