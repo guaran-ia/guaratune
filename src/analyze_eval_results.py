@@ -1503,16 +1503,16 @@ def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
     return f'{PERPLEXITY_TABLE_FILE_PREFIX}.md'
 
 
-def has_multiple_models(rows: list[dict[str, Any]]) -> bool:
-    """Return whether rows contain more than one model key.
+def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
+    """Return whether rows contain more than one model or variant.
 
     Args:
         rows: Summary rows.
 
     Returns:
-        True when at least two model keys are present.
+        True when at least two distinct model variant columns are present.
     """
-    return len({row.get('model_key') for row in rows}) > 1
+    return len({model_column_label(row) for row in rows}) > 1
 
 
 def analyze_results(
@@ -1664,7 +1664,7 @@ def main(
     print(markdown_path)
     print(benchmark_markdown_path)
     print(language_average_markdown_path)
-    if has_multiple_models(rows):
+    if has_multiple_model_variants(rows):
         resolved_perplexity_markdown_name = (
             perplexity_markdown_name or default_perplexity_table_name(model_keys)
         )
@@ -1677,7 +1677,7 @@ def main(
         )
         print(perplexity_markdown_path)
     else:
-        print('[skip] perplexity comparison table requires multiple models')
+        print('[skip] perplexity comparison table requires multiple model variants')
 
     print(f'[done] wrote {len(rows)} row(s)')
 
