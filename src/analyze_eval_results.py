@@ -1266,7 +1266,7 @@ def report_markdown(
                     cells.append('')
                     continue
                 if label.endswith('_gain_base'):
-                    cells.append(f'{float(value):+.3f}')
+                    cells.append(f'{float(value):+.2f}%')
                     continue
                 rendered = f'{float(value):.3f}' if is_number(value) else str(value)
                 if maximum is not None and is_number(value) and float(value) == maximum:
@@ -1332,7 +1332,7 @@ def report_csv(
                         (
                             '--'
                             if row.get('variant') == 'base'
-                            else f'{float(row[gain_column]):+.3f}'
+                            else f'{float(row[gain_column]):+.2f}%'
                             if is_number(row.get(gain_column))
                             else ''
                         )
