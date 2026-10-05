@@ -1560,7 +1560,7 @@ def benchmark_table(
         Table rows and column names.
     """
     variants = unique_variant_rows(rows)
-    model_labels = [model_column_label(row) for row in variants]
+    model_labels = [str(row.get('variant') or 'unknown') for row in variants]
     table_rows = []
     scores_by_model: dict[str, list[float]] = {label: [] for label in model_labels}
 
@@ -1647,7 +1647,10 @@ def language_average_table(
         model_key = str(row.get('model_key'))
         base_row = base_by_model.get(model_key)
         is_base = row.get('variant') == 'base'
-        table_row = {'model': model_column_label(row)}
+        table_row = {
+            'model_key': model_key,
+            'variant': str(row.get('variant') or 'unknown'),
+        }
 
         for language, prefix in (
             ('gn', 'guarani'),
@@ -1672,7 +1675,7 @@ def language_average_table(
         table_rows.append(table_row)
 
     return table_rows, [
-        'model',
+        'variant',
         'guarani_average',
         'guarani_gain_base',
         'english_average',
@@ -1696,12 +1699,19 @@ def write_language_average_markdown(
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
+        model_keys = sorted(
+            {str(row.get('model_key')) for row in rows if row.get('model_key')}
+        )
+        if len(model_keys) == 1:
+            handle.write(f'# Model: {model_keys[0]}\n\n')
+        elif model_keys:
+            handle.write(f"# Models: {', '.join(model_keys)}\n\n")
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
             values = []
             for column in columns:
-                if column == 'model':
+                if column == 'variant':
                     value = str(row.get(column, '')).replace('|', '\\|')
                 elif column.endswith('_gain_base'):
                     prefix = column.removesuffix('_gain_base')
@@ -1715,7 +1725,10 @@ def write_language_average_markdown(
 
 
 def write_benchmark_markdown(
-    path: str, rows: list[dict[str, Any]], columns: list[str]
+    path: str,
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    model_keys: tuple[str, ...],
 ) -> None:
     """Write a rounded benchmark-by-model markdown table.
 
@@ -1728,6 +1741,10 @@ def write_benchmark_markdown(
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
+        if len(model_keys) == 1:
+            handle.write(f'# Model: {model_keys[0]}\n\n')
+        elif model_keys:
+            handle.write(f"# Models: {', '.join(model_keys)}\n\n")
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
@@ -2060,7 +2077,7 @@ def main(
     report_markdown(markdown_path, rows, metrics, sample_counts)
     benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
     write_benchmark_markdown(
-        benchmark_markdown_path, benchmark_rows, benchmark_columns
+        benchmark_markdown_path, benchmark_rows, benchmark_columns, model_keys
     )
     resolved_language_average_markdown_name = (
         language_average_markdown_name or default_language_average_table_name()
