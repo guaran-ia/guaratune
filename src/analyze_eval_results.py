@@ -1562,26 +1562,52 @@ def benchmark_table(
     variants = unique_variant_rows(rows)
     model_labels = [str(row.get('variant') or 'unknown') for row in variants]
     table_rows = []
-    scores_by_model: dict[str, list[float]] = {label: [] for label in model_labels}
+    specs = benchmark_specs_for_language(language)
+    language_specs = {
+        code: [
+            spec
+            for spec in specs
+            if code in spec.get('languages', ())
+            and not str(spec['label']).startswith('FLORES-200')
+        ]
+        for code in ('gn', 'es', 'en')
+    }
+    average_scores: dict[str, dict[str, list[float]]] = {
+        code: {label: [] for label in model_labels} for code in language_specs
+    }
 
-    for spec in benchmark_specs_for_language(language):
+    for code, category_specs in language_specs.items():
+        for spec in category_specs:
+            table_row = {'benchmark': spec['label']}
+            has_score = False
+            for variant_row, model_label in zip(variants, model_labels):
+                score = benchmark_score(variant_row, spec)
+                table_row[model_label] = score
+                if score is not None:
+                    average_scores[code][model_label].append(score)
+                    has_score = True
+
+            if has_score:
+                table_rows.append(table_row)
+
+        if category_specs:
+            average_row = {'benchmark': f'Average of {code} benchmarks'}
+            for model_label, scores in average_scores[code].items():
+                average_row[model_label] = sum(scores) / len(scores) if scores else None
+            table_rows.append(average_row)
+
+    for spec in specs:
+        if not str(spec['label']).startswith('FLORES-200'):
+            continue
         table_row = {'benchmark': spec['label']}
         has_score = False
         for variant_row, model_label in zip(variants, model_labels):
             score = benchmark_score(variant_row, spec)
             table_row[model_label] = score
-            if score is not None:
-                scores_by_model[model_label].append(score)
-                has_score = True
-
+            has_score = has_score or score is not None
         if has_score:
             table_rows.append(table_row)
 
-    average_row = {'benchmark': 'Average'}
-    for model_label, scores in scores_by_model.items():
-        average_row[model_label] = sum(scores) / len(scores) if scores else None
-
-    table_rows.append(average_row)
     return table_rows, ['benchmark'] + model_labels
 
 
