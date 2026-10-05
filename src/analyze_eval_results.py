@@ -1234,45 +1234,118 @@ def report_markdown(
     metric_names = [metric for metric in metrics if not metric.endswith('_gain_base')]
     metric_names = sorted(metric_names, key=report_metric_sort_key)
 
-    columns = ['metric'] + model_labels
-    table_rows: list[tuple[str, list[Any], bool]] = []
+    grouped_metrics: dict[str, list[str]] = {
+        'FLORES-200 translations': [],
+        'Perplexity': [],
+        'Guarani benchmarks': [],
+        'Spanish benchmarks': [],
+        'English benchmarks': [],
+    }
     for metric in metric_names:
-        values = [row.get(metric) for row in variants]
-        label = report_metric_label(metric)
-        table_rows.append((label, values, True))
-        gain_column = f'{metric}_gain_base'
-        if any(gain_column in row for row in variants):
-            gains = [row.get(gain_column) for row in variants]
-            table_rows.append((f'{label}_gain_base', gains, False))
+        lowered = metric.lower()
+        if 'flores200' in lowered:
+            category = 'FLORES-200 translations'
+        elif metric in PERPLEXITY_METRIC_NAMES or any(
+            token in lowered for token in ('perplexity', 'bits_per_byte')
+        ):
+            category = 'Perplexity'
+        else:
+            language = report_metric_language(metric)
+            category = {
+                'gn': 'Guarani benchmarks',
+                'es': 'Spanish benchmarks',
+                'en': 'English benchmarks',
+            }[language]
+        grouped_metrics[category].append(metric)
 
     with open(path, 'w', encoding='utf-8') as handle:
         handle.write(
             'Gain rows show relative percentage change from the matching base model; '
             'positive values indicate improvement.\n\n'
         )
-        handle.write('| ' + ' | '.join(columns) + ' |\n')
-        handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
-        for label, values, is_score in table_rows:
-            cells = [label.replace('|', '\\|')]
-            maximum = max(
-                (float(value) for value in values if is_number(value)),
-                default=None,
-            ) if is_score and not any(token in label.lower() for token in LOWER_IS_BETTER_TOKENS) else None
-            for variant, value in zip(variants, values):
-                if label.endswith('_gain_base') and variant.get('variant') == 'base':
-                    cells.append('--')
-                    continue
-                if value is None:
-                    cells.append('')
-                    continue
-                if label.endswith('_gain_base'):
-                    cells.append(f'{float(value):+.2f}%')
-                    continue
-                rendered = f'{float(value):.3f}' if is_number(value) else str(value)
-                if maximum is not None and is_number(value) and float(value) == maximum:
-                    rendered = f'**{rendered}**'
-                cells.append(rendered.replace('|', '\\|'))
-            handle.write('| ' + ' | '.join(cells) + ' |\n')
+        columns = ['metric'] + model_labels
+        for category, category_metrics in grouped_metrics.items():
+            handle.write(f'## {category}\n\n')
+            handle.write('| ' + ' | '.join(columns) + ' |\n')
+            handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+            for metric in category_metrics:
+                label = report_metric_label(metric)
+                values = [row.get(metric) for row in variants]
+                maximum = (
+                    max(
+                        (float(value) for value in values if is_number(value)),
+                        default=None,
+                    )
+                    if not any(token in metric.lower() for token in LOWER_IS_BETTER_TOKENS)
+                    else None
+                )
+                cells = [label.replace('|', '\\|')]
+                for value in values:
+                    if value is None:
+                        cells.append('')
+                        continue
+                    rendered = f'{float(value):.3f}' if is_number(value) else str(value)
+                    if maximum is not None and is_number(value) and float(value) == maximum:
+                        rendered = f'**{rendered}**'
+                    cells.append(rendered.replace('|', '\\|'))
+                handle.write('| ' + ' | '.join(cells) + ' |\n')
+
+                gain_column = f'{metric}_gain_base'
+                if any(gain_column in row for row in variants):
+                    gains = [row.get(gain_column) for row in variants]
+                    cells = [f'{label}_gain_base']
+                    for variant, value in zip(variants, gains):
+                        if variant.get('variant') == 'base':
+                            cells.append('--')
+                        elif is_number(value):
+                            cells.append(f'{float(value):+.2f}%')
+                        else:
+                            cells.append('')
+                    handle.write('| ' + ' | '.join(cells) + ' |\n')
+
+            if category in ('Guarani benchmarks', 'Spanish benchmarks', 'English benchmarks'):
+                average_scores = []
+                average_gains = []
+                for variant in variants:
+                    scores = [
+                        float(variant[metric])
+                        for metric in category_metrics
+                        if is_number(variant.get(metric))
+                    ]
+                    gains = [
+                        float(variant[f'{metric}_gain_base'])
+                        for metric in category_metrics
+                        if is_number(variant.get(f'{metric}_gain_base'))
+                    ]
+                    average_scores.append(
+                        sum(scores) / len(scores) if scores else None
+                    )
+                    average_gains.append(
+                        sum(gains) / len(gains) if gains else None
+                    )
+
+                score_cells = ['Average of variant across benchmarks']
+                score_max = max(
+                    (value for value in average_scores if value is not None),
+                    default=None,
+                )
+                for value in average_scores:
+                    rendered = f'{value:.3f}' if value is not None else ''
+                    if value is not None and value == score_max:
+                        rendered = f'**{rendered}**'
+                    score_cells.append(rendered)
+                handle.write('| ' + ' | '.join(score_cells) + ' |\n')
+
+                gain_cells = ['Average of variant gain in relation to base across benchmarks']
+                for variant, value in zip(variants, average_gains):
+                    if variant.get('variant') == 'base':
+                        gain_cells.append('--')
+                    elif value is not None:
+                        gain_cells.append(f'{value:+.2f}%')
+                    else:
+                        gain_cells.append('')
+                handle.write('| ' + ' | '.join(gain_cells) + ' |\n')
+            handle.write('\n')
 
         handle.write('\n## Metric notes\n\n')
         handle.write('| Metric | Benchmark | Language | Meaning and interpretation | Instances |\n')
