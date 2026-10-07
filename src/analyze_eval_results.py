@@ -1175,14 +1175,22 @@ def collect_metric_sample_counts(
             count = result_sample_count(task_counts.get(task_name))
             if count is None and isinstance(samples.get(task_name), list):
                 count = len(samples[task_name])
-            if count is None:
-                continue
+            metric_counts = task_metrics.get('sample_count', {})
+            if not isinstance(metric_counts, dict):
+                metric_counts = {}
             for raw_metric, value in task_metrics.items():
                 if is_metric_key(raw_metric, value):
+                    metric_count = count
+                    if metric_count is None:
+                        metric_count = result_sample_count(
+                            metric_counts.get(raw_metric)
+                        )
+                    if metric_count is None:
+                        continue
                     metric = result_metric_column(
                         str(task_name), clean_metric_name(str(raw_metric))
                     )
-                    counts[metric] = max(count, counts.get(metric, 0))
+                    counts[metric] = max(metric_count, counts.get(metric, 0))
 
     return counts
 
@@ -2241,6 +2249,14 @@ def write_language_average_markdown(
             handle.write(f'# {heading}\n\n')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        column_maxima = {
+            column: max(
+                (row.get(column) for row in rows if is_number(row.get(column))),
+                default=None,
+            )
+            for column in columns
+            if column != 'variant'
+        }
         for row in rows:
             values = []
             for column in columns:
@@ -2252,6 +2268,12 @@ def write_language_average_markdown(
                 else:
                     value = format_benchmark_score(row.get(column))
 
+                if (
+                    column != 'variant'
+                    and is_number(row.get(column))
+                    and row[column] == column_maxima[column]
+                ):
+                    value = f'**{value}**'
                 values.append(value)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
@@ -2284,11 +2306,16 @@ def write_benchmark_markdown(
             handle.write(f'# {heading}\n\n')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        section_count = 0
         for row in rows:
             label = str(row.get('benchmark', '')).replace('|', '\\|')
             if row.get('_section'):
                 values = [label] + [''] * (len(columns) - 1)
                 handle.write('| ' + ' | '.join(values) + ' |\n')
+                if section_count:
+                    handle.write('| ' + ' | '.join(columns) + ' |\n')
+                    handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+                section_count += 1
                 continue
 
             scores = [displayed_score(row.get(column)) for column in columns[2:]]
