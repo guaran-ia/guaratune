@@ -2306,16 +2306,11 @@ def write_benchmark_markdown(
             handle.write(f'# {heading}\n\n')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
-        section_count = 0
         for row in rows:
             label = str(row.get('benchmark', '')).replace('|', '\\|')
             if row.get('_section'):
                 values = [label] + [''] * (len(columns) - 1)
                 handle.write('| ' + ' | '.join(values) + ' |\n')
-                if section_count:
-                    handle.write('| ' + ' | '.join(columns) + ' |\n')
-                    handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
-                section_count += 1
                 continue
 
             scores = [displayed_score(row.get(column)) for column in columns[2:]]
