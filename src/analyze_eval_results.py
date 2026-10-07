@@ -8,6 +8,7 @@ import csv
 import json
 import math
 import os
+import re
 
 from collections import defaultdict
 from typing import Any
@@ -26,6 +27,16 @@ BENCHMARK_LANGUAGE_CHOICES = (
     'en',
     'es',
     'gn',
+)
+DATASET_CONFIGURATION_NOTES = (
+    ('C1', 'Kuatia'),
+    ('C2', 'Kuatia without synthetic'),
+    ('C3', 'Kuatia + 20% Spanish FineWeb-Edu'),
+    ('C4', 'Kuatia without synthetic + 20% Spanish FineWeb-Edu'),
+    ('C5', 'Kuatia + 20% FineWeb-Edu'),
+    ('C6', 'Kuatia without synthetic + 20% FineWeb-Edu'),
+    ('C7', 'Kuatia + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu'),
+    ('C8', 'Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu'),
 )
 IGNORED_METRIC_NAMES = (
     'sample_len',
@@ -1625,6 +1636,7 @@ def pretty_report_csv(
         metric
         for metric in metrics
         if not metric.endswith('_gain_base')
+        and not ('bbh' in metric.lower() and 'cot_fewshot' in metric.lower())
         and any(is_number(row.get(metric)) for row in variants)
     ]
     metric_names.sort(key=report_metric_sort_key)
@@ -1833,6 +1845,90 @@ def format_benchmark_score(value: Any) -> str:
     return f'{float(value):.2f}'
 
 
+def displayed_score(value: Any) -> float | None:
+    """Return a score rounded to the precision shown in the benchmark table."""
+    if not is_number(value):
+        return None
+
+    return float(format_benchmark_score(value))
+
+
+def model_display_name(model_key: str) -> str:
+    """Format a model key as a compact human-readable title."""
+    words = []
+    for token in re.split(r'[_-]+', model_key):
+        match = re.fullmatch(r'(\d+)([a-zA-Z]+)', token)
+        if match:
+            words.append(f'{match.group(1)}{match.group(2).upper()}')
+        else:
+            words.append(token[:1].upper() + token[1:])
+    return ' '.join(words)
+
+
+def benchmark_report_heading(
+    model_keys: tuple[str, ...], variants: list[dict[str, Any]]
+) -> str:
+    """Build a readable heading from model keys and training methods."""
+    model_names = list(dict.fromkeys(model_display_name(key) for key in model_keys))
+    methods = list(
+        dict.fromkeys(
+            str(row.get('training_method'))
+            for row in variants
+            if row.get('training_method') and row.get('training_method') != 'base'
+        )
+    )
+    method_names = [
+        {'full': 'Full CPT', 'lora': 'LoRA'}.get(method, method.replace('_', ' ').title())
+        for method in methods
+    ]
+    heading = ', '.join(model_names)
+    if method_names:
+        heading += f" ({', '.join(method_names)})"
+    return heading
+
+
+def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
+    """Return concise corpus labels with qualifiers where labels collide."""
+    labels = []
+    for row in variants:
+        if row.get('variant') == 'base':
+            labels.append('base')
+            continue
+        corpus = str(row.get('corpus') or '')
+        variant = str(row.get('variant') or 'unknown')
+        labels.append(corpus.split('_', 1)[0] if corpus else variant)
+
+    for index, (label, row) in enumerate(zip(labels.copy(), variants)):
+        if labels.count(label) <= 1:
+            continue
+        if row.get('variant') == 'base':
+            continue
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            rank = row.get('lora_rank')
+            qualifier = f'LoRA r{rank}' if rank else 'LoRA'
+        elif method == 'full':
+            qualifier = 'Full CPT'
+        else:
+            qualifier = method.title() if method else str(row.get('variant'))
+        labels[index] = f'{label} ({qualifier})'
+
+    for index, label in enumerate(labels.copy()):
+        if labels.count(label) > 1:
+            labels[index] = f'{label} ({model_display_name(str(variants[index].get("model_key") or "model"))})'
+    return labels
+
+
+def score_point_difference(value: Any, base_value: Any) -> float | None:
+    """Compute the difference between the displayed score and base score."""
+    score = displayed_score(value)
+    base_score = displayed_score(base_value)
+    if score is None or base_score is None:
+        return None
+
+    return score - base_score
+
+
 def benchmark_specs_for_language(language: str) -> list[dict[str, Any]]:
     """Filter benchmark score specs by language.
 
@@ -1865,9 +1961,8 @@ def benchmark_table(
         Table rows and column names.
     """
     variants = unique_variant_rows(rows)
-    model_labels = [str(row.get('variant') or 'unknown') for row in variants]
+    model_labels = benchmark_model_labels(variants)
     table_rows = []
-    average_rows = []
     specs = benchmark_specs_for_language(language)
     language_specs = {
         code: [
@@ -1878,43 +1973,99 @@ def benchmark_table(
         ]
         for code in ('gn', 'es', 'en')
     }
-    average_scores: dict[str, dict[str, list[float]]] = {
-        code: {label: [] for label in model_labels} for code in language_specs
+    bases = {
+        str(row.get('model_key')): row
+        for row in variants
+        if row.get('variant') == 'base'
     }
 
     for code, category_specs in language_specs.items():
+        if not category_specs:
+            continue
+        section_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[code]
+        table_rows.append(
+            {'benchmark': f'**{section_name}**', '_section': True}
+        )
+        category_scores: dict[str, list[float]] = {
+            label: [] for label in model_labels
+        }
         for spec in category_specs:
             table_row = {'benchmark': spec['label']}
             has_score = False
+            differences = {}
             for variant_row, model_label in zip(variants, model_labels):
                 score = benchmark_score(variant_row, spec)
                 table_row[model_label] = score
                 if score is not None:
-                    average_scores[code][model_label].append(score)
+                    category_scores[model_label].append(score)
                     has_score = True
+                base_row = bases.get(str(variant_row.get('model_key')))
+                base_score = benchmark_score(base_row, spec) if base_row else None
+                differences[model_label] = (
+                    None
+                    if variant_row.get('variant') == 'base'
+                    else score_point_difference(score, base_score)
+                )
 
             if has_score:
+                table_row['_differences'] = differences
                 table_rows.append(table_row)
 
-        if category_specs:
-            average_row = {'benchmark': f'Average of {code} benchmarks'}
-            for model_label, scores in average_scores[code].items():
-                average_row[model_label] = sum(scores) / len(scores) if scores else None
-            average_rows.append(average_row)
+        average_row = {'benchmark': 'Average'}
+        average_scores = {
+            label: sum(scores) / len(scores) if scores else None
+            for label, scores in category_scores.items()
+        }
+        average_row.update(average_scores)
+        average_differences = {}
+        for variant_row, model_label in zip(variants, model_labels):
+            base_row = bases.get(str(variant_row.get('model_key')))
+            # Use each model's base average, then compare rounded display values.
+            if base_row is None or not category_scores.get(model_label):
+                base_average = None
+            else:
+                base_values = [
+                    score
+                    for spec in category_specs
+                    if (score := benchmark_score(base_row, spec)) is not None
+                ]
+                base_average = (
+                    sum(base_values) / len(base_values) if base_values else None
+                )
+            average_differences[model_label] = (
+                None
+                if variant_row.get('variant') == 'base'
+                else score_point_difference(average_scores[model_label], base_average)
+            )
+        average_row['_differences'] = average_differences
+        table_rows.append(average_row)
 
-    for spec in specs:
-        if not str(spec['label']).startswith('FLORES-200'):
-            continue
+    translation_specs = [
+        spec for spec in specs if str(spec['label']).startswith('FLORES-200')
+    ]
+    translation_rows = []
+    for spec in translation_specs:
         table_row = {'benchmark': spec['label']}
         has_score = False
+        differences = {}
         for variant_row, model_label in zip(variants, model_labels):
             score = benchmark_score(variant_row, spec)
             table_row[model_label] = score
             has_score = has_score or score is not None
+            base_row = bases.get(str(variant_row.get('model_key')))
+            base_score = benchmark_score(base_row, spec) if base_row else None
+            differences[model_label] = (
+                None
+                if variant_row.get('variant') == 'base'
+                else score_point_difference(score, base_score)
+            )
         if has_score:
-            table_rows.append(table_row)
+            table_row['_differences'] = differences
+            translation_rows.append(table_row)
 
-    table_rows.extend(average_rows)
+    if translation_rows:
+        table_rows.append({'benchmark': '**Translation**', '_section': True})
+        table_rows.extend(translation_rows)
     return table_rows, ['benchmark'] + model_labels
 
 
@@ -1958,6 +2109,13 @@ def format_gain(value: Any, is_base: bool) -> str:
     return f'{float(value):+.2f}'
 
 
+def write_dataset_configuration_notes(handle: Any) -> None:
+    """Append the dataset configuration key to a report markdown file."""
+    handle.write('\n## Dataset configurations\n')
+    for key, description in DATASET_CONFIGURATION_NOTES:
+        handle.write(f'* {key}: {description}\n')
+
+
 def language_average_table(
     rows: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], list[str]]:
@@ -1975,15 +2133,17 @@ def language_average_table(
         for row in variants
         if row.get('variant') == 'base'
     }
+    variant_labels = benchmark_model_labels(variants)
     table_rows = []
 
-    for row in variants:
+    for row, variant_label in zip(variants, variant_labels):
         model_key = str(row.get('model_key'))
         base_row = base_by_model.get(model_key)
         is_base = row.get('variant') == 'base'
         table_row = {
             'model_key': model_key,
-            'variant': str(row.get('variant') or 'unknown'),
+            'variant': variant_label,
+            'training_method': row.get('training_method'),
         }
 
         for language, prefix in (
@@ -2036,10 +2196,9 @@ def write_language_average_markdown(
         model_keys = sorted(
             {str(row.get('model_key')) for row in rows if row.get('model_key')}
         )
-        if len(model_keys) == 1:
-            handle.write(f'# Model: {model_keys[0]}\n\n')
-        elif model_keys:
-            handle.write(f"# Models: {', '.join(model_keys)}\n\n")
+        if model_keys:
+            heading = benchmark_report_heading(tuple(model_keys), rows)
+            handle.write(f'# {heading}\n\n')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
@@ -2057,41 +2216,60 @@ def write_language_average_markdown(
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
+        write_dataset_configuration_notes(handle)
+
 
 def write_benchmark_markdown(
     path: str,
     rows: list[dict[str, Any]],
     columns: list[str],
     model_keys: tuple[str, ...],
+    variants: list[dict[str, Any]],
 ) -> None:
-    """Write a rounded benchmark-by-model markdown table.
+    """Write the grouped, rounded benchmark-by-model markdown table.
 
     Args:
         path: Destination markdown path.
         rows: Benchmark table rows.
         columns: Output columns.
+        model_keys: Model keys included in the report.
+        variants: Unique model variants included in the report.
 
     Returns:
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
-        if len(model_keys) == 1:
-            handle.write(f'# Model: {model_keys[0]}\n\n')
-        elif model_keys:
-            handle.write(f"# Models: {', '.join(model_keys)}\n\n")
+        if model_keys:
+            heading = benchmark_report_heading(model_keys, variants)
+            handle.write(f'# {heading}\n\n')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
-            values = []
-            for column in columns:
-                if column == 'benchmark':
-                    value = str(row.get(column, '')).replace('|', '\\|')
-                else:
-                    value = format_benchmark_score(row.get(column))
+            label = str(row.get('benchmark', '')).replace('|', '\\|')
+            if row.get('_section'):
+                values = [label] + [''] * (len(columns) - 1)
+                handle.write('| ' + ' | '.join(values) + ' |\n')
+                continue
 
-                values.append(value)
+            scores = [displayed_score(row.get(column)) for column in columns[1:]]
+            maximum = max((score for score in scores if score is not None), default=None)
+            differences = row.get('_differences', {})
+            values = [label]
+            for column, score in zip(columns[1:], scores):
+                if score is None:
+                    values.append('')
+                    continue
+                rendered = format_benchmark_score(score)
+                difference = differences.get(column)
+                if difference is not None:
+                    rendered += f' ({difference:+.2f})'
+                if score == maximum:
+                    rendered = f'**{rendered}**'
+                values.append(rendered)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
+
+        write_dataset_configuration_notes(handle)
 
 
 def sorted_variant_labels(rows: list[dict[str, Any]]) -> list[str]:
@@ -2436,7 +2614,11 @@ def main(
     pretty_report_csv(pretty_csv_path, rows, metrics)
     benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
     write_benchmark_markdown(
-        benchmark_markdown_path, benchmark_rows, benchmark_columns, model_keys
+        benchmark_markdown_path,
+        benchmark_rows,
+        benchmark_columns,
+        model_keys,
+        unique_variant_rows(rows),
     )
     resolved_language_average_markdown_name = (
         language_average_markdown_name or default_language_average_table_name()

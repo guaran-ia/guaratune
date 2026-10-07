@@ -194,3 +194,74 @@ def test_merge_rows_combines_non_overlapping_metrics() -> None:
     assert analyze_eval_results.merge_rows(
         [row, row | {"benchmark_f1": 0.6}]
     ) == [row | {"benchmark_f1": 0.6}]
+
+
+def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
+    base = {
+        "model_key": "gemma4_4b",
+        "variant": "base",
+        "training_method": "base",
+        "global_mmlu_lite_acc_norm": 0.3875,
+        "guarani_2m_belebele_acc_norm": 0.43,
+        "guarani_multiwikiqa_f1": 0.2021,
+        "spanish_global_mmlu_lite_acc_norm": 0.6325,
+        "english_global_mmlu_lite_acc_norm": 0.70,
+        "guarani_flores200_eng_to_grn_bleu": 0.67,
+    }
+    variant = base | {
+        "variant": "full_C1_kuatia",
+        "training_method": "full",
+        "corpus": "C1_kuatia",
+        "global_mmlu_lite_acc_norm": 0.325,
+        "guarani_2m_belebele_acc_norm": 0.4667,
+        "guarani_multiwikiqa_f1": 0.2874,
+        "spanish_global_mmlu_lite_acc_norm": 0.5625,
+        "english_global_mmlu_lite_acc_norm": 0.665,
+        "guarani_flores200_eng_to_grn_bleu": 0.89,
+    }
+
+    rows, columns = analyze_eval_results.benchmark_table([base, variant], "all")
+    output_path = tmp_path / "evaluation_benchmark_table.md"
+    analyze_eval_results.write_benchmark_markdown(
+        str(output_path), rows, columns, ("gemma4_4b",), [base, variant]
+    )
+    report = output_path.read_text(encoding="utf-8")
+
+    assert report.startswith("# Gemma4 4B (Full CPT)\n\n")
+    assert report.index("| **Guarani** |") < report.index("| Average |")
+    assert report.index("| Average |") < report.index("| **Spanish** |")
+    assert report.index("| **Spanish** |") < report.index("| **English** |")
+    assert report.index("| **English** |") < report.index("| **Translation** |")
+    assert "| Global MMLU Lite GN (acc_norm) | **38.75** | 32.50 (-6.25) |" in report
+    assert "| Belebele GN (acc_norm) | 43.00 | **46.67 (+3.67)** |" in report
+    assert "| Average | 33.99 | **35.97 (+1.98)** |" in report
+    assert "FLORES-200 EN->GN (BLEU)" in report
+    assert "Average of en benchmarks" not in report
+    assert "## Dataset configurations\n* C1: Kuatia\n" in report
+
+    average_rows, average_columns = analyze_eval_results.language_average_table(
+        [base, variant]
+    )
+    assert [row['variant'] for row in average_rows] == ['base', 'C1']
+    average_path = tmp_path / "evaluation_language_average_table.md"
+    analyze_eval_results.write_language_average_markdown(
+        str(average_path), average_rows, average_columns
+    )
+    average_report = average_path.read_text(encoding="utf-8")
+    assert average_report.startswith("# Gemma4 4B (Full CPT)\n\n")
+    assert "| C1 |" in average_report
+    assert "full_C1_kuatia" not in average_report
+    assert "## Dataset configurations\n* C1: Kuatia\n" in average_report
+    assert "* C8: Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu" in average_report
+
+    filtered_rows, _ = analyze_eval_results.benchmark_table([base, variant], "es")
+    filtered_labels = [row["benchmark"] for row in filtered_rows]
+    assert "**Spanish**" in filtered_labels
+    assert "**Guarani**" not in filtered_labels
+    assert "Global MMLU Lite ES (acc_norm)" in filtered_labels
+    assert "FLORES-200 EN->GN (BLEU)" not in filtered_labels
+
+    assert analyze_eval_results.benchmark_report_heading(
+        ("gemma4_4b", "llama3_8b"),
+        [base, variant, {"training_method": "lora"}],
+    ) == "Gemma4 4B, Llama3 8B (Full CPT, LoRA)"
