@@ -533,7 +533,7 @@ The analyzer writes reports under `results/<model_key>/` for one model or
   fallback metrics, BBH subtasks, and standard-error metrics
 - `<model_dir>/evaluation_summary_pretty_<model_key>.csv`, a grouped report using
   the regular summary's selected metrics
-- `<model_dir>/evaluation_benchmark_table.md`, a benchmark-by-model table grouped by language, with base score differences, language averages, and FLORES results at the bottom
+- `<model_dir>/evaluation_benchmark_table.md`, a benchmark-by-model table grouped by language, with item counts, base score differences, language averages, and FLORES results at the bottom
 - `<model_dir>/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
 - `<model_dir>/evaluation_perplexity_table.md` when multiple model variants are available, comparing base and CPT variants for the selected models
 

@@ -1328,7 +1328,7 @@ def report_markdown(
             'Gain rows show relative percentage change from the matching base model; '
             'positive values indicate improvement.\n\n'
         )
-        columns = ['metric'] + model_labels
+        columns = ['metric', 'Instances'] + model_labels
         for category, category_metrics in grouped_metrics.items():
             handle.write(f'## {category}\n\n')
             handle.write('| ' + ' | '.join(columns) + ' |\n')
@@ -1347,7 +1347,9 @@ def report_markdown(
                     )
                     else None
                 )
-                cells = [label.replace('|', '\\|')]
+                count = sample_counts.get(metric)
+                count_label = f'{count:,}' if count is not None else 'not recorded'
+                cells = [label.replace('|', '\\|'), count_label]
                 for value in values:
                     if value is None:
                         cells.append('')
@@ -1361,7 +1363,7 @@ def report_markdown(
                 gain_column = f'{metric}_gain_base'
                 if any(gain_column in row for row in variants):
                     gains = [row.get(gain_column) for row in variants]
-                    cells = [f'{label}_gain_base']
+                    cells = [f'{label}_gain_base', '']
                     for variant, value in zip(variants, gains):
                         if variant.get('variant') == 'base':
                             cells.append('--')
@@ -1392,7 +1394,7 @@ def report_markdown(
                         sum(gains) / len(gains) if gains else None
                     )
 
-                score_cells = ['Average of variant across benchmarks']
+                score_cells = ['Average of variant across benchmarks', '']
                 score_max = max(
                     (value for value in average_scores if value is not None),
                     default=None,
@@ -1404,7 +1406,10 @@ def report_markdown(
                     score_cells.append(rendered)
                 handle.write('| ' + ' | '.join(score_cells) + ' |\n')
 
-                gain_cells = ['Average of variant gain in relation to base across benchmarks']
+                gain_cells = [
+                    'Average of variant gain in relation to base across benchmarks',
+                    '',
+                ]
                 for variant, value in zip(variants, average_gains):
                     if variant.get('variant') == 'base':
                         gain_cells.append('--')
@@ -1435,6 +1440,7 @@ def report_csv(
     path: str,
     rows: list[dict[str, Any]],
     metrics: list[str],
+    sample_counts: dict[str, int],
 ) -> None:
     """Write the transposed evaluation summary as CSV."""
     variants = unique_variant_rows(rows)
@@ -1454,11 +1460,14 @@ def report_csv(
     with open(path, 'w', encoding='utf-8', newline='') as handle:
         writer = csv.writer(handle)
         writer.writerow(['Gain rows show relative percentage change from the matching base model; positive values indicate improvement.'])
-        writer.writerow(['metric'] + [model_column_label(row) for row in variants])
+        writer.writerow(
+            ['metric', 'Instances']
+            + [model_column_label(row) for row in variants]
+        )
         for metric in metric_names:
             label = report_metric_label(metric)
             writer.writerow(
-                [label]
+                [label, sample_counts.get(metric, '')]
                 + [
                     f'{float(row[metric]):.3f}' if is_number(row.get(metric)) else ''
                     for row in variants
@@ -1467,7 +1476,7 @@ def report_csv(
             gain_column = f'{metric}_gain_base'
             if any(gain_column in row for row in variants):
                 writer.writerow(
-                    [f'{label}_gain_base']
+                    [f'{label}_gain_base', '']
                     + [
                         (
                             '--'
@@ -1619,6 +1628,7 @@ def pretty_report_csv(
     path: str,
     rows: list[dict[str, Any]],
     metrics: list[str],
+    sample_counts: dict[str, int],
 ) -> None:
     """Write the additional grouped, reference-style evaluation CSV."""
     variants = unique_variant_rows(rows)
@@ -1654,7 +1664,7 @@ def pretty_report_csv(
 
     with open(path, 'w', encoding='utf-8', newline='') as handle:
         writer = csv.writer(handle)
-        writer.writerow(['Metric', *labels])
+        writer.writerow(['Metric', 'Instances', *labels])
         for section in section_order:
             section_metrics = grouped[section]
             if not section_metrics:
@@ -1687,12 +1697,12 @@ def pretty_report_csv(
             else:
                 heading = section
 
-            writer.writerow([heading, *([''] * len(variants))])
+            writer.writerow([heading, '', *([''] * len(variants))])
 
             for metric in section_metrics:
                 label = pretty_metric_label(metric)
                 writer.writerow(
-                    [label]
+                    [label, sample_counts.get(metric, '')]
                     + [
                         f'{float(row[metric]):.3f}'
                         if is_number(row.get(metric))
@@ -1703,7 +1713,7 @@ def pretty_report_csv(
                 gain_column = f'{metric}_gain_base'
                 if any(gain_column in row for row in variants):
                     writer.writerow(
-                        [f'Gain {label}']
+                        [f'Gain {label}', '']
                         + [
                             '--'
                             if row.get('variant') == 'base'
@@ -1722,11 +1732,11 @@ def pretty_report_csv(
             if language:
                 averages, average_gains = pretty_language_average(variants, language)
                 writer.writerow(
-                    ['Average']
+                    ['Average', '']
                     + [f'{score:.3f}' if score is not None else '' for score in averages]
                 )
                 writer.writerow(
-                    ['Average gain']
+                    ['Average gain', '']
                     + [
                         '--'
                         if row.get('variant') == 'base'
@@ -1949,13 +1959,16 @@ def benchmark_specs_for_language(language: str) -> list[dict[str, Any]]:
 
 
 def benchmark_table(
-    rows: list[dict[str, Any]], language: str
+    rows: list[dict[str, Any]],
+    language: str,
+    sample_counts: dict[str, int],
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Build a benchmark-by-model markdown table.
 
     Args:
         rows: Summary rows.
         language: Language code to include, or all.
+        sample_counts: Evaluated item counts keyed by metric name.
 
     Returns:
         Table rows and column names.
@@ -1990,7 +2003,10 @@ def benchmark_table(
             label: [] for label in model_labels
         }
         for spec in category_specs:
-            table_row = {'benchmark': spec['label']}
+            table_row = {
+                'benchmark': spec['label'],
+                'Instances': benchmark_sample_count(variants, spec, sample_counts),
+            }
             has_score = False
             differences = {}
             for variant_row, model_label in zip(variants, model_labels):
@@ -2045,7 +2061,10 @@ def benchmark_table(
     ]
     translation_rows = []
     for spec in translation_specs:
-        table_row = {'benchmark': spec['label']}
+        table_row = {
+            'benchmark': spec['label'],
+            'Instances': benchmark_sample_count(variants, spec, sample_counts),
+        }
         has_score = False
         differences = {}
         for variant_row, model_label in zip(variants, model_labels):
@@ -2066,7 +2085,28 @@ def benchmark_table(
     if translation_rows:
         table_rows.append({'benchmark': '**Translation**', '_section': True})
         table_rows.extend(translation_rows)
-    return table_rows, ['benchmark'] + model_labels
+    return table_rows, ['benchmark', 'Instances'] + model_labels
+
+
+def benchmark_sample_count(
+    variants: list[dict[str, Any]],
+    spec: dict[str, Any],
+    sample_counts: dict[str, int],
+) -> int | None:
+    """Return the recorded item count for the metric used by a benchmark."""
+    counts = []
+    for variant in variants:
+        metric = next(
+            (
+                name
+                for name in spec['metrics']
+                if is_number(variant.get(name))
+            ),
+            None,
+        )
+        if metric is not None and metric in sample_counts:
+            counts.append(sample_counts[metric])
+    return max(counts) if counts else None
 
 
 def language_average_score(row: dict[str, Any], language: str) -> float | None:
@@ -2251,11 +2291,19 @@ def write_benchmark_markdown(
                 handle.write('| ' + ' | '.join(values) + ' |\n')
                 continue
 
-            scores = [displayed_score(row.get(column)) for column in columns[1:]]
+            scores = [displayed_score(row.get(column)) for column in columns[2:]]
             maximum = max((score for score in scores if score is not None), default=None)
             differences = row.get('_differences', {})
-            values = [label]
-            for column, score in zip(columns[1:], scores):
+            count = row.get('Instances')
+            count_cell = (
+                f'{int(count):,}'
+                if is_number(count)
+                else 'not recorded'
+                if label != 'Average'
+                else ''
+            )
+            values = [label, count_cell]
+            for column, score in zip(columns[2:], scores):
                 if score is None:
                     values.append('')
                     continue
@@ -2607,12 +2655,14 @@ def main(
     sample_counts = collect_metric_sample_counts(
         evaluation_root, model_keys, profile_names
     )
-    report_csv(csv_path, rows, metrics)
+    report_csv(csv_path, rows, metrics, sample_counts)
     report_markdown(markdown_path, rows, metrics, sample_counts)
-    report_csv(extended_csv_path, rows, all_metrics)
+    report_csv(extended_csv_path, rows, all_metrics, sample_counts)
     report_markdown(extended_markdown_path, rows, all_metrics, sample_counts)
-    pretty_report_csv(pretty_csv_path, rows, metrics)
-    benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
+    pretty_report_csv(pretty_csv_path, rows, metrics, sample_counts)
+    benchmark_rows, benchmark_columns = benchmark_table(
+        rows, benchmark_language, sample_counts
+    )
     write_benchmark_markdown(
         benchmark_markdown_path,
         benchmark_rows,

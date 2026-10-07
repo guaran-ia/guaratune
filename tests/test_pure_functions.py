@@ -220,7 +220,17 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
         "guarani_flores200_eng_to_grn_bleu": 0.89,
     }
 
-    rows, columns = analyze_eval_results.benchmark_table([base, variant], "all")
+    sample_counts = {
+        "global_mmlu_lite_acc_norm": 2,
+        "guarani_2m_belebele_acc_norm": 2,
+        "guarani_multiwikiqa_f1": 2,
+        "spanish_global_mmlu_lite_acc_norm": 2,
+        "english_global_mmlu_lite_acc_norm": 2,
+        "guarani_flores200_eng_to_grn_bleu": 2,
+    }
+    rows, columns = analyze_eval_results.benchmark_table(
+        [base, variant], "all", sample_counts
+    )
     output_path = tmp_path / "evaluation_benchmark_table.md"
     analyze_eval_results.write_benchmark_markdown(
         str(output_path), rows, columns, ("gemma4_4b",), [base, variant]
@@ -232,9 +242,9 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert report.index("| Average |") < report.index("| **Spanish** |")
     assert report.index("| **Spanish** |") < report.index("| **English** |")
     assert report.index("| **English** |") < report.index("| **Translation** |")
-    assert "| Global MMLU Lite GN (acc_norm) | **38.75** | 32.50 (-6.25) |" in report
-    assert "| Belebele GN (acc_norm) | 43.00 | **46.67 (+3.67)** |" in report
-    assert "| Average | 33.99 | **35.97 (+1.98)** |" in report
+    assert "| Global MMLU Lite GN (acc_norm) | 2 | **38.75** | 32.50 (-6.25) |" in report
+    assert "| Belebele GN (acc_norm) | 2 | 43.00 | **46.67 (+3.67)** |" in report
+    assert "| Average |  | 33.99 | **35.97 (+1.98)** |" in report
     assert "FLORES-200 EN->GN (BLEU)" in report
     assert "Average of en benchmarks" not in report
     assert "## Dataset configurations\n* C1: Kuatia\n" in report
@@ -254,7 +264,9 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "## Dataset configurations\n* C1: Kuatia\n" in average_report
     assert "* C8: Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu" in average_report
 
-    filtered_rows, _ = analyze_eval_results.benchmark_table([base, variant], "es")
+    filtered_rows, _ = analyze_eval_results.benchmark_table(
+        [base, variant], "es", sample_counts
+    )
     filtered_labels = [row["benchmark"] for row in filtered_rows]
     assert "**Spanish**" in filtered_labels
     assert "**Guarani**" not in filtered_labels
