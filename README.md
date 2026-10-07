@@ -523,18 +523,29 @@ The benchmark comparison table can be restricted to one evaluation language:
 python -m src.analyze_eval_results --model <model_key> --profile experiments --benchmark-language en
 ```
 
-The analyzer produces:
+The analyzer writes reports under `results/<model_key>/` for one model or
+`results/combined_<model_keys>/` for multiple models. It produces:
 
-- `results/evaluation_summary_<model_key>.csv` for one model
-- `results/evaluation_summary_combined_<model_keys>.csv` for multiple models
+- `<model_dir>/evaluation_summary_<model_key>.csv` for one model
+- `<model_dir>/evaluation_summary_combined_<model_keys>.csv` for multiple models
 - matching `.md` files with the same filename stem
-- `results/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
-- `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
-- `results/evaluation_perplexity_table.md` when multiple model variants are available, comparing base and CPT variants for the selected models
+- `<model_dir>/evaluation_summary_extended_<model_key>.csv` and `.md`, including
+  fallback metrics, BBH subtasks, and standard-error metrics
+- `<model_dir>/evaluation_summary_pretty_<model_key>.csv`, a grouped report using
+  the regular summary's selected metrics
+- `<model_dir>/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
+- `<model_dir>/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
+- `<model_dir>/evaluation_perplexity_table.md` when multiple model variants are available, comparing base and CPT variants for the selected models
+
+Here, `<model_dir>` is `results/<model_key>` for one model and
+`results/combined_<model_keys>` for multiple models. `--output-dir` sets the
+parent directory in which this model-specific directory is created.
 
 The evaluation summary Markdown report is transposed: metrics are rows and model
-variants are columns. Base-relative gain rows follow their corresponding metrics;
-the notes below the table define each metric and report the evaluated sample count.
+variants are columns. It shows preferred metrics and aggregate BBH scores. The
+extended report also includes fallback metrics, BBH subtasks, and standard errors.
+Base-relative gain rows follow their corresponding metrics; the notes below each
+report define its metrics and report evaluated sample counts.
 
 ##### CLI reference
 
@@ -543,7 +554,7 @@ the notes below the table define each metric and report the evaluated sample cou
 | `--model` | Required | Model key to analyze. Repeat the option to analyze multiple models. |
 | `--evaluation-root` | `outputs/evaluation` | Root directory containing evaluation outputs. |
 | `--profile` | All profiles | Evaluation profile to include. Repeat the option to include multiple profiles. |
-| `--output-dir` | `results` | Directory where analysis tables are written. |
+| `--output-dir` | `results` | Parent directory for model-specific analysis report directories. |
 | `--csv-name` | Auto-generated | CSV output filename. |
 | `--markdown-name` | Auto-generated | Markdown summary output filename. |
 | `--benchmark-markdown-name` | Auto-generated | Benchmark-by-model markdown output filename. |

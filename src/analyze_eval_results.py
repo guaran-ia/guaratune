@@ -27,11 +27,6 @@ BENCHMARK_LANGUAGE_CHOICES = (
     'es',
     'gn',
 )
-IGNORED_METRIC_SUFFIXES = (
-    '_stderr',
-    '_stderr,none',
-    '_stderr,bootstrap',
-)
 IGNORED_METRIC_NAMES = (
     'sample_len',
 )
@@ -362,7 +357,7 @@ def is_metric_key(key: str, value: Any) -> bool:
     if clean_metric_name(key) in IGNORED_METRIC_NAMES:
         return False
 
-    return not any(key.endswith(suffix) for suffix in IGNORED_METRIC_SUFFIXES)
+    return True
 
 
 def clean_metric_name(metric_name: str) -> str:
@@ -877,6 +872,53 @@ def metric_columns(rows: list[dict[str, Any]]) -> list[str]:
     return sorted(columns)
 
 
+def main_summary_metric_columns(metrics: list[str]) -> list[str]:
+    """Select preferred metrics, aggregate BBH scores, and omit stderr values."""
+    candidates = []
+    for metric in metrics:
+        lowered = metric.lower()
+        if lowered.endswith(('stderr', '_stderr')):
+            continue
+        if '_bbh_' in lowered:
+            tail = lowered.split('_bbh_', 1)[1]
+            if tail not in {'acc', 'acc_norm', 'acc_bytes', 'exact_match', 'f1'}:
+                continue
+        candidates.append(metric)
+
+    choices: dict[tuple[str, str], tuple[int, str]] = {}
+    selected = set()
+    suffix_priorities = {
+        'acc_norm': ('accuracy', 0),
+        'acc_bytes': ('accuracy', 1),
+        'acc': ('accuracy', 2),
+        'f1': ('overlap', 0),
+        'exact_match': ('overlap', 1),
+    }
+    for metric in candidates:
+        lowered = metric.lower()
+        match = next(
+            (
+                (suffix, family, priority)
+                for suffix, (family, priority) in suffix_priorities.items()
+                if lowered.endswith(f'_{suffix}')
+            ),
+            None,
+        )
+        if match is None:
+            selected.add(metric)
+            continue
+
+        suffix, family, priority = match
+        stem = lowered[: -(len(suffix) + 1)]
+        group_key = (stem, family)
+        current = choices.get(group_key)
+        if current is None or priority < current[0]:
+            choices[group_key] = (priority, metric)
+
+    selected.update(metric for _, metric in choices.values())
+    return sorted(selected)
+
+
 def higher_is_better(metric_name: str) -> bool:
     """Return whether larger values indicate improvement for a metric.
 
@@ -901,12 +943,16 @@ def percentage_improvement(value: Any, base_value: Any, metric_name: str) -> flo
     Returns:
         Percentage improvement, or None when it cannot be computed.
     """
-    if not is_number(value) or not is_number(base_value) or base_value == 0:
+    if not is_number(value) or not is_number(base_value):
+        return None
+    rounded_value = float(f'{float(value):.3f}')
+    rounded_base = float(f'{float(base_value):.3f}')
+    if rounded_base == 0:
         return None
     if higher_is_better(metric_name):
-        return ((float(value) - float(base_value)) / float(base_value)) * 100
+        return ((rounded_value - rounded_base) / rounded_base) * 100
 
-    return ((float(base_value) - float(value)) / float(base_value)) * 100
+    return ((rounded_base - rounded_value) / rounded_base) * 100
 
 
 def base_metric_value(
@@ -1061,10 +1107,6 @@ def report_metric_label(metric: str) -> str:
     label = label.replace('flores200_grn_to_eng', 'flores200_gn_to_en')
     label = label.replace('flores200_spa_to_grn', 'flores200_es_to_gn')
     label = label.replace('flores200_grn_to_spa', 'flores200_gn_to_es')
-    if label.startswith('bbh_'):
-        label = label.replace('exact_match', '').rstrip('_')
-    elif label.startswith('mgsm_'):
-        label = label.removesuffix('_exact_match')
     if 'flores200' not in label:
         for code in ('_gn', '_es', '_en'):
             label = label.replace(code, '')
@@ -1151,6 +1193,7 @@ def benchmark_name_for_metric(metric: str) -> str:
         if base.endswith(language):
             base = base.removesuffix(language)
             break
+    base = base.removesuffix('_stderr')
     for suffix in (
         '_acc_norm',
         '_exact_match',
@@ -1193,6 +1236,8 @@ def benchmark_name_for_metric(metric: str) -> str:
 def metric_meaning(metric: str) -> str:
     """Explain the scoring metric and how to interpret it."""
     lowered = metric.lower()
+    if 'stderr' in lowered:
+        return 'Standard error of the reported score; lower means less sampling uncertainty.'
     if 'word_perplexity' in lowered:
         return 'Word-level perplexity; lower is better.'
     if 'byte_perplexity' in lowered:
@@ -1285,7 +1330,10 @@ def report_markdown(
                         (float(value) for value in values if is_number(value)),
                         default=None,
                     )
-                    if not any(token in metric.lower() for token in LOWER_IS_BETTER_TOKENS)
+                    if 'stderr' not in metric.lower()
+                    and not any(
+                        token in metric.lower() for token in LOWER_IS_BETTER_TOKENS
+                    )
                     else None
                 )
                 cells = [label.replace('|', '\\|')]
@@ -1420,6 +1468,263 @@ def report_csv(
                         for row in variants
                     ]
                 )
+
+
+def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
+    """Create short, unique corpus-based labels for the pretty CSV columns."""
+    labels = [
+        'base'
+        if row.get('variant') == 'base'
+        else str(row.get('corpus') or row.get('variant') or 'unknown')
+        for row in variants
+    ]
+    original_labels = labels.copy()
+
+    for index, label in enumerate(labels):
+        if original_labels.count(label) <= 1:
+            continue
+
+        row = variants[index]
+        if row.get('variant') == 'base':
+            labels[index] = f'{label} ({row.get("model_key") or "model"})'
+            continue
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            disambiguator = f'LoRA r{row["lora_rank"]}' if row.get('lora_rank') else 'LoRA'
+        elif method == 'full':
+            disambiguator = 'full'
+        else:
+            disambiguator = method or str(row.get('variant') or 'variant')
+        labels[index] = f'{label} ({disambiguator})'
+
+    for index, label in enumerate(labels):
+        if labels.count(label) > 1:
+            labels[index] = f'{label}, {variants[index].get("model_key") or "model"}'
+
+    return labels
+
+
+def pretty_metric_label(metric: str) -> str:
+    """Return a readable metric label without its language prefix."""
+    lowered = metric.lower()
+    if 'flores200' in lowered:
+        directions = (
+            ('eng_to_grn', 'EN', 'GN'),
+            ('en_to_gn', 'EN', 'GN'),
+            ('spa_to_grn', 'ES', 'GN'),
+            ('es_to_gn', 'ES', 'GN'),
+            ('grn_to_spa', 'GN', 'ES'),
+            ('gn_to_es', 'GN', 'ES'),
+            ('grn_to_eng', 'GN', 'EN'),
+            ('gn_to_en', 'GN', 'EN'),
+        )
+        direction = next(
+            ((source, target) for token, source, target in directions if token in lowered),
+            None,
+        )
+        score_name = 'chrF++' if 'chrf' in lowered else 'BLEU'
+        if direction:
+            return f'FLORES 200 {direction[0]}->{direction[1]} {score_name}'
+        return f'FLORES 200 {score_name}'
+
+    if metric == 'word_perplexity':
+        return 'CoreGuapa Word Perplexity'
+    if metric == 'byte_perplexity':
+        return 'CoreGuapa Byte Perplexity'
+    if metric == 'bits_per_byte':
+        return 'CoreGuapa Bits per byte Perplexity'
+
+    benchmark = benchmark_name_for_metric(metric)
+    if 'bbh' in lowered:
+        benchmark = 'BBH'
+    elif 'humaneval' in lowered:
+        benchmark = 'HumanEval'
+
+    metric_names = (
+        ('_acc_norm', 'Normalized Accuracy'),
+        ('_acc_bytes', 'Byte Accuracy'),
+        ('_acc', 'Accuracy'),
+        ('_exact_match', 'Exact Match'),
+        ('_f1', 'F1'),
+        ('_pass@1', 'Pass@1'),
+    )
+    suffix = next(
+        ((token, name) for token, name in metric_names if lowered.endswith(token)),
+        None,
+    )
+    if suffix:
+        return f'{benchmark} {suffix[1]}'
+    return benchmark
+
+
+def pretty_metric_section(metric: str) -> str:
+    """Assign a regular-summary metric to its reference CSV section."""
+    lowered = metric.lower()
+    if 'flores200' in lowered:
+        if any(token in lowered for token in ('_to_grn', '_to_gn')):
+            return 'TRANSLATION TO GN'
+        return 'TRANSLATION FROM GN'
+    if metric in PERPLEXITY_METRIC_NAMES or any(
+        token in lowered for token in ('perplexity', 'bits_per_byte')
+    ):
+        return 'Guarani benchmarks'
+    return {
+        'gn': 'Guarani benchmarks',
+        'es': 'Spanish benchmarks',
+        'en': 'English benchmarks',
+    }[report_metric_language(metric)]
+
+
+def pretty_language_average(
+    variants: list[dict[str, Any]], language: str
+) -> tuple[list[float | None], list[float | None]]:
+    """Calculate language average scores and base-relative percentage gains."""
+    base_rows = {
+        str(row.get('model_key')): row
+        for row in variants
+        if row.get('variant') == 'base'
+    }
+    scores: list[float | None] = []
+    gains: list[float | None] = []
+    for row in variants:
+        average = language_average_score(row, language)
+        # The language-average helper reports 0-100; this CSV keeps the
+        # evaluation summary's native 0-1 scale.
+        score = average / 100 if average is not None else None
+        scores.append(score)
+
+        base_row = base_rows.get(str(row.get('model_key')))
+        base_average = language_average_score(base_row, language) if base_row else None
+        base_score = base_average / 100 if base_average is not None else None
+        if row.get('variant') == 'base' or score is None or base_score is None:
+            gains.append(None)
+        else:
+            gains.append(percentage_improvement(score, base_score, 'accuracy'))
+
+    return scores, gains
+
+
+def pretty_report_csv(
+    path: str,
+    rows: list[dict[str, Any]],
+    metrics: list[str],
+) -> None:
+    """Write the additional grouped, reference-style evaluation CSV."""
+    variants = unique_variant_rows(rows)
+    variants.sort(
+        key=lambda row: (
+            str(row.get('model_key') or ''),
+            row.get('variant') != 'base',
+            str(row.get('training_method') or ''),
+            str(row.get('corpus') or ''),
+            str(row.get('lora_rank') or ''),
+        )
+    )
+    labels = pretty_variant_labels(variants)
+    metric_names = [
+        metric
+        for metric in metrics
+        if not metric.endswith('_gain_base')
+        and any(is_number(row.get(metric)) for row in variants)
+    ]
+    metric_names.sort(key=report_metric_sort_key)
+
+    section_order = (
+        'TRANSLATION TO GN',
+        'TRANSLATION FROM GN',
+        'Guarani benchmarks',
+        'Spanish benchmarks',
+        'English benchmarks',
+    )
+    grouped: dict[str, list[str]] = {section: [] for section in section_order}
+    for metric in metric_names:
+        grouped[pretty_metric_section(metric)].append(metric)
+
+    with open(path, 'w', encoding='utf-8', newline='') as handle:
+        writer = csv.writer(handle)
+        writer.writerow(['Metric', *labels])
+        for section in section_order:
+            section_metrics = grouped[section]
+            if not section_metrics:
+                continue
+
+            if section == 'Guarani benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'GUARANI BENCHMARKS ({benchmark_count})'
+            elif section == 'Spanish benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'SPANISH BENCHMARKS ({benchmark_count})'
+            elif section == 'English benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'ENGLISH BENCHMARKS ({benchmark_count})'
+            else:
+                heading = section
+
+            writer.writerow([heading, *([''] * len(variants))])
+
+            for metric in section_metrics:
+                label = pretty_metric_label(metric)
+                writer.writerow(
+                    [label]
+                    + [
+                        f'{float(row[metric]):.3f}'
+                        if is_number(row.get(metric))
+                        else ''
+                        for row in variants
+                    ]
+                )
+                gain_column = f'{metric}_gain_base'
+                if any(gain_column in row for row in variants):
+                    writer.writerow(
+                        [f'Gain {label}']
+                        + [
+                            '--'
+                            if row.get('variant') == 'base'
+                            else f'{float(row[gain_column]):+.2f}%'
+                            if is_number(row.get(gain_column))
+                            else ''
+                            for row in variants
+                        ]
+                    )
+
+            language = {
+                'Guarani benchmarks': 'gn',
+                'Spanish benchmarks': 'es',
+                'English benchmarks': 'en',
+            }.get(section)
+            if language:
+                averages, average_gains = pretty_language_average(variants, language)
+                writer.writerow(
+                    ['Average']
+                    + [f'{score:.3f}' if score is not None else '' for score in averages]
+                )
+                writer.writerow(
+                    ['Average gain']
+                    + [
+                        '--'
+                        if row.get('variant') == 'base'
+                        else f'{gain:+.2f}%'
+                        if gain is not None
+                        else ''
+                        for row, gain in zip(variants, average_gains)
+                    ]
+                )
+            writer.writerow([])
 
 def model_column_label(row: dict[str, Any]) -> str:
     """Build a display label for one model variant column.
@@ -1626,6 +1931,7 @@ def language_average_score(row: dict[str, Any], language: str) -> float | None:
     scores = [
         score
         for spec in benchmark_specs_for_language(language)
+        if not str(spec['label']).startswith('FLORES-200')
         if (score := benchmark_score(row, spec)) is not None
     ]
     if not scores:
@@ -1924,6 +2230,19 @@ def default_output_name(model_keys: tuple[str, ...], extension: str) -> str:
     return f'{SUMMARY_FILE_PREFIX}_{output_name_suffix(model_keys)}.{extension}'
 
 
+def default_extended_output_name(model_keys: tuple[str, ...], extension: str) -> str:
+    """Build a default filename for the extended evaluation summary."""
+    return (
+        f'{SUMMARY_FILE_PREFIX}_extended_{output_name_suffix(model_keys)}.'
+        f'{extension}'
+    )
+
+
+def default_pretty_output_name(model_keys: tuple[str, ...]) -> str:
+    """Build a default filename for the pretty evaluation summary CSV."""
+    return f'evaluation_summary_pretty_{output_name_suffix(model_keys)}.csv'
+
+
 def default_benchmark_table_name(language: str) -> str:
     """Build a default benchmark table filename.
 
@@ -2019,7 +2338,7 @@ def analyze_results(
     '--output-dir',
     default=DEFAULT_RESULTS_DIR,
     type=click.Path(file_okay=False),
-    help='Directory where analysis tables are written.',
+    help='Parent directory for model-specific analysis report directories.',
 )
 @click.option(
     '--csv-name',
@@ -2070,7 +2389,7 @@ def main(
         model_keys: Model keys to analyze.
         evaluation_root: Evaluation output root directory.
         profile_names: Evaluation profiles to analyze.
-        output_dir: Analysis output directory.
+        output_dir: Parent directory for model-specific analysis reports.
         csv_name: Optional CSV output filename.
         markdown_name: Optional markdown output filename.
         benchmark_markdown_name: Optional benchmark markdown output filename.
@@ -2087,22 +2406,34 @@ def main(
             f'No evaluation results found for models: {", ".join(model_keys)}'
         )
 
-    metrics = metric_columns(rows)
-    add_improvement_columns(rows, metrics)
+    all_metrics = metric_columns(rows)
+    metrics = main_summary_metric_columns(all_metrics)
+    add_improvement_columns(rows, all_metrics)
+    output_dir = os.path.join(output_dir, output_name_suffix(model_keys))
     os.makedirs(output_dir, exist_ok=True)
     resolved_csv_name = csv_name or default_output_name(model_keys, 'csv')
     resolved_markdown_name = markdown_name or default_output_name(model_keys, 'md')
+    extended_csv_name = default_extended_output_name(model_keys, 'csv')
+    extended_markdown_name = default_extended_output_name(model_keys, 'md')
     resolved_benchmark_markdown_name = (
         benchmark_markdown_name or default_benchmark_table_name(benchmark_language)
     )
     csv_path = os.path.join(output_dir, resolved_csv_name)
     markdown_path = os.path.join(output_dir, resolved_markdown_name)
+    extended_csv_path = os.path.join(output_dir, extended_csv_name)
+    extended_markdown_path = os.path.join(output_dir, extended_markdown_name)
+    pretty_csv_path = os.path.join(
+        output_dir, default_pretty_output_name(model_keys)
+    )
     benchmark_markdown_path = os.path.join(output_dir, resolved_benchmark_markdown_name)
     sample_counts = collect_metric_sample_counts(
         evaluation_root, model_keys, profile_names
     )
     report_csv(csv_path, rows, metrics)
     report_markdown(markdown_path, rows, metrics, sample_counts)
+    report_csv(extended_csv_path, rows, all_metrics)
+    report_markdown(extended_markdown_path, rows, all_metrics, sample_counts)
+    pretty_report_csv(pretty_csv_path, rows, metrics)
     benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
     write_benchmark_markdown(
         benchmark_markdown_path, benchmark_rows, benchmark_columns, model_keys
@@ -2121,6 +2452,9 @@ def main(
     )
     print(csv_path)
     print(markdown_path)
+    print(extended_csv_path)
+    print(extended_markdown_path)
+    print(pretty_csv_path)
     print(benchmark_markdown_path)
     print(language_average_markdown_path)
     if has_multiple_model_variants(rows):
