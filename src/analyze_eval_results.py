@@ -60,9 +60,9 @@ IDENTITY_COLUMNS = (
 )
 BENCHMARK_SCORE_SPECS = (
     {
-        'label': 'Global MMLU Lite GN (acc_norm)',
+        'label': 'Global MMLU Lite GN (acc)',
         'languages': ('gn',),
-        'metrics': ('global_mmlu_lite_acc_norm', 'global_mmlu_lite_acc'),
+        'metrics': ('global_mmlu_lite_acc',),
         'scale': 100.0,
     },
     {
@@ -78,33 +78,33 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'Global MMLU Lite EN (acc_norm)',
+        'label': 'Global MMLU Lite EN (acc)',
         'languages': ('en',),
-        'metrics': ('english_global_mmlu_lite_acc_norm', 'english_global_mmlu_lite_acc'),
+        'metrics': ('english_global_mmlu_lite_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Global MMLU Lite ES (acc_norm)',
+        'label': 'Global MMLU Lite ES (acc)',
         'languages': ('es',),
-        'metrics': ('spanish_global_mmlu_lite_acc_norm', 'spanish_global_mmlu_lite_acc'),
+        'metrics': ('spanish_global_mmlu_lite_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Belebele GN (acc_norm)',
+        'label': 'Belebele GN (acc)',
         'languages': ('gn',),
-        'metrics': ('guarani_2m_belebele_acc_norm', 'guarani_2m_belebele_acc'),
+        'metrics': ('guarani_2m_belebele_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Belebele EN (acc_norm)',
+        'label': 'Belebele EN (acc)',
         'languages': ('en',),
-        'metrics': ('english_2m_belebele_acc_norm', 'english_2m_belebele_acc'),
+        'metrics': ('english_2m_belebele_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Belebele ES (acc_norm)',
+        'label': 'Belebele ES (acc)',
         'languages': ('es',),
-        'metrics': ('spanish_2m_belebele_acc_norm', 'spanish_2m_belebele_acc'),
+        'metrics': ('spanish_2m_belebele_acc',),
         'scale': 100.0,
     },
     {
@@ -176,13 +176,13 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'ARC Easy EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('arc_easy_acc_norm', 'arc_easy_acc'),
+        'metrics': ('arc_easy_acc_norm',),
         'scale': 100.0,
     },
     {
         'label': 'ARC Challenge EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('arc_challenge_acc_norm', 'arc_challenge_acc'),
+        'metrics': ('arc_challenge_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -190,16 +190,13 @@ BENCHMARK_SCORE_SPECS = (
         'languages': ('en',),
         'metrics': (
             'global_piqa_nonparallel_cloze_eng_latn_acc_norm',
-            'global_piqa_nonparallel_cloze_eng_latn_acc',
-            'piqa_acc_norm',
-            'piqa_acc',
         ),
         'scale': 100.0,
     },
     {
         'label': 'HellaSwag EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('hellaswag_acc_norm', 'hellaswag_acc'),
+        'metrics': ('hellaswag_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -223,7 +220,7 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'COPA EN (acc)',
         'languages': ('en',),
-        'metrics': ('copa_acc',),
+        'metrics': ('english_copa_acc', 'copa_acc'),
         'scale': 100.0,
     },
     {
@@ -245,13 +242,10 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Main EN (acc_norm)',
+        'label': 'GPQA Main EN (acc)',
         'languages': ('en',),
         'metrics': (
-            'gpqa_main_n_shot_acc_norm',
             'gpqa_main_n_shot_acc',
-            'gpqa_diamond_zeroshot_acc_norm',
-            'gpqa_diamond_zeroshot_acc',
         ),
         'scale': 100.0,
     },
@@ -276,13 +270,13 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'ARC Easy ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('spanish_arc_easy_acc_norm', 'spanish_arc_easy_acc'),
+        'metrics': ('spanish_arc_easy_acc_norm',),
         'scale': 100.0,
     },
     {
         'label': 'ARC Challenge ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('spanish_arc_challenge_acc_norm', 'spanish_arc_challenge_acc'),
+        'metrics': ('spanish_arc_challenge_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -290,14 +284,13 @@ BENCHMARK_SCORE_SPECS = (
         'languages': ('es',),
         'metrics': (
             'global_piqa_nonparallel_cloze_spa_latn_spai_acc_norm',
-            'global_piqa_nonparallel_cloze_spa_latn_spai_acc',
         ),
         'scale': 100.0,
     },
     {
         'label': 'HellaSwag ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('hellaswag_es_acc_norm', 'hellaswag_es_acc'),
+        'metrics': ('hellaswag_es_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -346,9 +339,9 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Main ES (acc_norm)',
+        'label': 'GPQA Main ES (acc)',
         'languages': ('es',),
-        'metrics': ('spanish_gpqa_diamond_acc_norm', 'spanish_gpqa_diamond_acc'),
+        'metrics': ('spanish_gpqa_diamond_acc',),
         'scale': 100.0,
     },
 )

@@ -474,6 +474,16 @@ def evaluation_config(
             raise ValueError(
                 f'num_fewshot for {task_name} in suite {suite_name} must be a non-negative integer.'
             )
+        metrics = overrides.get('metrics')
+        if metrics is not None and (
+            not isinstance(metrics, list)
+            or not metrics
+            or any(not isinstance(metric, str) or not metric for metric in metrics)
+            or len(set(metrics)) != len(metrics)
+        ):
+            raise ValueError(
+                f'metrics for {task_name} in suite {suite_name} must be a non-empty list of unique names.'
+            )
         task_overrides[task_name] = overrides
 
     config['tasks'] = tasks

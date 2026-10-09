@@ -12,7 +12,7 @@ model:
   dtype: bfloat16
   device: cuda:0
   batch_size: auto
-  max_batch_size: 8
+  max_batch_size: 4
 
 defaults:
   env_file: .env
@@ -32,12 +32,15 @@ suites:
       - spanish_global_mmlu_lite
     task_overrides:
       guarani_global_mmlu_lite:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: dev
       english_global_mmlu_lite:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: dev
       spanish_global_mmlu_lite:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: dev
     log_samples: true
@@ -49,12 +52,15 @@ suites:
       - spanish_2m_belebele
     task_overrides:
       guarani_2m_belebele:
+        metrics: [acc]
         num_fewshot: 1
         fewshot_split: test
       english_2m_belebele:
+        metrics: [acc]
         num_fewshot: 1
         fewshot_split: test
       spanish_2m_belebele:
+        metrics: [acc]
         num_fewshot: 1
         fewshot_split: test
     log_samples: true
@@ -67,15 +73,19 @@ suites:
       - guarani_flores200_spa_to_grn
     task_overrides:
       guarani_flores200_eng_to_grn:
+        metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
       guarani_flores200_grn_to_eng:
+        metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
       guarani_flores200_grn_to_spa:
+        metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
       guarani_flores200_spa_to_grn:
+        metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
     log_samples: true
@@ -87,12 +97,15 @@ suites:
       - spanish_multiwikiqa
     task_overrides:
       guarani_multiwikiqa:
+        metrics: [f1, exact_match]
         num_fewshot: 2
         fewshot_split: train
       english_multiwikiqa:
+        metrics: [f1, exact_match]
         num_fewshot: 2
         fewshot_split: train
       spanish_multiwikiqa:
+        metrics: [f1, exact_match]
         num_fewshot: 2
         fewshot_split: train
     log_samples: true
@@ -103,10 +116,12 @@ suites:
       - guarani_wnli
     task_overrides:
       guarani_mgsm_direct:
+        metrics: [exact_match]
         num_fewshot: 5
         fewshot_split: train
         test_split: test
       guarani_wnli:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
         test_split: dev
@@ -123,38 +138,48 @@ suites:
       - gpqa_main_n_shot
       - truthfulqa-multi_mc1_en
       - wnli
-      - copa
+      - english_copa
     task_overrides:
       arc_easy:
+        metrics: [acc_norm]
         num_fewshot: 0
         test_split: validation
       arc_challenge:
+        metrics: [acc_norm]
         num_fewshot: 25
         fewshot_split: train
         test_split: validation
       global_piqa_nonparallel_cloze_eng_latn:
+        metrics: [acc_norm]
         num_fewshot: 0
       hellaswag:
+        metrics: [acc_norm]
         num_fewshot: 10
         fewshot_split: train
         test_split: validation
       xstorycloze_en:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
       mgsm_direct_en:
+        metrics: [exact_match]
         num_fewshot: 8
         fewshot_split: train
       gpqa_main_n_shot:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
       truthfulqa-multi_mc1_en:
+        metrics: [acc]
         num_fewshot: 6
         fewshot_split: train
       wnli:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
         test_split: validation
-      copa:
+      english_copa:
+        metrics: [acc]
         num_fewshot: 0
         test_split: validation
     log_samples: true
@@ -173,33 +198,43 @@ suites:
       - wnli_es
     task_overrides:
       spanish_arc_easy:
+        metrics: [acc_norm]
         num_fewshot: 0
         test_split: validation
       spanish_arc_challenge:
+        metrics: [acc_norm]
         num_fewshot: 25
         fewshot_split: validation
         test_split: validation
       global_piqa_nonparallel_cloze_spa_latn_spai:
+        metrics: [acc_norm]
         num_fewshot: 0
       hellaswag_es:
+        metrics: [acc_norm]
         num_fewshot: 10
         fewshot_split: val
       copa_es:
+        metrics: [acc]
         num_fewshot: 0
         test_split: validation
       xstorycloze_es:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
       truthfulqa_es_mc1:
+        metrics: [acc]
         num_fewshot: 6
         fewshot_split: val
       mgsm_direct_es_spanish_bench:
+        metrics: [exact_match]
         num_fewshot: 8
         fewshot_split: train
       spanish_gpqa_diamond:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
       wnli_es:
+        metrics: [acc]
         num_fewshot: 5
         fewshot_split: train
         test_split: validation

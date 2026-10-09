@@ -53,6 +53,33 @@ def answer_index(value: Any) -> int:
     return ANSWER_TO_INDEX[answer]
 
 
+def process_copa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Normalize SuperGLUE COPA options and labels for multiple-choice scoring."""
+
+    def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
+        label = int(doc['label'])
+        if label not in (0, 1):
+            raise ValueError(f'Unsupported COPA label: {label}')
+        return {
+            **doc,
+            'choices': [clean_option(doc['choice1']), clean_option(doc['choice2'])],
+            'gold': label,
+        }
+
+    return dataset.map(process_doc)
+
+
+def copa_doc_to_text(doc: dict[str, Any]) -> str:
+    """Build the COPA cause/effect prompt used by the English benchmark."""
+    connector = {'cause': 'because', 'effect': 'therefore'}.get(doc['question'])
+    if connector is None:
+        raise ValueError(f'Unsupported COPA question type: {doc["question"]!r}')
+    premise = str(doc['premise']).strip()
+    if premise.endswith('.'):
+        premise = premise[:-1]
+    return f'{premise} {connector}'
+
+
 def choice_texts(doc: dict[str, Any]) -> list[str]:
     """Read answer choices from common ARC-like schemas.
 

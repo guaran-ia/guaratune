@@ -334,7 +334,12 @@ def task_specs_for_evaluation(
             continue
         if not isinstance(overrides, dict):
             raise ValueError(f"task_overrides for {task_name} must be a mapping.")
-        invalid = set(overrides) - {"num_fewshot", "fewshot_split", "test_split"}
+        invalid = set(overrides) - {
+            "num_fewshot",
+            "fewshot_split",
+            "test_split",
+            "metrics",
+        }
         if invalid:
             raise ValueError(
                 f"Unsupported task overrides for {task_name}: {', '.join(sorted(invalid))}"
@@ -347,6 +352,16 @@ def task_specs_for_evaluation(
         ):
             raise ValueError(
                 f"num_fewshot for {task_name} must be a non-negative integer."
+            )
+        metrics = overrides.get("metrics")
+        if metrics is not None and (
+            not isinstance(metrics, list)
+            or not metrics
+            or any(not isinstance(metric, str) or not metric for metric in metrics)
+            or len(set(metrics)) != len(metrics)
+        ):
+            raise ValueError(
+                f"metrics for {task_name} must be a non-empty list of unique names."
             )
         specs.append({"task": task_name, **overrides})
     return specs
@@ -372,8 +387,55 @@ def resolve_task_specs_for_evaluation(
         if 'fewshot_split' in spec:
             task.set_config('fewshot_split', spec['fewshot_split'])
             task.fewshot_cfg.split = spec['fewshot_split']
+        if 'metrics' in spec:
+            _restrict_task_metrics(task, spec['metrics'])
         resolved.append(task)
     return resolved
+
+
+def _restrict_task_metrics(task: Any, selected_metrics: list[str]) -> None:
+    """Keep only the configured metrics on an already loaded lm-eval task."""
+    metric_maps = (
+        '_metric_fn_list',
+        '_metric_fn_kwargs',
+        '_aggregation_list',
+        '_higher_is_better',
+    )
+    available = set(getattr(task, '_metric_fn_list', {}))
+    missing = set(selected_metrics) - available
+    if missing:
+        raise ValueError(
+            f"Configured metrics for {task.config.task} are unavailable: "
+            f"{', '.join(sorted(missing))}. Available metrics: "
+            f"{', '.join(sorted(available))}."
+        )
+
+    for attribute in metric_maps:
+        values = getattr(task, attribute)
+        setattr(
+            task,
+            attribute,
+            {name: values[name] for name in selected_metrics if name in values},
+        )
+
+    configured_metrics = task.config.metric_list
+    if configured_metrics is None:
+        task.set_config(
+            'metric_list', [{'metric': metric} for metric in selected_metrics]
+        )
+    else:
+        def metric_config_name(config: dict[str, Any]) -> str:
+            name = config['metric']
+            return name if isinstance(name, str) else name.__name__
+
+        task.set_config(
+            'metric_list',
+            [
+                config
+                for config in configured_metrics
+                if metric_config_name(config) in selected_metrics
+            ],
+        )
 
 
 
