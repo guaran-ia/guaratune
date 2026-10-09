@@ -1,0 +1,18 @@
+task: english_wnli
+dataset_path: nyu-mll/glue
+dataset_name: wnli
+training_split: train
+validation_split: validation
+test_split: validation
+output_type: multiple_choice
+doc_to_text: "{{sentence1.strip()}} Does this imply that {{sentence2.strip()}}? Answer:"
+doc_to_choice:
+  - "yes"
+  - "no"
+doc_to_target: label
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

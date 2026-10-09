@@ -137,7 +137,7 @@ suites:
       - mgsm_direct_en
       - gpqa_main_n_shot
       - truthfulqa-multi_mc1_en
-      - wnli
+      - english_wnli
       - english_copa
     task_overrides:
       arc_easy:
@@ -173,7 +173,7 @@ suites:
         metrics: [acc]
         num_fewshot: 6
         fewshot_split: train
-      wnli:
+      english_wnli:
         metrics: [acc]
         num_fewshot: 5
         fewshot_split: train

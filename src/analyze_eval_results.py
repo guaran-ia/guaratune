@@ -214,7 +214,7 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'WNLI EN (acc)',
         'languages': ('en',),
-        'metrics': ('wnli_acc',),
+        'metrics': ('english_wnli_acc', 'wnli_acc'),
         'scale': 100.0,
     },
     {
