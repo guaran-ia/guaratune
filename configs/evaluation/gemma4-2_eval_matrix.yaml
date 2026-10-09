@@ -118,11 +118,8 @@ suites:
       - arc_challenge
       - global_piqa_nonparallel_cloze_eng_latn
       - hellaswag
-      - winogrande
-      - xnli_en
       - xstorycloze_en
       - mgsm_direct_en
-      - bbh
       - gpqa_main_n_shot
       - truthfulqa-multi_mc1_en
       - wnli
@@ -141,18 +138,12 @@ suites:
         num_fewshot: 10
         fewshot_split: train
         test_split: validation
-      winogrande:
-        num_fewshot: 0
-      xnli_en:
-        num_fewshot: 0
       xstorycloze_en:
         num_fewshot: 5
         fewshot_split: train
       mgsm_direct_en:
         num_fewshot: 8
         fewshot_split: train
-      bbh:
-        num_fewshot: 0
       gpqa_main_n_shot:
         num_fewshot: 5
         fewshot_split: train
@@ -177,7 +168,6 @@ suites:
       - copa_es
       - xstorycloze_es
       - truthfulqa_es_mc1
-      - xnli_es
       - mgsm_direct_es_spanish_bench
       - spanish_gpqa_diamond
       - wnli_es
@@ -203,8 +193,6 @@ suites:
       truthfulqa_es_mc1:
         num_fewshot: 6
         fewshot_split: val
-      xnli_es:
-        num_fewshot: 0
       mgsm_direct_es_spanish_bench:
         num_fewshot: 8
         fewshot_split: train
