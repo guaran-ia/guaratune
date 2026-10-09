@@ -1,11 +1,12 @@
 task: guarani_flores200_grn_to_spa
-dataset_path: facebook/flores
-dataset_name: all
-test_split: devtest
-fewshot_split: dev
+dataset_path: openlanguagedata/flores_plus
+dataset_name: spa_Latn
+test_split: dev
+fewshot_split: devtest
 output_type: generate_until
+process_docs: !function utils.process_flores_plus_grn_to_spa
 target_delimiter: ''
-doc_to_text: "Traduce la siguiente oración en guaraní al español.\nGuaraní: {{sentence_grn_Latn}}\nEspañol:"
+doc_to_text: "Traduce la siguiente oración en guaraní al español.\nGuaraní: {{sentence_gug_Latn}}\nEspañol:"
 doc_to_target: "{{sentence_spa_Latn}}"
 generation_kwargs:
   until:

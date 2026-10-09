@@ -317,6 +317,66 @@ def write_results(
             )
 
 
+def task_specs_for_evaluation(
+    tasks: list[str], task_overrides: Any
+) -> list[str | dict[str, Any]]:
+    """Attach per-task settings to the task specs passed to lm-eval."""
+    if task_overrides is None:
+        task_overrides = {}
+    if not isinstance(task_overrides, dict):
+        raise ValueError("task_overrides must be a mapping.")
+
+    specs: list[str | dict[str, Any]] = []
+    for task_name in tasks:
+        overrides = task_overrides.get(task_name)
+        if overrides is None:
+            specs.append(task_name)
+            continue
+        if not isinstance(overrides, dict):
+            raise ValueError(f"task_overrides for {task_name} must be a mapping.")
+        invalid = set(overrides) - {"num_fewshot", "fewshot_split", "test_split"}
+        if invalid:
+            raise ValueError(
+                f"Unsupported task overrides for {task_name}: {', '.join(sorted(invalid))}"
+            )
+        num_fewshot = overrides.get("num_fewshot")
+        if num_fewshot is not None and (
+            not isinstance(num_fewshot, int)
+            or isinstance(num_fewshot, bool)
+            or num_fewshot < 0
+        ):
+            raise ValueError(
+                f"num_fewshot for {task_name} must be a non-negative integer."
+            )
+        specs.append({"task": task_name, **overrides})
+    return specs
+
+
+def resolve_task_specs_for_evaluation(
+    tasks: list[str], task_overrides: Any, task_manager: Any
+) -> list[Any]:
+    """Load named tasks and apply matrix overrides to their task objects."""
+    task_specs = task_specs_for_evaluation(tasks, task_overrides)
+    resolved = []
+    for spec in task_specs:
+        if isinstance(spec, str):
+            resolved.append(spec)
+            continue
+
+        task_name = str(spec['task'])
+        task = task_manager.load(task_name)['tasks'][task_name]
+        if 'num_fewshot' in spec:
+            task.set_config('num_fewshot', spec['num_fewshot'])
+        if 'test_split' in spec:
+            task.set_config('test_split', spec['test_split'])
+        if 'fewshot_split' in spec:
+            task.set_config('fewshot_split', spec['fewshot_split'])
+            task.fewshot_cfg.split = spec['fewshot_split']
+        resolved.append(task)
+    return resolved
+
+
+
 def do_run_evaluation(config: dict[str, Any]) -> None:
     """Run one lm-evaluation-harness config through the Python API.
 
@@ -329,6 +389,9 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
     tasks, skipped_tasks = available_tasks(config)
+    task_specs = resolve_task_specs_for_evaluation(
+        tasks, config.get('task_overrides'), task_manager
+    )
     if not tasks:
         print('[skip] no evaluation tasks configured', flush=True)
         write_results(
@@ -346,8 +409,8 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     results = lm_eval.simple_evaluate(
         model=config['model'],
         model_args=config.get('model_args'),
-        tasks=tasks,
-        num_fewshot=config.get('num_fewshot'),
+        tasks=task_specs,
+        num_fewshot=None,
         batch_size=config.get('batch_size'),
         max_batch_size=config.get('max_batch_size'),
         device=config.get('device'),

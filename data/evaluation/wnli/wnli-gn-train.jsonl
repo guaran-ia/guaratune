@@ -1,0 +1,334 @@
+{"index": 0, "sentence1": "Aikutu peteĩ ju peteĩ makychĩme. Anohẽroguare ju oreko peteĩ kua", "sentence2": "Makychĩ oreko peteĩ kuára.", "label": 1}
+{"index": 2, "sentence1": "Policía-kuéra omboty ka'irãme banda rembiapokuekuérape opavépe. Ojapoiteuka opaha haguã droga ñemú barrio-pe", "sentence2": "Policía-kuéra ojapoiteuka opaha haguã droga ñemú barrio-pe.", "label": 1}
+{"index": 3, "sentence1": "Steven katuete ojapo Fred ojapóva. Oguereko heta poguy hese.", "sentence2": "Steven oguereko heta poguy hese", "label": 0}
+{"index": 5, "sentence1": "George ipojái kuatia'i rehe oikerei hag̃ua ñoha'ãngahápe, katu ome'ẽ Eric-pe, ohoseterei rehe.", "sentence2": "George ohoseterei kuri ohecha hag̃ua.", "label": 0}
+{"index": 6, "sentence1": "John oñani hína kuri pe jeguataha rupi ohechávo peteĩ kuimbaʼe ojapoha malabarismo umi sandia. Ha’e kuri hechapyrãite.", "sentence2": "Jonh Ha’e kuri hechapyrãite.", "label": 0}
+{"index": 9, "sentence1": "Umi juez Loebner-pegua concurso ndoikatúi oiporavo mávapa chatbots, ikatupyryetereígui hikuái.", "sentence2": "Ikatupyryeterei umi juez.", "label": 0}
+{"index": 10, "sentence1": "Anohẽkuri yryru vokógui ivevúive hag̃ua.", "sentence2": "Anohẽkuri yryru vokógui ivevúive hag̃ua voko.", "label": 1}
+{"index": 15, "sentence1": "Añohẽ y kagua apu'a pe kaguaka pe guare inandi peve.", "sentence2": "Kagua apu'a inandi peve.", "label": 0}
+{"index": 16, "sentence1": "Añongatu mbujapehe'ẽ moho'ysãha ryepype. Oguereko heta kyramonarã.", "sentence2": "Mbujapehe'ē oguereko heta kyramonarã.", "label": 1}
+{"index": 22, "sentence1": "Amoî panambi pepo mesa ari ha opê.", "sentence2": "Pe mesa opê", "label": 0}
+{"index": 23, "sentence1": "Paul oñeha'ã ohenói Georgepe pumbyry rupi ,ha ndojuhúi mbohovài.", "sentence2": "Paul ndojuhúi mbohovài.", "label": 1}
+{"index": 24, "sentence1": "Jesareko! Oĩ peteĩ pira guasu opytava  pe ype guýpe voi. Iporãvéta pya'e oserõ upegui upe ype", "sentence2": "Iporãva'ẽra osẽ pa'evo upe tendagui", "label": 0}
+{"index": 25, "sentence1": "Pe mba'e ndoikéi che mba'eryrúpe háke tuichaiterei.", "sentence2": "Pe mba'e ryru tuichaiterei.", "label": 0}
+{"index": 26, "sentence1": "Joe tío ikatu gueteri ipu´aka oñembosaráivo teni, jepeverõ itujavéma mbohapypa ary.", "sentence2": "Joe itujáve mbohapypa ary", "label": 0}
+{"index": 28, "sentence1": "San opê mokõive hetyma ha ko'ág̃a oguata jokoháre. Hakatu peteî jasýpe, oî porâvémane.", "sentence2": "Jokohakuéra guatarã oîporãvemane", "label": 0}
+{"index": 29, "sentence1": "Grant omba’apo mbarete oñotỹ hag̃ua ikumanda ikatu haĝuáicha ha’e ha irogaygua okaru ro’y aja. Iñangirũ Henry oheja chupe oñongatu umíva ita´ỹsa ógape ikã hag̃ua. Upe rire, haʼe ha Tatyana ojykýi ha ombojy chupekuéra okaru hag̃ua arateĩme.", "sentence2": "Iñangirũ Henry oheja chupe oñongatu Grant ha hogayguakerape ita´ỹsape ikã hag̃ua.", "label": 0}
+{"index": 30, "sentence1": "Jane ombota okẽ ha Susan osẽ. Opepirũ chupe osẽ hag̃uã.", "sentence2": "Jane opepirũ chupe osẽ hag̃uã.", "label": 1}
+{"index": 36, "sentence1": "Joe ohepyme'ẽ hóga tuja ha ojogua peteĩ ipyahúva supukukue mombyryhápe. Ovata upepe anga arapo pe.", "sentence2": "Ovata óga pyahupe anga arapo pe.", "label": 1}
+{"index": 37, "sentence1": "Ko'ãga peve Larry akói oipytyvõ itúvape omba'apohápe. Katu ko'ãga ndaitaúi oipytyvõ, itúva he'ire compañía ferroviaria mburuvicha ndoipotaiha oĩ mba'apohápe ambue tapicha.", "sentence2": "Ko'ãga ndaikatúi oipytyvõ itúvape.", "label": 1}
+{"index": 38, "sentence1": "Mesa henyhẽte tembi´ugui, ha pe tembipuru renda ári oĩ mba´yru, ajaka ha peteĩ kambyryru.", "sentence2": "Mesa ári oĩ mba´yru, ajaka ha peteĩ kambyryru.", "label": 1}
+{"index": 39, "sentence1": "Kevin ipochyeterei rupi Jim oñemoñe'ẽ chupe.", "sentence2": "Kevin ipochyeterei kuri.", "label": 1}
+{"index": 42, "sentence1": "Arqueolokuéra oguahẽ peteĩ ñe'ẽme oĩhague avakuéra Laputa-peymaiterei  amo 20 000 arýma. Oguasu api parakuéra rembe'ýpe.", "sentence2": "Ava ñande ypykuéva oguasu api parakuéra rembe'ýpe.", "label": 1}
+{"index": 45, "sentence1": "Sara oipyhy puruka peteĩ aranduka, aranduka rendagui oikotevẽ rupi peteĩ kuatiahaipy omba’apoha rehe hina. Oháita og̃uahẽ rire hogápe imba’apohagúi.", "sentence2": "Oháita aranduka oguãhevove hogápe imba’apohágui.", "label": 0}
+{"index": 46, "sentence1": "John he'i kuri Bill-pe ohóta, upévarehe oho peteĩ horahaguépe.", "sentence2": "Bill oho.", "label": 0}
+{"index": 48, "sentence1": "Mark ohendu pyryry Steve oguejývo jupiha. Pe okẽ ñemuhã oñemboty hapykueri. oñani oma´ẽ ovetã guive", "sentence2": "Pe oke oñemboty Steve rapykuéri.", "label": 1}
+{"index": 50, "sentence1": "Tatyana oikuaa ijarýipe ombopy'arorýha ome'ẽ tembi'uita opepirũvakuérape. Ko'ãnga Tatyana ohecha mba'eichápa ijarýi oañua isy michîmivape ijyva ypipe ha upéi ogueraha chupe mesa ypype ha oipe'a iponcho ijati'ygui, ha opepirũ chupe oguapy hag̃ua tenda porãme, ha he'i \"heta oĩ\"", "sentence2": "Ijarýi oañua Tatyana sy michîmivape ijyva ypipe ha upéi ogueraha ijarýipe mesa ypype.", "label": 0}
+{"index": 54, "sentence1": "Madonna omosẽ iñentrenaha ikueráigui ichícogui.", "sentence2": "Ikuerái Madonna chícogui.", "label": 0}
+{"index": 55, "sentence1": "Ndaikatúi aikytĩ ko yvyra rakã  ko hàchape, michietereigui", "sentence2": "Ko hàcha michietereima", "label": 1}
+{"index": 56, "sentence1": "Madonna omosẽ iñentrenaha oñenohaguérehe ichicondive.", "sentence2": "Ha'e oñenova'ekue Madonna chicondive.", "label": 1}
+{"index": 57, "sentence1": "Ahecha Jim osapukái peteî kuimba'e milíko ijao peteîchaguava ha hendyva guasu pytãvape. Ndaikuaai mba'erépa, ha'ete ndovy'áietereiva.", "sentence2": "Ndaikuaai mba'erépa oho milíko ijao peteîchaguava, ha'ete ndovy'áietereiva.", "label": 0}
+{"index": 59, "sentence1": "Jane ombota Susan-pe hokẽ, térã ha'e nombohovairi.", "sentence2": "Jane nombohovairi.", "label": 0}
+{"index": 63, "sentence1": "Okýgui amoĩ kuatihaipyre che  voko  ári ani hag̃ua iñakỹ.", "sentence2": "Amoĩ pe kuatiahaipyre che  voko ári ani hag̃ua iñakỹ.", "label": 1}
+{"index": 66, "sentence1": "Mark oityvyrova'ekue Sr. Singer. Ohendu ohenóiha capitan-pe, ha ome'êha iñe'ê, opavave oñe'êva'ekue upe pyharépe, ko'ápe mba'eve ndojapomo'âi mba'evépe, munición añónte, pero capitan ha tripulación opytase hikuái cabina-pe omohu'ã meve hembiapo.", "sentence2": "Karai guasu Singer ohendu ohenóihague capitán-pe.", "label": 0}
+{"index": 68, "sentence1": "Nadikatúi oipyhy mba'yru mba'erendàgui ijyvateterei rupi.", "sentence2": "Mba'erenda ijyvatetereikuri.", "label": 1}
+{"index": 69, "sentence1": "Facebookpe avave ndoikéi oĩ hag̃ua ha'eño ha vy'a'ỹme .Peteĩ marandu pyahu ojapokuri psicólogo  George, Wisconsingua ,ohechaukahàpe peichaite ñanemoñanduha.", "sentence2": "Marandu peichaite ñanemoñandu.", "label": 0}
+{"index": 70, "sentence1": "Bob ohepyme'ẽ Charlie oñemoarandu hag̃ua mbo'ehaovusúpe. Ipojeraiterei.", "sentence2": "Bob ipojeraiterei", "label": 1}
+{"index": 72, "sentence1": "Frank ipochy Tomndi ndoikoigui pe maimbeha  ohepyme'ēva'ekue chupe", "sentence2": "Pe maimbeha Frank ohepyme'ēva'ekue ndoikoi", "label": 0}
+{"index": 73, "sentence1": "Iporãve jave avei ku C.K. Dexter Haven, peteĩ karia'y pukú porã ha tesa'yjú, ojokova ipópe peteĩ pokoka ojejapova jadegui, peteĩ jagua'i raviju okeva hina ypy kotare", "sentence2": "Iporãve jave avei ki C.K. Dexter Haven,  peteĩ karia'y pukú porã ha tesa'yjú, ojokova ipópe peteĩ pokoka ojejapova jadegui, peteĩ jagua'i raviju okeva hina ypy kotare", "label": 1}
+{"index": 74, "sentence1": "Joe ohepyme'ẽ hóga tuja ha ojogua ipyahúva ag̃uiete. Ovata chugui ararundýpe.", "sentence2": "Ovata hógagui  ararundýpe.", "label": 1}
+{"index": 75, "sentence1": "Mark ohendu Steve py rehegua ryapu aguejyvo jupiha. Pe okẽ ñemuha rehegua oñemboty hapykueri. Oñani omaña avetã rupi.", "sentence2": "Pe okẽ ñemuha rehegua oñemboty Mark rapykueri", "label": 0}
+{"index": 76, "sentence1": "Ndahasýi ñamboja'o hag̃ua peteĩ distancia ojuehegui, ha hasy ñamboja'o hag̃ua opavave longitud. Peteî sa'i sa'ípe jepe ojehekýiva'erä la punzóngui, péva ombotuichavéta la ojal, ha peteï hilo noñekytïiva'erä ipukuetereíta.", "sentence2": "Ha peteî hilo noñekytîriva'ekue ojapóta pe ipuku porâva ipukuetereígui.", "label": 0}
+{"index": 77, "sentence1": "Billy hasẽ hína kuri Toby ndoipotaigui iñembosaraiha.", "sentence2": "Billy hasẽ hína kuri Toby ndoipotaigui Toby ñemosaraiha.", "label": 0}
+{"index": 78, "sentence1": "Ollie ojupívo Tommy ndive pe jupiha puku ojeipysóva, ipy osaingo.", "sentence2": "Ollie py osaingo.", "label": 0}
+{"index": 79, "sentence1": "Sam omboja peteî apyka kuãytasâ ypýpe ,ha katu opê. Upèvare opurahèi ombopu rangue.", "sentence2": "Pe apyka opê ,upévare opurahéi ombopu rangue.", "label": 0}
+{"index": 81, "sentence1": "Momaranduhára kuéra oñomongeta protagonista kuéra ndive. Ha'ekuéra horyeterei, upévare pe ñomongeta ipuku.", "sentence2": "Momaranduhára kuéra horyeterei upevare ñemongeta ipuku.", "label": 0}
+{"index": 83, "sentence1": "Thomson oho ohecha Cooper ñeñotỹha su pokõisa poteĩpapo pe.  Upe peve oho mombyry oikovo po ary aja.", "sentence2": "Cooper oho mombyry po ary aja.", "label": 0}
+{"index": 84, "sentence1": "Alicia oity yvytimbo pe sala de estar ha oñeha’ã ojuhu pe botón isy operdeva’ekue. Ko árape ndorekói tiempo omaña haguã umi foto tuja oîva álbum oguerohorývape. Ko árape ohekava’erã peteĩ botón, upévare oheja pe álbum peteĩ sillón-pe oipe’a’ỹre jepe.", "sentence2": "Oheja pe álbum peteĩ sillón-pe oipe’a’ỹre jepe pe sala de estar rokẽ.", "label": 0}
+{"index": 86, "sentence1": "Bill ombohasa ña'embe nandi vaivai John-pe henyhẽma haguére.", "sentence2": "John henyhẽma.", "label": 0}
+{"index": 88, "sentence1": "chetuti Hoe ndaikatúi oganá vakapipopo jehugape, imitavẽ 30 ary", "sentence2": "Hoe imĩtave 30 ary.", "label": 1}
+{"index": 89, "sentence1": "Emma nombohasái vakapipopo Janie-pe jepe ohecha chupe ha'eñoha", "sentence2": "Ha'e ohecha Janie oīha ha'eño", "label": 1}
+{"index": 92, "sentence1": "Pam tuvakuéra og̃uahẽ hógape ha ojuhu chupe ikichihã Paul ndive tupépe. Ipochyeterei hikuái.", "sentence2": "Pam tuvakuéra ipochyeterei.", "label": 1}
+{"index": 93, "sentence1": "Ko pyharevépe, Joey omopu’ã peteĩ castillo de arena playa-pe ha omoĩ peteĩ pancarta pe torre ijyvatevévape, ha katu asaje pe marea oity.", "sentence2": "Asaje jave pe marea omboguejy pe pancarta.", "label": 0}
+{"index": 94, "sentence1": "Pe kuimba'e ndaikatúi omopu'ã ita'ýrape ikangyeterei rupi", "sentence2": "Pe kuimba'e ikangyeterei hina kuri", "label": 1}
+{"index": 96, "sentence1": "Chester oĩgui ituty Vernon poguýpe, ndaikatui omenda ha'e omoneĩ'ỹre chupe.", "sentence2": "Ndaikatui omenda Chester omoneĩ'ỹre chupe.", "label": 0}
+{"index": 97, "sentence1": "Che sy oike ha oguapy Alice ykere. Ohavi'ũ iñakãrague mbeguekatu ha oheja mitãkuña'i hasẽ.", "sentence2": "Che sy ohavi'ũ iñakãrague ha oheja mitãkuña'i hasẽ.", "label": 1}
+{"index": 101, "sentence1": "James ojerure peteĩ poñemói Robert pe ha'e oñemỹrõ chugúi", "sentence2": "Oñemỹrõ Robert gui", "label": 0}
+{"index": 103, "sentence1": "Bob ho’a pe guatahape. Pya’e ohecha Carl-pe ouha oipytyvõ haĝua. Haʼe hasyeterei vaʼekue.", "sentence2": "Bob hasyeterei vaʼekue.", "label": 1}
+{"index": 108, "sentence1": "Grace ovy'aiterei kuri omoambue haguere ijaoo aku che ao aku rehe. Oimo'ã opyta porã hese", "sentence2": "Ao aku ndopyta porãi hese", "label": 1}
+{"index": 109, "sentence1": "Bob ohepyme'e Mbo'syru Tekome'e Charli pe. Ha'e ovy'aiterei upevare", "sentence2": "Charlie ovy'aiterei upevare", "label": 1}
+{"index": 110, "sentence1": "Grace ovy’a omyengovia haguére ijao aku che ao aku rehe. Ha’e oimo’ã ojehecha porãitereiha hese.", "sentence2": "Pe ao aku opyta porã hese", "label": 0}
+{"index": 111, "sentence1": "Arareíre okarupa rire karai Schmindt orambi mbarete porã. Mark oheja chupe oke peteĩ aravo pukukue ha upéi omombáy. oja'o'imi ha ojopy chupe omba'apo hag̃ua. Oikotevẽgui omohu'ã hembiapo, iporãitereihaguére.", "sentence2": "Karai Schmidt rembiapo iporãiterei.", "label": 1}
+{"index": 114, "sentence1": "Jasypokõi jave, Kamchatka omoherakuã ñorairõ Yakutsk rehe. Ejército Yakutsk-pegua ojeiporu porãve ha tuichave rupi 10 jey, oñedesarrena mbovymi arapokõindýpe.", "sentence2": "Yakutsk-guakuéra oñeme'ê'y mbovymi arapokõindýpe.", "label": 0}
+{"index": 116, "sentence1": "Pe tape ohóva pe ypape oñemboty, upévare ndaikatúi rog̃uahẽ upépe.", "sentence2": "Ndaikatúi roipuru ypa", "label": 0}
+{"index": 117, "sentence1": "Sara oiporavo peteĩ aranduka biblioteca-gui oikotevẽgui hese peteĩ kuatiañe'ẽ omba'apohápe. Omoñe'êta oguahêvo hógape omba'apógui.", "sentence2": "Emoñe'ẽ ko aranduka og̃uahẽvo omba'apógui.", "label": 1}
+{"index": 118, "sentence1": "Pe ñemuhára oike virurógape ha oikutu peteî viru oñangarekovape. Upepete ojegueraha tahachi rógape.", "sentence2": "Ogueraha viru oñangarekovape tahachi rógape", "label": 0}
+{"index": 119, "sentence1": "Adam ndaikatúi osẽ hembiapoguygui Bob ou peve isustitui hag̃ua. Bob osẽraka'e ogagui araka'e porã, ko'ágãma ou va'erã.", "sentence2": "Ko'ágãma Bob ou va'erã.", "label": 1}
+{"index": 123, "sentence1": "Fred omoñepyrûva'erã va'ekue lavaplatos, ha katu ojapóta upe rire ohechaségui televisión. Péro ipahápe pe programa ikane'õ, he'iséva omoambue iñakãme ha omoñepyrû.", "sentence2": "Omoambue iñapytu'ũ ha omyanyhẽ ta'angambyry.", "label": 0}
+{"index": 124, "sentence1": "\"Paul ohenoisé kuri Georgepe, ág̃a katu ha'e ndoirî.", "sentence2": "Georgepe, katu ndaipori.", "label": 1}
+{"index": 125, "sentence1": "Tatyana oguahẽvo pe kamarote-pe, isy oke hina ra´e. Oike mbeguekatu ani omombay chupe, oipe´a ijao ha ojupi ilitera-pe", "sentence2": "Tatyana oike mbeguekatu ani omombay chupe, oipe´a ijao ha ojupi ilitera-pe", "label": 1}
+{"index": 129, "sentence1": "Jim ohenói  ipo rupi kamarero-pe  ha ohechauka chupe okẽjepe´aha ikotyjahuha rehegua.", "sentence2": "Jim ohenói  ipo rupi kamarero-pe  ha ohechauka chupe okẽjepe´aha ikotyjahuha rehegua kamarero mba´éva.", "label": 1}
+{"index": 132, "sentence1": "Jane ome'ẽ mba'ehe'ẽ Joanpe naiñembyahýi rupi.", "sentence2": "Jane naiñembyahýigui.", "label": 1}
+{"index": 135, "sentence1": "Pe kuimba'e ndaikatúi ohupi ita'ýrape ikangyetégui.", "sentence2": "Pe ita'ýra ikangyete.", "label": 0}
+{"index": 137, "sentence1": "Ndoroguerekói ña’ẽmbe, upévare aipurú peteĩ bolígrafo ambojehe’a hag̃ua café. Ha katu osẽ peteĩ iñakãvaíva, pórke henyhẽ tinta rehe.", "sentence2": "Pe haiha henyhẽ tinta rehe.", "label": 0}
+{"index": 139, "sentence1": "Fredi omboty hesa ijyvápe yvytu rupive oike hesápe yvyku'i. Omboguejy jey yvytu ndoipejuvéipe.", "sentence2": "Omboguejy jey pe yvytu ndoipejuvei rire.", "label": 0}
+{"index": 140, "sentence1": "Pe kamiõ omoguahëva mbo'ehao mba'yrumýi pya'eterei rupi.", "sentence2": "Mbo'ehao mba'yrumýi pya'eterei oho", "label": 0}
+{"index": 141, "sentence1": "Oiko jave jokoa, Ethan ojagarra Luke-pe ha'e opagágui chupe.", "sentence2": "Ha'e va'e ma Lucas pe ome'ẽ va'ekue.", "label": 0}
+{"index": 142, "sentence1": "Oĩ peteĩ yvykua pe tápiape. Ikatu ojehecha pe korapy oĩva hapykuéri.", "sentence2": "Pe tápiape ikatu ojehecha pe korapy", "label": 1}
+{"index": 143, "sentence1": "Anohẽkuri yryru vokógui ikatu hag̃uaicha ivevyive.", "sentence2": "Anohẽkuri yryru vokógui ikatu hag̃uaicha yryru ivevyive.", "label": 0}
+{"index": 144, "sentence1": "Pyharevekue kuarahÿpe otapa arai anambusu ha oñepyrûtavo piknik osê.", "sentence2": "Kuarahy osê.", "label": 1}
+{"index": 145, "sentence1": "Jim osapukai Kevinpe ipochyeterei rupi.", "sentence2": "Jim ipochyeterei.", "label": 1}
+{"index": 146, "sentence1": "Oñeguãhẽ mboyve Táva pe, ohendukuaa hikuái tygapu ha'eteva avati oñemaimbeva hina. Dora oporandu mba'epa ha itúva he'i chupe ha'eha mbokavicho.", "sentence2": "Dora oporandu mba'épa tygapu.", "label": 1}
+{"index": 147, "sentence1": "Bill ombohasa pe videoconsola Johnpe ha'egui iha", "sentence2": "Ha'e kuri Bill ha.", "label": 0}
+{"index": 148, "sentence1": "Fred omoñepyrũvaʼerã kuri pe ñemyendy tembipuru jejoheiha, katu ojapóta upe rire ohechaségui ta´agambyry. Katu pe ta´anga ojekuaa kaigue, upévare imo’ã ha omoñepyrũ.", "sentence2": "Orova iñakãme oĩva ha omoñepyrũ pe tembipuru jejoheiha", "label": 1}
+{"index": 149, "sentence1": "Ollie ojupi aja upe jupiguejyha jatytaichagua, hasy hetyma chupe", "sentence2": "Tommy-pe hasy hetyma", "label": 0}
+{"index": 150, "sentence1": "Aguarakuéra oike pyharekue ha ojopy ryguasukuérape. Ajukáta mante.", "sentence2": "Ajuka va'erã umi ryguasukuéra.", "label": 0}
+{"index": 152, "sentence1": "Pe yvy'a vosa oĩ pe hu'itī vosa ári, upévare ojepeʼa raẽ vaʼerã.", "sentence2": "Ojepeʼa raē vaʼerã hu'itī vosa", "label": 0}
+{"index": 153, "sentence1": "Jagua omuña mbarakaja ojupiva'ekue yvyra máta rehe. Oha'arõ ichupe yvate.", "sentence2": "Jagua oha'arõ yvate.", "label": 0}
+{"index": 154, "sentence1": "Steve akói oipykúi Fred rembiecharã. Oguerohoryeterei.", "sentence2": "Fred oguerohoryeterei chupe.", "label": 0}
+{"index": 155, "sentence1": "Kuña oguereko mitã ipyti'a ykére", "sentence2": "Kuña  oguereko mitã kuña pyti'a ykére", "label": 1}
+{"index": 157, "sentence1": "Bob ho'a tape rembepe. Angaitema ohecha Carl ou oipytyvõ chupe. Ojepy'apyeterei.", "sentence2": "Carl ojepy'apyeterei.", "label": 1}
+{"index": 158, "sentence1": "Sam opẽ mokõive hetymáme ha ko'ãga oiporu jejokoha oguata hag̃ua. Peteĩ jasy, ohasa nunga rire, natekotevẽichémane.", "sentence2": "Ndoikotevẽichémane jejokoha rehe.", "label": 1}
+{"index": 162, "sentence1": "Umi tata mbogueha og̃uahẽ tahachi kuéra mboyve ha'ekuéra ou rupi mombyryvegui.", "sentence2": "Tata mbogueha kuera ou mombyryvegui.", "label": 0}
+{"index": 163, "sentence1": "*\"Aiké'o va'ekue candado oipe'a haguã llave reheve, ha'evéicha tapichá peteĩ chicle omyenyhẽ va'ekue pe llavero, ha ndaikéi porãi.\"*", "sentence2": "\"Ndaikéi porãi llave.\"", "label": 1}
+{"index": 168, "sentence1": "Joan oñeangareko he'i aguije Susan-pe opaite pytyvõ rehe ombohovasáva chupe", "sentence2": "Joan oñeangareko he'i aguije Susan-pe opaite pytyvõ rehe Susan ombohovasáva chupe.", "label": 1}
+{"index": 173, "sentence1": "Carol oimo'a Rebecca ombyasy ha omondaha aravopapaha", "sentence2": "Carol oimo'a Rebecca ombyasyha omondaro guarã aravopapaha", "label": 1}
+{"index": 174, "sentence1": "Ndoikemo'ãi pe mesa okẽ ipo'ieterei.", "sentence2": "Okẽ ipo'ieterei.", "label": 1}
+{"index": 175, "sentence1": "Oporombotavýva ombojapu rire Sámpe, ha'e osoite mo'ã.", "sentence2": "Oporombotavýva osoite mo'ã.", "label": 0}
+{"index": 176, "sentence1": "Sam ogueraha peteĩ apyka piano peve, ha katu oñembyai, upévare opurahéiva’erã ombopu rangue.", "sentence2": "Pe piano oñembyai, upévare opurahéiva’erã ombopu rangue.", "label": 1}
+{"index": 177, "sentence1": "Fred ha’e pe kuimba’e añónte oikovéva gueteri imandu’áva che ru rehe mitã’i guive. Fred ohecha ypy rire che rúpe, oguereko kuri 12 jasy.", "sentence2": "Fred ohecha ypy rire che rúpe, oguereko kuri 12 jasy.", "label": 0}
+{"index": 180, "sentence1": "Tape ohóva yno'ópe oñemboty'akue upévare ndaikatúi roguãhẽ upépe.", "sentence2": "Ndaikatui'akue roguãhẽ yno'ópe.", "label": 1}
+{"index": 181, "sentence1": "Grace ovy'a omomambuetahaguére ikamisa che ao  aku rehe.", "sentence2": "Ao ako ndopyta porãihese.", "label": 0}
+{"index": 182, "sentence1": "Kirilov oheja presidencia Shatov-pe, ipopularve haguére.", "sentence2": "Kirilov ipopularve hína.", "label": 0}
+{"index": 183, "sentence1": "Oñembojaruka ojapo peteĩ ta'anga yvyra ahoja rehegua, limón orekóva yvyra limonero ári, ha katu iñamói ve telefonokuéra yvyra.", "sentence2": "Yvyra limonero kuéra tuja telephone yvyra rãve ojehecha.", "label": 1}
+{"index": 185, "sentence1": "Oky rupi ,amoĩ kuatiañe'ẽ che vokópe ani hag̃ua hykue.", "sentence2": "Amoĩ kuatiañe'ẽ che vokópe ani hag̃ua hykue kuatiañe'ẽ.", "label": 1}
+{"index": 188, "sentence1": "Yvytu'atâgui ,yvyramàta ho'a ha ombyaipa'akue che rogahoja .ko'ãga aipe'aykava'erã.", "sentence2": "ko'ãga aipe'aykava'erã yvyramàta.", "label": 1}
+{"index": 190, "sentence1": "Pe conciérto okapegua mbytépe okyñepyrũ, ha oky la 10-peve.", "sentence2": "Oky la 10-peve.", "label": 1}
+{"index": 192, "sentence1": "Sam oho frantsia ñe'ẽ mbo'epýpe Adam ndive, oñe'ẽ porãite frantsia ñe'ẽme ojekuaahagui.", "sentence2": "Adam ojekuaa oñe'ẽ porãite frantsia ñe'ẽme.", "label": 1}
+{"index": 193, "sentence1": "Sid omyesakã ikuaara'ã Mark-pe, katu ndoroviaukái ichupe.", "sentence2": "Sid ndoroviaukái ichupe", "label": 1}
+{"index": 194, "sentence1": "Ovapavépe he mbujape he'ẽ avena reheguáva, oĩte oipotáva mbujape he'ẽ chocolate reheguáva. Rojapojeýne, hetave  ãga.", "sentence2": "Rojapo jey arã hetave mbujape he'ẽ avena rehaguáva.", "label": 1}
+{"index": 196, "sentence1": "Ollie ojupi aja Tommy ndive pe jupiguejyha jatyta puku, hetyma ojepyso", "sentence2": "Tommygui ojepyso hetyma", "label": 1}
+{"index": 199, "sentence1": "Joe tio ikatu ipuʼaka hese tenis-pe, itujavéramo jepe 30 áño.", "sentence2": "Joe tio itujave 30 áño.", "label": 1}
+{"index": 202, "sentence1": "Ñembosarái pillapilla aja Ethan ojagarra Luke-pe ha'e ohepyme'êgui chupe.", "sentence2": "Ethan ha'e kuri ohepyme'êva.", "label": 1}
+{"index": 208, "sentence1": "Susan oikuaa opa añuái oĩ Ann rekovépe, Ann ijasurúva", "sentence2": "Ann ijasurúvaiterei", "label": 0}
+{"index": 209, "sentence1": "Hasýete ojeheja hag̃ua peteĩvotô renda ambuegui, ijetuéterei oñeikytỹ hag̃ua opaite peteĩ pukukue porãme. Michĩmijepe ojavy ha pe kua tuchaiteréitama, ha peteĩ inimbo noñeikytyriramo mbykyetereitama.", "sentence2": "ha peteĩ inimbo noñeikytyriramo mbykyetereitama.", "label": 0}
+{"index": 210, "sentence1": "Kuarahy ojaho’i peteĩ arai tuicha pyhareve pukukue, ha katu vy’arã, osẽ oñepyrũvo pe ñekaruha.", "sentence2": "Pe arai osẽ", "label": 0}
+{"index": 211, "sentence1": "Umi momaranduhára kuéra oñomongeta protagonista-kuéra ndive. Ha'ekuéra horyeterei, upévare pe ñomongeta ipuku.", "sentence2": "Protagonista kuéra horyeterei, upévare pe ñemongeta ipuku.", "label": 1}
+{"index": 212, "sentence1": "Umi tetã sambyhyhára ombotove sasõ umi oñemotenondéva gui ambue okyhyjerupi ñorairõgui.", "sentence2": "Umi tetã sambyhyhára okyhyje ñorairõgui.", "label": 1}
+{"index": 213, "sentence1": "Ann imemby peteĩ mitãkuña'i pe jasy ahása ve'ekue. Ha'e peteĩ kuña ijukyetereiva.", "sentence2": "Ann memby ha'e peteĩ kuña ijukyetereiva.", "label": 0}
+{"index": 218, "sentence1": "Pete oipota Martín rekose ambue oreko ramo jepe po'a.", "sentence2": "Martín ipo'aiterei.", "label": 0}
+{"index": 219, "sentence1": "Mark ojeroviakuri peteĩ mba'ére.Harry sa'ive oikuaaha chugui.", "sentence2": "Harry sa'ive oikuaakuri.", "label": 0}
+{"index": 220, "sentence1": "Chester odepende rupi itío Vernon rehe, ndaikatúi omenda ha’e he’i’ỹre chupe.", "sentence2": "Itio Vernon ndaikatúi omenda he’i’ỹre chupe.", "label": 0}
+{"index": 221, "sentence1": "Thomson oho'akue ohecha Cooper oñeñoty hague 1765 pe.Upèrõ guare ojapóma 5 ary omano hague.", "sentence2": "Ojapoma'akue 5 ary Thomson omano hague.", "label": 0}
+{"index": 222, "sentence1": "Pete-pe hetaiterei  Mark  ijapu hekove reheguáre iñarandukápe ogueroikéva. Ndoroviapáiramo'ã   oje'éva ichupe.", "sentence2": "Mark ndoroviapáiramo'ã oje'éva ichupe.", "label": 0}
+{"index": 223, "sentence1": "Che ñembyaty oñepyrúmiva'ekue papoteî aravo hace ha ajapyhyva'erã mba'yrymýisyryry papoteî aravo ha mbohapypa aravo'i , opyta chéve sa'íma aravo. Ha'etépe noñepyrûvoíri ha osē porãmba.", "sentence2": "Pe ñembyaty noñepyrûvoíri ha upeicharupi opa mba'e osē porãmba", "label": 0}
+{"index": 225, "sentence1": "Amoĩ mesa ári panambi pepo ha opẽ", "sentence2": "Panambi pepo opẽ", "label": 1}
+{"index": 227, "sentence1": "Tom ogueraha Ralph-pe mba’yrumýipe mbo’ehaópe ani haĝua oguata.", "sentence2": "Ani haĝua Tom oguata", "label": 0}
+{"index": 229, "sentence1": "Sid oexplica iteoría Mark-pe, péro ndaikatúi omboguerovia chupe.", "sentence2": "Mark ndaikatúi omboguerovia chupe.", "label": 0}
+{"index": 231, "sentence1": "Pe pira ho'u pe ysope. He kuri he'i", "sentence2": "Pe yso heterei kuri", "label": 1}
+{"index": 234, "sentence1": "Lionel oguereko peteĩ científico prisionero ramo, Dr. Vardi, omoheñóiva peteĩ dispositivo omoheñóiva mymbakuérape ani hag̃ua ojehecha; Lionel oiporu Geoffrey-pe ha omondo chupe omonda hag̃ua material nuclear peteĩ almacén militar-gui.", "sentence2": "Lionel oiporuva'erã Geoffrey-pe ha omondo Geoffrey-pe omonda haguã material nuclear peteĩ ñemuha militar-gui.", "label": 1}
+{"index": 235, "sentence1": "Kirilov oheja presidéncia Shatov-pe herakuãvérupi.", "sentence2": "Shatov herakuãvé.", "label": 1}
+{"index": 236, "sentence1": "Bernard, nomombe'úiva funcionario-pe ndoguerekóiha 21 ary opresentávo solicitud de subvención inmueble, ndogueroviái ojapo vai hague. Péro oimeraẽ oikuaáva orekoha 19 áñonte ikatu kuri omboyke pe solicitud orekóva.", "sentence2": "Ko funcionario oreko 21 ary omoguahëvo solicitud de concesión de propiedad.", "label": 0}
+{"index": 237, "sentence1": "Che sy oike ha oguapy Alice kotape. Opoko asy iñakãranguere ha oheja hasẽ pe mitakuña'ĩme.", "sentence2": "Alice opoko asy iñakãranguere ha oheja mitãkuña'ime hasẽ.", "label": 0}
+{"index": 245, "sentence1": "John oñani okarusu rupi ohecha ramo kuimba'e ñembisarai japo sandiarehe.  Ha'e kuri imarã'ỹva.", "sentence2": "Pe kuimba'e oñembisarai japova ha'e kuri imarã'ỹva.", "label": 1}
+{"index": 246, "sentence1": "Pe pysyrõha oporandu pe henduharepe, terã haʼe nombohováiséi upéva.", "sentence2": "Pe henduhare nombohováiséi kuri", "label": 1}
+{"index": 247, "sentence1": "Susan oikuaa Ann raʼy oreko hague peteĩ ha'arõ'ỹva mbayruguata rehegua omombeʼúgui chupe.", "sentence2": "Susan omyesakã chupe upéva", "label": 0}
+{"index": 248, "sentence1": "Chester oikotevē rupi ituty Vernon rehe, ndaikatúi omenda haʼe oguerohoryʼỹre.", "sentence2": "Chester ndaikatúi omenda haʼe oguerohoryʼỹre", "label": 1}
+{"index": 255, "sentence1": "Jane ombota okẽ ha Susan ombohovái. Haʼe oñepepirũ chupe oike hag̃ua.", "sentence2": "Jane oñapepirũ chupe oike hag̃ua.", "label": 0}
+{"index": 256, "sentence1": "Pe mesa ndohasamo'ãi okẽrupi ipyrusuetereigui.", "sentence2": "Pe okẽ ipyrusueterei.", "label": 0}
+{"index": 257, "sentence1": "Heta jey Henry oĩkuri upépe itúva oñomongeta jave detective kuéra ojehecharamovéva ndive, ojeruréramo chupe pytyvõ omyesakã hag̃ua mba’e kañymby ha iñypyrũ’ỹva. Umi ára niko iporãitereíva ha ndahesarairamo’ãiva chupe g̃uarã.", "sentence2": "Umi ára niko iporãitereíva ha ndahesarairamo’ãiva ituvápeg̃uarã.", "label": 0}
+{"index": 259, "sentence1": "Larri ha'e peteĩ mitãrusu otĩ, oiko isy ndive peteĩ óga Brooklin-pe ha'e niko viuda. Larri ru ha'e peteĩ aty omyakãva, omano tiroteo-pe, iñangiru Toño oipytyvõ Larripe ha ombo'e chupe mba'eichapa omba'evende droga.", "sentence2": "itúva angiru, Toño, Oguereko Larripe ha ombo'e chupe mba'éicha omba'evende va'erã droga.", "label": 0}
+{"index": 260, "sentence1": "Frank oñandú asyete heko'ỹre oikóvo ojapóramo hemói Billinguéra he'ívo chupe ohupityha upe ñeha'ã.", "sentence2": "Frank ohupityma'ekuri upe ñeha'ã.", "label": 0}
+{"index": 262, "sentence1": "Wainwright-kuéra otrata karai Crowley-pe peteĩ príncipe-icha ojapo peve peteĩ testamento ifavor-pe; upe rire, otrata chupe hikuái ky’aicha. Umi tapicha he'i omanóha omohu'ã haguã acoso persistente orekóva hikuái.", "sentence2": "Umi tapicha he'i omanóha omohu'ã haguã acoso persistente oúva gente-kuéragui.", "label": 0}
+{"index": 263, "sentence1": "Túva ogueraha hína kuri ijyva ári ita’ýra okeva’ekue", "sentence2": "Pe túva ogueraha hína ita’ýra okeva’ekue ijyva ári", "label": 0}
+{"index": 265, "sentence1": "Arkeólogo kuéra og̃uahẽ ñemohu’ãme oĩ hague yvypóra oguata hag̃uáva Laputa-pe mokõi pa su ary ; haʼekuéra ojuka guasu ysyry rembeʼýpe.", "sentence2": "Arkeólogo kuéra ojuka guasu ysyry rembeʼýpe.", "label": 0}
+{"index": 266, "sentence1": "Susan oikuaa Ann memby pe ojehuha mba'e ha'arõ'ỹva mba'yru guata pe, upévare ohesape'a chupe.", "sentence2": "Susan ohesape'a chupe.", "label": 1}
+{"index": 268, "sentence1": "Mba’erepy joguaha oike banco-pe ha oikutu kysépe  peteĩ kajero-pe. Py´aterei oraha chupe tasy´ópe.", "sentence2": "Oguera py´ae kajero-pe tasy´ópe.", "label": 1}
+{"index": 271, "sentence1": "Bill ombohasa John-pe pe ta'angamýi ñembosarái ha'ehágui", "sentence2": "Jonh-ha kuri", "label": 1}
+{"index": 272, "sentence1": "Joe ohepyme'ẽ hekahápe ome'ẽrire chupe marandu paha káso rehegua.", "sentence2": "Joe ome'ẽ marandu paha káso rehegua.", "label": 0}
+{"index": 274, "sentence1": "James ojerure pytyvõ Robert-pe katu oñembotove chugui", "sentence2": "Ombotove James-pe", "label": 1}
+{"index": 275, "sentence1": "Lili oñe'ẽ Donnápe ,omondohóvo ikirirî.", "sentence2": "Lili oñe'ẽ Donnápe ,omondohóvo ikirirî Lili.", "label": 1}
+{"index": 277, "sentence1": "Dan ojoko Bill-pe anive hag̃ua oñembosarái pe guyra hasývare. Ha'e ningo ipy'ahatãiterei.", "sentence2": "Dan ipy'ahatãiterei", "label": 0}
+{"index": 279, "sentence1": "Ta’anga’i ho’a estantería-gui ndojejoko porãi rupi.", "sentence2": "Pe ta´anga´i ndojejoko porãi.", "label": 1}
+{"index": 280, "sentence1": "Carol oimo'ã Rebecca omalicia omondahague pe reloj.", "sentence2": "Carol oimo'ã Rebecca omalicia Carol omondahague pe reloj.", "label": 1}
+{"index": 281, "sentence1": "Paul oñeha’ã ohenói George-pe pumbyry popegua rupive, ha katu ndojuhúi ñembohovái.", "sentence2": "George ndojuhúi ñembohovái.", "label": 0}
+{"index": 284, "sentence1": "Ndorekói peteĩ kuimbe, upévare aiporu peteĩ haiha ambopupu hag̃ua pe kafe. Katu ndahaʼéi vaʼekue peteĩ apytu’ũroky iporãva, ojejahoʼi kafepe kuri.", "sentence2": "Pe kafe henyhẽ kafegui", "label": 0}
+{"index": 289, "sentence1": "Ko pyhareve, Joey ojapo peteî óga guasuete yvygui y rembe'ýpe ha omoĩ peteî aoveve aty rechaukaha pe óga yvate po'i ru'ãme, ha térâ ka'aru rehegua katu yguasu pytu oity jey.", "sentence2": "Ka'aru rehegua yguasu pytu oity jey pe óga guasuete yvyguigua.", "label": 1}
+{"index": 290, "sentence1": "Aguarakuéra oike pyharekue ha oataca ryguasu ra'ykuérape. Oñepyrũ ojepy'apyete.", "sentence2": "Rykuasu ra'ykuéra oñepyrũ ojepy'apyete.", "label": 1}
+{"index": 291, "sentence1": "Tom omombo imochíla Ray-pe og̃uahẽramo escaléra ru'ãme.", "sentence2": "Ray og̃uahẽ escaléra ru'ãme.", "label": 0}
+{"index": 292, "sentence1": "Júlio jave, Kamchatka oikuaauka ñorairõ Yakutsk rehe. Yakutsk ñorairõhára iñemohenda porãve ha heta vévape oiko (diez jey tuichave), upévare oñehundi mbovymi arapokõindýpe.", "sentence2": "Kamchatka oñehundi mbovymi arapokõindýpe.", "label": 1}
+{"index": 293, "sentence1": "Madonna opoi imbo'ehàragui oñeno rupi ikichiha ndive jepi.", "sentence2": "Mbo'ehàra oñeno jepi ikichiha ndive.", "label": 1}
+{"index": 296, "sentence1": "Oipetepete ijatúape ha pe kuña opukavy mitãkuña'ipe.", "sentence2": "Oipetepete kuña atúa ha kuña opukavy mitãkuña'ipe.", "label": 0}
+{"index": 297, "sentence1": "Pe mba'e apu'a tuicháva oike pe mesa rupive ojejapógui poliestireno extruido-gui.", "sentence2": "Pe mesa ojejapo poliestireno extruido-gui", "label": 1}
+{"index": 298, "sentence1": "Oñeha'ã oipe'a pe cerradura ha'e oipe'a la llave, katu oĩ omyenyhẽ va'ekue la cerradura goma de mascar ha ndaikatúi oipe'a.", "sentence2": "Ndaikatúi oipe'a che goma de mascar.", "label": 1}
+{"index": 299, "sentence1": "Adam ndohokuaái imba'apohágui oúpeve oipyru ichupe Bob.Bob osẽ voive rire hógagui, ko'ãga ohóma aramo'ãkuri.", "sentence2": "Ohoma aramo'ãkuri ko'ãga Adam.", "label": 1}
+{"index": 301, "sentence1": "*\"Bernard, nda'éi va'ekue funcionariope 21 ary iñañóve va'ekue opresenta aja ipropiedad concesión ojeruréva, ndohechái mba'eve vai ojapohague. Ha katu avave oikuaa 19 añomeha, ikatúva ijerure anulávo.\"*", "sentence2": "*\"Avave oikuaa 19 añomeha ikatúva ijerure anulávo Bernard-pe.\"*", "label": 1}
+{"index": 302, "sentence1": "Mary oguenohê imimby ha ombopu peteĩ purahéi oguerohoryva. Oguerekova imichĩguive.", "sentence2": "Oguereko mimby imichĩguive.", "label": 1}
+{"index": 303, "sentence1": "Sam ha Amy ojoahueterei, katu Amy tuvakuéra nomoporãi, ha'ekuéra esnobshaguére.", "sentence2": "Sam ha Amy esnobs.", "label": 0}
+{"index": 304, "sentence1": "Ko aranduka ogueroike Shakespeare-pe Goethe-pe; oiporavoporã hembiapo.", "sentence2": "Oiporavoporã Shakespeare haipyrekuéra.", "label": 1}
+{"index": 305, "sentence1": "Aguarakuéra oike pyhare ojopy hag̃ua ryguasukuérape. Añangareko va'erã hesekuéra.", "sentence2": "Añangareko va'erã ryguasukuéra rehe.", "label": 1}
+{"index": 307, "sentence1": "Añongatu pe mbujape moho'ysãhape. Oguereko rupi heta hamby kyrakue", "sentence2": "Aguereko heta kamby kyrakue moho'ysãhape", "label": 0}
+{"index": 309, "sentence1": "Túva omaña tajyrakuéra rovare oñemomdyi ha oñembyasy ko'áğa mitãkuña kuéra. Ivaitama omboykejeyvo heta mba'e túva ndohejagui ojapo hikuái.", "sentence2": "Ha'e ndaikatùi oheja hovakuéra", "label": 0}
+{"index": 310, "sentence1": "Amoi aranduryru ipohyiva mesa Ari upevare ojeka", "sentence2": "Aranduryru ipohyiva ojeka", "label": 0}
+{"index": 311, "sentence1": "Aipuru kuri peteĩ ao amopotĩ hag̃ua pe kyse, ha upéi amoingue karameguápe.", "sentence2": "Amoingue karameguápe kyse.", "label": 1}
+{"index": 312, "sentence1": "James ojerure oipytyvõ hag̃ua chupe Robert katu ha'e ombotove.", "sentence2": "James ombotove.", "label": 0}
+{"index": 316, "sentence1": "Yvy'a ryru oĩ avati mirĩ ku'i ryru ári, upévare ojeipe'a raẽve va'erã upéva.", "sentence2": "Ojeipe'a rãeve va'erã yvy'a ryru", "label": 1}
+{"index": 319, "sentence1": "Marcos koty ñeguahẽhape oĩ peteĩ ta´anga peteĩ roble yvyramáta rehegua. Oĩ pe aranduka renda akatúa gotyo.", "sentence2": "Pe ta´anga oĩ pe estante akatúape.", "label": 1}
+{"index": 321, "sentence1": "Tatyana og̃uahero javekotýpe, isy oke hína. Oike mebegue ani hag̃ua omombáy, oñemboi ha ojupi hupápe.", "sentence2": "Oike mebegue ani hag̃ua omombáy, oñemboi ha ojupi isy rupápe.", "label": 0}
+{"index": 322, "sentence1": "Mark ohendu Steve pyambu oguejyjave. Ñemũha rokẽ oñemboty hapykuéri. Oñani omaña hag̃ua ovetãme.", "sentence2": "Steve oñani omaña hag̃ua ovetãme.", "label": 0}
+{"index": 323, "sentence1": "Umi ñemuha jara opyta tavape oiko hağua upe kotyguasu kupepe", "sentence2": "Umi ñemuha jara opyta tavape oiko hağua upe kotyguasu kupepe umi ijarakuérandi", "label": 0}
+{"index": 324, "sentence1": "Pete hekose ñanemba'e'ỹva Martín-gui heta mba'e porã oiko heségui.", "sentence2": "Heta mba'e porã oiko Pétegui.", "label": 0}
+{"index": 327, "sentence1": "Umi momaranduhára oñomongeta ta'anga omýiva pyahúre. Ha'ekuéra ipoguapyeterei, upévare ñomongeta oiko areterei.", "sentence2": "Umi apoha tenonde ipoguapyeterei, upévare ñomongeta oiko areterei.", "label": 0}
+{"index": 328, "sentence1": "Anna-pe osẽporãve kuaara'ã iñangirũ marangatu Lucy-gui oñemoaranduve rehe.", "sentence2": "Anna oñemoarandueteve.", "label": 0}
+{"index": 331, "sentence1": "Pillapilla ñembosarai aja Ethan okañykuri Lukegui ha'e ohepyme'ẽjepi rupi .", "sentence2": "Luke ha'e ohepyme'ẽvajepi.", "label": 1}
+{"index": 333, "sentence1": "Alíce oñeha'ã mbarete ani hag̃ua imemby oñe'ẽ atyrorýpe, ha roñeporandu mba'érepa oĩ hekope'ỹrõguaicha.", "sentence2": "Alice oĩ hekope'ỹrõguaicha.", "label": 1}
+{"index": 334, "sentence1": "Umi letrero oĩva ñemuha rokẽ ári oreko ta'anga ohechaukáva tembiapo ojejapóva hyepýpe. Jepe hetave tapicha oñemoarandúva omoñe'ẽ hag̃ua, opa mba'ejegua apohára ndoipe'ái ha'anga, ndoipotáigui oho chuguikuéra mba'ejoguaha omoñe'ẽkuaa'ỹre.", "sentence2": "Opa mba'ejegua apohára ndoipe'ái ha'anga, ndoipotáigui oho chuguikuéra mba'ejoguaha omoñe'ẽkuaa'ỹre.", "label": 1}
+{"index": 335, "sentence1": "Umi científico ohesa'ÿijo mbohapy pira especie ojuhúva Océano Índico-pe. Oñepyrûva'ekue ojapo mokõi ary.", "sentence2": "Ko'ã pira oñepyrũ ojapo mokõi ary.", "label": 0}
+{"index": 336, "sentence1": "Dan oguapy tapykuépe, Bill katu ojerure apyka tenondéva rehe ipya'eve haguére.", "sentence2": "Dan oguapy tapykuépe, Bill katu ojerure apyka tenondéva rehe Bill ipya'eve haguére.", "label": 1}
+{"index": 338, "sentence1": "Aikutu ju peteī makychire. Aipe'a rire ju opyta peteī kua", "sentence2": "Ju oheja peteī kua", "label": 1}
+{"index": 340, "sentence1": "Umi político Washington-gua ndikatúi oikuaa umi colonos-pe ha upévare ohai va'erã norma oregula haguã.", "sentence2": "Ohai va'erã norma oregula haguã umi colono-kuérape.", "label": 1}
+{"index": 341, "sentence1": "Andrea ohasavo pe mbayru yvate guape ohecha susan ari pe mba'e jaguejyha", "sentence2": "Andrea ohecha pe mbayru jaguejyha", "label": 0}
+{"index": 342, "sentence1": "Chesy oike ha oguapy Alice ykérehe. Omokunu'ũ iñakã rague mbeguekatúpe ha oheja pe mitakuña hasẽ.", "sentence2": "Omokunu'ũ Aline akã rague ha oheja pe mitakuña hasẽ.", "label": 1}
+{"index": 350, "sentence1": "Pam tuvakuéra og̃uahẽ hógape ha ojuhu chupe tupape imenarã Paul ndive. Haʼekuéra oñeñandu vaieterei.", "sentence2": "Pam y Paul oñeñandu vaieterei", "label": 1}
+{"index": 351, "sentence1": "Oiko jave pe ñembosarái pillapilla rehegua Ethan okañy Lukegui ha'e ha'egui pe ohepyme'ẽva chupe.", "sentence2": "Ethan ha'e pe ohepyme'ẽva'ekue.", "label": 0}
+{"index": 352, "sentence1": "Oñeha'ã oabri pe candádo llávepe, péro oĩ ombotyva'ekue pe oñembotyha chíclepe ha ndaikatúi oipe'a.", "sentence2": "Ndaikatúi oipe'a pe lláve.", "label": 0}
+{"index": 353, "sentence1": "Alice oheka iñirū Jadepe maymaba apytépe. Ha’e ipo’aite rupi, Alice ohecha chúpe pya’eve.", "sentence2": "Alice ipo’aite rupi, Alice ohecha pya’eve chúpe.", "label": 1}
+{"index": 355, "sentence1": "Madonna omosẽ ijetepyso mbo'ehára pe ndocha'ei rupi imenarãre.", "sentence2": "Ndocha'ei jetepyso mbo'ehára menarãre.", "label": 1}
+{"index": 356, "sentence1": "Arapokõi pe, kamchatka he'ima orairõtaha Yakutsk pe. Yakutsk aty guasu hembiporu hetave ha iporãve pa rangue chugui tuichave, ipu'aka hese arapokoindy sa'imi rire.", "sentence2": "Kamchatka ipu'aka hese arapokoindy sa'imi rire.", "label": 0}
+{"index": 357, "sentence1": "Frank oñeñandu vaieterei pe hovaigua hekove pukukue Bill he’írõ guare chupe ipua’akahague pe ñembosaráire", "sentence2": "Bill ipua’akaha pe ñembosaráire", "label": 1}
+{"index": 359, "sentence1": "Karai Moncrieff oho Chester apartamento lujoso-pe Nueva York-peguápe, oimo'ãgui ha'eha ita'ýra Edward mba'e. Kóva ogueru karai Moncrieff ojokóvo Edward rembiapo noikotevẽvéimagui viru  rupive  oñeipytyvõ .", "sentence2": "Karai Moncrieff ñeipytyvõ viru rupive noikotevẽvéima", "label": 1}
+{"index": 360, "sentence1": "Científico-kuéra ohesa'ỹijo mbohapyichagua pira Océano Índico-pe ojuhuramóva. Mokõi arýma ojejuhuhague", "sentence2": "Científico-kuéra mokõi ary ojehechahague", "label": 0}
+{"index": 361, "sentence1": "Mark kotyguahẽhápe oĩ peteĩ kurupa'y máta ra'ãnga. Oĩ óga akatúape.", "sentence2": "Pe ta'ãnga oĩ óga akatúape.", "label": 0}
+{"index": 362, "sentence1": "Tahachikuéra ojoko opavave aty añapeguape. Oñeha'ã hikuái omohu'ã mba'e vai me'ēha oīva tava'ipe.", "sentence2": "Umi aty añapeguava oñeha'ã omohu'ã mba'e vai me'ēha oīva tava'ipe", "label": 0}
+{"index": 365, "sentence1": "Aguarakuéra oike pyharekue ojuka hag̃uaìcha ryguasukuérape.Hova'atãitereima ko'ãga hikuài.", "sentence2": "Ryguasukuèra ko'ãga hova'atãitereíma.", "label": 0}
+{"index": 369, "sentence1": "Ára ha ára okarupa rire karai Schmidt katuete asaje oke pukumi.\nMark ohejámi chupe oke peteĩ aravo ha upéi omombáy chupe, oja'o chupe ha pota'ỹme omomba'apo. Oikotevẽ ojapopa hembiapo iporãitereigui.", "sentence2": "Mark oikotevẽ ojapopa hembiapo, iporãitereigui.", "label": 1}
+{"index": 370, "sentence1": "Kuimba´ekuéra oreko derecho ita’ýrakuéra omba’apóvo chupekuéra g̃uarã  ombotýpeve mbokõipateĩ ary.", "sentence2": "Kuimba´ekuéra oreko derecho ita’ýrakuéra omba’apóvo chupekuéra g̃uarã, kuimba´ekuéra ombotýpeve mbokõipateĩ ary.", "label": 0}
+{"index": 371, "sentence1": "Avénaguigua galléta maymavévape ogustave, chocolate-guigua katu ojeiporavo'ive. Jajaposa'iveramo'ã ambue jeýpe.", "sentence2": "Jajaposa'iveramo'ã chocolate-guigua galléta.", "label": 1}
+{"index": 374, "sentence1": "Fred omboty hesa ijyvape ivyturehe oike chupe yvyku'i hesápe. Ojehesape´a yvytu ndoipejuveirire.", "sentence2": "Oipe´a ijyva ndoipejuveirire yvytu.", "label": 0}
+{"index": 377, "sentence1": "Ko aranduka omoñepyrũ Shakespeare-pe Goethe-pe; omokyre'ỹporã chupe ohai hag̃ua.", "sentence2": "Omokyre'ỹporã Goethe rembiaporã.", "label": 1}
+{"index": 381, "sentence1": "Alicia omopotĩkuri kotyguasu yvytimbo ha oñeha’ã ojuhu pe votõ isygui okañýva. Ko árape ndoguerekói aravo oma’ẽ hag̃ua umi ta’anga yma guare oĩva ta'ãngatyendape  isy ohayhuvéva. Ko árape oheka va’erã peteĩ votõ, upévare oheja pe álbum apyka ári ni ndohape’ói.", "sentence2": "Ko árape ndoguerekói aravo oma’ẽ hag̃ua umi ta’anga yma guare oĩva  ta'ãngatyendape  isy ohayhuvéva.", "label": 0}
+{"index": 383, "sentence1": "Kaguai ndoikéi voko yvysa'ýpe michĩeterei rupi.", "sentence2": "Voko michĩeterei.", "label": 1}
+{"index": 388, "sentence1": "Mark omembe'u'akue  heta japu ijehegua Petepe ha ha'e omoinge ohaívo iñaranduchaukàpe. Ojegueroviaykave ramo'ã.", "sentence2": "Pete ojegueroviaykave ramo'ã.", "label": 0}
+{"index": 393, "sentence1": "John ndoikatúi ohecha mba'eve Billy oñemoĩre henondépe.ijyvatetereíre.", "sentence2": "John ijyvateterei.", "label": 0}
+{"index": 394, "sentence1": "Opaite mbotyha Dora ao tapykuepegua oñemboty okápe. Maude opensava'erãmo'ã omboty haguã, katu nahániri, oheja mboriahu Dora-pe ojapo haguã ha'eño.", "sentence2": "Oheja mboriahu Dora-pe ojapo haĝua ikatumíva ha'eño Maude-icha.", "label": 0}
+{"index": 395, "sentence1": "Añetehápe ko ogaguasu ojehecháta che yvyra'ãngape. Iporãiterei.", "sentence2": "Pe ogaguasu iporãiterei.", "label": 0}
+{"index": 396, "sentence1": "Tom oguerahakuri Ralphpe mba'yruguatápe mbo'ehaópe ani hag̃ua oguata.", "sentence2": "Ralph ani hag̃ua oguata.", "label": 1}
+{"index": 398, "sentence1": "Purahéi aty okape mbyte jave oñepyrũ oky, ha térâ oiko pa aravo peve.", "sentence2": "Oky pa aravo peve.", "label": 0}
+{"index": 399, "sentence1": "Frank ipochy Tom rehe, pe mbujape piruha Tom ojogua’akue chupe ndoikói rupi.", "sentence2": "Pe mbujape piruha Frank ojogua’akue chupe ndoikói.", "label": 1}
+{"index": 400, "sentence1": "Dan oguapy ikupepe, Bill ojerure aja apyka tenondegua péva imbegueve rupi.", "sentence2": "Dan oguapy ikupepe Bill ojerure aja apyka tenondegua Bill imbegueve rupi.", "label": 0}
+{"index": 402, "sentence1": "Jane ohenói okẽme ha Susan ombohovài.Opeipirũ chupe oike hag̃ua.", "sentence2": "Susan oipepirũ chupe oike hag̃ua.", "label": 1}
+{"index": 404, "sentence1": "Umi tava mburuvichakuéra ombotove sãso umi ojerurévagui opysyrõ haguere ñorairõ", "sentence2": "Umi tava mburuvichakuéra oipysyrõ ñorairõ", "label": 0}
+{"index": 407, "sentence1": "Alice oityvyro yKotyguahẽha pegua ha oñeha’ã ojuhu votõ okañyva'ekue isýgui. Ko árape ndaikatúi omaña umi ta'ãnga ymaguaréva oîva ta'ãnga ryrúpe oguerohorývape. Ko árape ohekava’erã peteĩ votõ, upévare oheja pe ta'ãnga ryru peteĩ apyka guasu ári oipe’a’ỹre jepe.", "sentence2": "Ko árape ndoikatúi omaña umi ta'ãnga ymaguare ta'ãnga ryruguáva ohauhúva Alice.", "label": 1}
+{"index": 408, "sentence1": "Sam mokõi hetyma  omopẽ ha ko'ág̃a muléta rehe oguata. Katu peteĩ jasy ohasávo  rupi, oĩporãvénema.", "sentence2": "Umi hetyma oĩporãvénema.", "label": 1}
+{"index": 409, "sentence1": "Jagua omuña mbarakajape, ojupiva'ekue yvyramatare. Oha'ãro chupe yvype", "sentence2": "Mbarakaja oha'ãro yvype", "label": 0}
+{"index": 411, "sentence1": "Asẽ aheka haĝua havõ, hetave ahasa haĝua pe tiempo aikotevẽgui.", "sentence2": "Asẽ ahupyty haĝua havõ, hetave ahasa haĝua pe tiempo aikotevẽgui ára.", "label": 0}
+{"index": 412, "sentence1": "Peteĩ pira ho'u pe ysópe. Ivare'áiterei", "sentence2": "Pe pira ivare'áiterei", "label": 1}
+{"index": 414, "sentence1": "Mary omoñenó imemby Annepe oké hag̃ua.", "sentence2": "Mary omoñenó imemby Annepe  oké hag̃ua Mary memby.", "label": 1}
+{"index": 416, "sentence1": "Ha'e hina kuri peteĩ ka'aru arahaku jave, ha pe jagua oñeno hina kapi'pépe. Ag̃aitemínte, opu'ã ha oho yvyraguýpe, upépe ipiro'yve rupi", "sentence2": "Pe jagua ipiro'yve", "label": 0}
+{"index": 420, "sentence1": "Ko aranduka ogueraha Shakespeare Ovidio rendápe; tuicha oipytyvõ hembiapokue apohápe.", "sentence2": "Tuicha oipytyvõ Ovidio rembiapokue apohápe.", "label": 0}
+{"index": 422, "sentence1": "Jim omopoñe'ẽ tembiguáipe ha ohechauka ikagua nandiha.", "sentence2": "Jim omopoñe'ẽ tembiguáipe ha ohechauka ikagua nandiha.", "label": 0}
+{"index": 423, "sentence1": "Susan oikuaa Ann raʼy oreko hague peteĩ ha'arõ'ỹva mbayruguata rehegua omombeʼúgui chupe.", "sentence2": "Ann omobe´u ichupe", "label": 1}
+{"index": 424, "sentence1": "Pe mesápe henyhẽ tembi’u, ha pe ijykére oĩ mba’yru, ajaka ha kamby ryru.", "sentence2": "Tembi'u ykere oī mba'yru, ajaka ha kamby ryru", "label": 0}
+{"index": 425, "sentence1": "Péicha hechapyrãitéva hína C.K. Dexter Haven, peteĩ mitãrusu iporãva ha hova sa'yju'imíva, oguerekóva peteĩ pokoka jade reheguáva, avei peteĩ jagua'i okéva ipy gotyo.", "sentence2": "Péicha hechapyrãitéva hína C.K. Dexter Haven, peteĩ mitãrusu iporãva ha hova sa'yju'imíva, oguerekóva peteĩ pokoka jade reheguáva, avei peteĩ jagua'i okéva pe jagua'i py gotyo.", "label": 0}
+{"index": 426, "sentence1": "Fred ohecha ta'angambyry upe aja George osêkuri ojogua tambi'u. Peteĩ aravo haguèpe opu'ã.", "sentence2": "George opu'ã.", "label": 0}
+{"index": 428, "sentence1": "Lili oñe'ẽ Donna pe, ha ojoko jesareko.", "sentence2": "Lili oñe'ẽ Donna pe, ha ojoko Lili jesareko.", "label": 0}
+{"index": 430, "sentence1": "Bob opaga Charlie educación universidad-pe, ha katu ko’áĝa Charlie oñekomporta ndojapóiramoguáicha. Ha'e ningo ndoagradeseiete.", "sentence2": "Charlie ningo ndoagradeséiete.", "label": 1}
+{"index": 431, "sentence1": "Sam ha Amy ojoayhyeterei , katu hina itúva ha isy nomoneíri upéva, ha'ekuéra oguerekóre papo'arýnte gueteri.", "sentence2": "Amy sy ha túva oguereko papo Ary.", "label": 0}
+{"index": 433, "sentence1": "Tom he'i \"jaque\" Ralph-pe omongu'ekuévo alfil.", "sentence2": "Tom he'i \"jaque\" Ralph-pe Ralph omongu'ekuévo alfil.", "label": 0}
+{"index": 434, "sentence1": "Umi ojaposea léi oho jave táva rogape, nodimoái ojuhúvo koty henyhêva mbohovaiháragui. Saʼive voi oĩ vaʼekue umíva.", "sentence2": "Ojaposeva saʼive voi oĩ vaʼekue", "label": 1}
+{"index": 436, "sentence1": "Joe tio ikatu gueteri ohenonde´a chupe tenis-pe, jepe imitãve 30 ary.", "sentence2": "Joe tio imitãve 30 ary", "label": 0}
+{"index": 437, "sentence1": "Ahecha Jim osapukái peteĩ karai orekóva uniforme militar orekóva barba pytã tuicháva. Ndaikuaái mbaʼérepa, péro haʼete ku oñembyasyetereíva.", "sentence2": "Ndaikuaái mbaʼérepa Jim osapukái, péro haʼete ku oñembyasyetereíva.", "label": 1}
+{"index": 443, "sentence1": "Upévarehe Mark oke. Osẽma kuri Kuarahy opáyramo Warren po ijati'y'ári.", "sentence2": "Osẽma kuri Kuarahy opáyramo Warran po Mark ati'y'ári.", "label": 1}
+{"index": 447, "sentence1": "Aravaípe, ho'a yvyramata ha omosarambipa che róga aho'i. Ko'ag̃a amyatyrõva'erã", "sentence2": "Ko'ag̃a amyatyrõykava'erã yvyramata", "label": 0}
+{"index": 449, "sentence1": "Tom he'i hake Ralphpe omomyivo hialfil.", "sentence2": "Tom he'i hake Ralphpe omomyivo hialfil.", "label": 1}
+{"index": 451, "sentence1": "Pe karai ndaikatúi ohupi ita'ýrape ipohýietereígui", "sentence2": "Pe karai ipohýietereí", "label": 0}
+{"index": 452, "sentence1": "Aipurukuri peteĩ ñemokãha tuja amopotĩ hag̃ua kyse ha upe rire amoingekuri mba'yrúpe.", "sentence2": "Amoingekuri mopotĩha mba'yrúpe.", "label": 0}
+{"index": 453, "sentence1": "Tembiapoha retyma ogerekoha kuéra opyta távape omongorava hag̃ua ha oikove umi koty jerekuépe.", "sentence2": "Tembi'u reñohára retykua'ára'ekuéra opyta távape omongorávo ha oiko umi koty tahárakuépe.", "label": 1}
+{"index": 457, "sentence1": "Alicia oityvyro yvytimbo pe kotyguahehãme ha oñeha’ã ojuhu votõ okañyva'ekue isygui. Ko árape ndaikatúi omaña umi ta'ãnga ymaguare oîva ta'ãnga ryrúpe oguerohorývape. Ko árape ohekava’erã peteĩ votõ, upévare oheja ta'ãnga ryru peteĩ apyka guasu ári oipe’a’ỹ rehe jepe.", "sentence2": "Oheja ta'ãnga ryru peteĩ apyka guasu ári oipe’a’ỹ rehe jepe.", "label": 0}
+{"index": 463, "sentence1": "Pe ñemuhára oike viruope ha oikutu peteî viru ñangarekohárape. Upepete ojegueraha tahachi rógape.", "sentence2": "Upepete ojeguereha ñemuhárape tahachi rógape", "label": 1}
+{"index": 465, "sentence1": "Ko aranduka omoñepyrũ Shakespeare-pe Goethe-pe; oiporavo porã hembiaporã.", "sentence2": "Oiporavo porã ohai hag̃ua Goethe.", "label": 0}
+{"index": 467, "sentence1": "Pe y osẽhá ojejoko akã raguépe. Tekotevẽ jaipe'a.", "sentence2": "Tekotevẽ jaipe'a pe akã rague.", "label": 1}
+{"index": 468, "sentence1": "Lago-pe roho. ojehechágui océano-pegua playa-pe tiburón, ha ikatukuaahápe oje'yta kyhyje'ỹme.", "sentence2": "Oje'yta hag̃ua kyhyje'ỹme lago-pe ojeho.", "label": 1}
+{"index": 478, "sentence1": "Joe ohepyme'ê upe detective-pe ome'êvo ichupe informe final ko káso rehegua.", "sentence2": "Detective ome'ê informe paha ko káso reheguáva.", "label": 1}
+{"index": 479, "sentence1": "Jane ohenói Susan rokēme, katu ndohupytýi mbohovái", "sentence2": "Jane ndohupytýi mbohovái", "label": 1}
+{"index": 480, "sentence1": "Tatyana oikuaa porã vaʼekue ijarýi oguerohoryha ha omeʼẽ heta tembiʼu umi oúva-pe. Koʼág̃a Tatyana omaña hína mbaʼéichapa ijarýi oñañuã pe isymíme umi ijyva piru reheve; upéi ogueraha chupe mesa peve, oipeʼa ichugui pe aoʼi ojahoʼíva iatiʼy ári, ha omboguapy chupe  pe tenda porãvévape, heʼívo mbykymi: “Oĩ heta”", "sentence2": "ijarýi oñañuã pe isymíme umi ijyva piru reheve; upéi ogueraha chupe mesa peve,", "label": 1}
+{"index": 482, "sentence1": "Alice omopotĩ yvytimbo koty guasupegua ha oñeha'ã ojuhu hag̃ua peteĩ votõ isy ohundi va'ekue. Ko árape ndaikatumo'ãi ohecha ta'ãnga ymaguare ta'ãnga ryru ohayhuetévapegua. Ko árape oheka va'erã pe votõ, upévare oheja ta'ãnga ryru apyka guasu pe oipe'a'ỹre.", "sentence2": "Oheja ta'ãnga ryru apyka guasu ári oipe'a'ỹre ta'ãnga ryru.", "label": 1}
+{"index": 488, "sentence1": "Mbarakaja oha'ãrõ anguja ñuhã renondepe osẽ ramo g̃uarã anguja, jepe ha'e noha'âroséi.", "sentence2": "Mbarakaja noha'âroséi.", "label": 1}
+{"index": 490, "sentence1": "Yvytuhatãroguare yvyramáta ho'a ha ombyaì cheroga ape. Ko'ágã añeha'ava'erã aipe'aka.", "sentence2": "Ko'ágã aha'ãva'erã aipe'aka oga'ape.", "label": 0}
+{"index": 493, "sentence1": "Emaña! Oĩ peteĩ pira'i ho'ytáva ype guyetépe. Iporãvé ojapura isegurohag̃uãmevé.", "sentence2": "Iporãvé pe pira'i ojapura isegurohag̃uãmevé.", "label": 1}
+{"index": 494, "sentence1": "Mark tupaópe oĩ peteĩ ta’anga yvyra róble. Oĩ estantería akatúa gotyo.", "sentence2": "Yvyra róble oĩ estantería akatúa gotyo.", "label": 0}
+{"index": 495, "sentence1": "Aikutu peteĩ ju peteĩ sanahoriare oguenohẽvo ju oguerekoma peteĩ kua", "sentence2": "Ju oguereko peteĩ kua", "label": 0}
+{"index": 496, "sentence1": "Susan ijurumy'ỹigui oikuaapaite Ann rekovépegua apañuãi .", "sentence2": "Susan ijurumy'ỹi", "label": 0}
+{"index": 497, "sentence1": "Carol oimo'ã Rebecca omalicia omondahague pe reloj.", "sentence2": "Carol oimo'ã Rebecca omalicia Rebecca omondahague pe reloj.", "label": 0}
+{"index": 499, "sentence1": "Aguapykuri upépe, che ñandu-aja mbovymi pe mitã-icha oĩva pe mombe'u amoñe'ẽvaekue peteĩ jey, pe mitã ojukavaekuéva peteĩ kuña ha oñongatuvaekue pe retekue pe mésa karu rendapegua guýpe, ha upe rire oiko vaerã ombovy'avéva opavavépe pe vy'aguasúpe, ha ha'e oĩ upépe opa ára.", "sentence2": "Oiko vaerã ombovy'avéva opavavépe pe vy'aguasúpe, ha pe mombe'u oĩ upépe opa ára.", "label": 0}
+{"index": 501, "sentence1": "Aripaka henyhẽte tembi'úgui, ha piri ári, ijykére, oĩkuri kambuchi, ajaka ha kambyryru.", "sentence2": "Piri ikére oĩkuri kambuchi, ajaka ha kambyryru.", "label": 0}
+{"index": 503, "sentence1": "Pe kuña  ojoko pe mitakuñã'ipe mbaretepe", "sentence2": "Pe kuña  ojoko pe mitakuñã'ipe pe kuña oipota'ỹre", "label": 0}
+{"index": 507, "sentence1": "Bob ohepyme'ẽ Chrlie oñemoarandu hag̃ua mbo'ehaovusúpe. Omboaguyjetaite.", "sentence2": "Bob omboaguyjetaite.", "label": 0}
+{"index": 509, "sentence1": "Romoĩse vaʼekue techapyrã opaite apykarã rupi ñande maranduha,  ndaipóri vaʼekue hetaiterei", "sentence2": "Ndaipóri vaʼekue hetaiterei apykarã", "label": 0}
+{"index": 511, "sentence1": "Ann imembykuri peteĩ mitãkuña'i pe jasy ohasava'ekue.Ha'e peteĩ kuña ijukyetereíva.", "sentence2": "Ann ha'e peteĩ kuña ijukyetereíva.", "label": 1}
+{"index": 512, "sentence1": "Upévare Mark oke. Ko'ẽmbáma kuri opáyramo guare, Warren po ijati'y ári", "sentence2": "Ko'ẽmbáma kuri opáyramo guare, Warren po ijati'y ári", "label": 0}
+{"index": 513, "sentence1": "Mark oityvyrova'ekue Sr. Singer. Ohendu ohenóiha capitan-pe, ha ome'êha iñe'ê, opavave oñe'êva'ekue upe pyharépe, ko'ápe mba'eve ndojapomo'ãi daño, munición añónte, pero capitan ha tripulación opytase cabina-pe omohu'ã meve hembiapo.", "sentence2": "Mark ohendu ohenóihague chupe capitán.", "label": 1}
+{"index": 516, "sentence1": "Pe actriz héra kuri Terpsishore, ary kokuehevepe ocambia Tina rehe, ha'é oimo'a hasyeterei ja'e héra.", "sentence2": "Terpsichore  hasyeterei ja'e hag̃ua.", "label": 1}
+{"index": 518, "sentence1": "Umi tetã sambyhyhára Washington pe gua ndaikatui oikuaa umi kolono kuéra pe ha upévare ojapo vaerã apoukapy ombojoja hag̃uã chupekuéra.", "sentence2": "Umi kolono ojapo vaerã apoukapy ombojoja hag̃uã chupekuéra.", "label": 0}
+{"index": 521, "sentence1": "Alice oñeha'ãmbaite ikatumiháicha ina imembykuña osapuk'ai vy'ahápe, ha roñeporandu mba'érepa peichaite ojapo.", "sentence2": "Alice membykuña heko'ỹeterei.", "label": 1}
+{"index": 522, "sentence1": "Umi tata mbogueha og̃uahẽ tahachi kuera mboyve ha'ekuera ou rupi mombyryvegui.", "sentence2": "Tahachi kuera ou mombyryvegui.", "label": 1}
+{"index": 523, "sentence1": "Dan oñeha'ãmbaite ojoko Billpe anive hag̃ua oñembosarai guyra hasývare.Ha'e oporombyasyeterei.", "sentence2": "Bill ha'e oporombyasyeterei.", "label": 0}
+{"index": 525, "sentence1": "Tom oraha Ralph-pe mbo'ehaópe ani omboguata ha'eño mba'yrumýi.", "sentence2": "Ani hag̃ua Ralph omboguata mba'urumýi ha'eño.", "label": 0}
+{"index": 526, "sentence1": "Oguahẽ mboyve távape , ikatuma ohendu hikuai peteĩ tyapu ha'eteva avati ojyramo. Dora oporandu mba'e pa upea ha itua he'i chupe mbokavicho ha.", "sentence2": "Dora oporandu mba'epa avati.", "label": 0}
+{"index": 528, "sentence1": "Ann imemby peteĩ mitãkuña'i jasy ohasa va'ekuépe. Iporãitereirasa pe mitãkuña'i.", "sentence2": "Anne peteĩ mitãkuña'i iporãitereíva.", "label": 0}
+{"index": 531, "sentence1": "Kuña ojoko mitâkuña'ime ipyti'àre.", "sentence2": "Kuña ojoko mitâkuña'ime ipyti'àre.", "label": 0}
+{"index": 532, "sentence1": "Sam omopẽ mokõiveva hetyma ha ko´ag̃a oguapa muletare. Ha katu peteĩ jasy ohasa rire yrõ mboyve, ohejáma ikaturõ.", "sentence2": "Umi tetyma ndaiva´erã tekotevẽterei.", "label": 0}
+{"index": 534, "sentence1": "Pam sy ha itúva og̃uahê hógape ha otopa tupàpe chupe ikichiha Paul ndive .Oñeñanduvai hikuài.", "sentence2": "Pam túva ha isy oñeñandu oîvaiha hikuài.", "label": 0}
+{"index": 536, "sentence1": "John ojerúre Billpe óho hag̃ua, upévare osẽ óho peteĩ áravo rire.", "sentence2": "John osẽ óho", "label": 0}
+{"index": 539, "sentence1": "Opyta rangy oguapývo pe tupa yvateguágui, Tatyana ikatúmimi ohecha porã isýpe. Tuichaitépa michĩ, ipuku ha iñanambusu pe tupa iguypeguá. Oñemboty hésa, hákatu Tatyana ndoikuaaporãiko oke terãpa ndokei.", "sentence2": "Tuichaitépa michĩ, ipuku ha iñanambusu oiha Tatyana, pe tupa iguypeguápe.", "label": 0}
+{"index": 540, "sentence1": "Burro oipotava'i ipy apykúi jere itaku'i oñehundí, ha péichante oiko.", "sentence2": "Burro ojerure ipy apykúi jere itaku'i oñehundí, ha ipýnte oñehundi.", "label": 0}
+{"index": 541, "sentence1": "Chester oikoteve chetuti Vernon rehe. ndaikatui omenda ipore'ýpe.", "sentence2": "ndaikatúi omenda chetuti Vernon pore'ýpe", "label": 1}
+{"index": 542, "sentence1": "Madonna omosẽ ijetepyso mbo'ehárape ndaikatúigui opytaso ikichihape.", "sentence2": "Jetepyso mbo'ehára ndopytaso ikichihape", "label": 0}
+{"index": 543, "sentence1": "Opágui itúrno Bill ombohasa  John-pe  videoconsola.", "sentence2": "Opámakuri John turno.", "label": 0}
+{"index": 544, "sentence1": "Túva ogueraha ta'ýra okévaekue imba'yru guatápe", "sentence2": "Túva ogueraha ta'ýra okévaekue imba'yru guatápe", "label": 1}
+{"index": 546, "sentence1": "Tapia ikuàra .Ikatu ojehecha yvotyrenda ikupèpe.", "sentence2": "Ikatu ojehecha kuàra rupi yvotyrenda.", "label": 0}
+{"index": 549, "sentence1": "Ipahápe oñembopy’aguapy’imi hikuái ha og̃uahẽ hógape, karai Farley omoĩ mombyry pe ita ipajeva peteĩ mbayru hatãvape. Ikatu peteĩ arape oipuruse, ambue koʼág̃aite, ¿mbaʼépa oipotave?", "sentence2": "Ikatu opa arape aiporuse pe ita ipajeva.", "label": 1}
+{"index": 552, "sentence1": "Pe mba'yrumýi kororõ omog̃uahẽva ohasa pe mba'yrumýi temimbo'e guerahahape oho haguére mbeguekatuetereígui", "sentence2": "Pe mba'yrumýi kororõ omog̃uahẽva oho mbeguekatueterei", "label": 0}
+{"index": 557, "sentence1": "Che aty oñepyrûva'ekue 16:00 aravo jave ha aha va'erã tren 16:30 aravo jave, upévare ndahi'aréi. Ovy'aite, oguahë ka'irãime ha opa mba'e osẽ porâ.", "sentence2": "Pe tren ohasa ha opa mba'e osẽ porâ.", "label": 1}
+{"index": 558, "sentence1": "Múro ikua. Yvotyty ojehechakuaa upe kuára rupive.", "sentence2": "Kuára rupive yvotyty ojehechakuaa.", "label": 1}
+{"index": 567, "sentence1": "John ome'ē mba'apo Bill-pe oñangareko hag̃ua hese", "sentence2": "Jonh ome'ē mba'apo Bill-pe oñangareko hag̃ua John-re", "label": 1}
+{"index": 569, "sentence1": "Susan oikuaapaite apañuãi Ann rogapypegua ijuru my'ỹire.", "sentence2": "Ann ijuru my'ỹi.", "label": 1}
+{"index": 571, "sentence1": "Umi letrero oĩva ñemuha rokẽ ári oreko ta'anga ohechaukáva tembiapo ojejapóva hyepýpe. Jepevémo hetave oĩ tapicha omoñe'ẽkuaa ñepyrũva, opaite tembiapojegua apohára oreko ha'anga, ndoipotáigui oho chuguiku'era joguahára omoñe'ẽ kuaỹre.", "sentence2": "Opaite tembiapojegua apohára oreko ha'anga ha ndoipotáigui oho chuguiku'era joguahára tembiapojegua apohára omoñe'ẽ kuaỹre.", "label": 0}
+{"index": 572, "sentence1": "Umi ñemuha jara opyta távape oñangareko haĝua hese kuéra ha oiko hikuái koty kuéra okupe peguápe", "sentence2": "Umi ñemuha jara opyta távape oñangareko haĝua hese kuéra ha oiko hikuái koty kuéra okupe peguápe", "label": 0}
+{"index": 573, "sentence1": "Jane ombota Susan rokẽ, ha katu ndaipóri ñembohovái. Ha'e ndovy'ái opytavo", "sentence2": "Jane ndovy'ái opytavo", "label": 1}
+{"index": 574, "sentence1": "Jane ohenói Susan róga rokẽme, ha ndaipóri ombohováiva. Ha'e oñembyasy.", "sentence2": "Susan oñembyasy.", "label": 0}
+{"index": 575, "sentence1": "Bernard, nomombe'úiva funcionario-pe ndoguerekóiha 21 ary opresentávo solicitud de subvención inmueble, ndogueroviái ojapo vai hague. Péro oimeraẽ oikuaáva orekoha 19 áñonte ikatu kuri omboyke pe solicitud orekóva.", "sentence2": "Bernard, nomombe'úiva funcionario-pe ndorekóiha 21 ary opresentávo solicitud de subvención inmueble, ndogueroviái funcionario ojapo vai hague.", "label": 0}
+{"index": 578, "sentence1": "Alicia oity yvytimbo pe sala de estar ha oñeha’ã ojuhu pe botón isy operdeva’ekue. Ko árape ndorekói tiempo omaña haguã foto tuja álbum oguerohorývagui. Ko árape ohekava’erã peteĩ botón, upévare oheja pe álbum peteĩ silla-pe oipe’a’ỹre jepe.", "sentence2": "Oheja pe álbum peteĩ sillón ári oipeʼaʼỹre jepe pe botón.", "label": 0}
+{"index": 579, "sentence1": "Policía ojagarra opavave miembro-kuérape. Oñeha'ã hikuái omotenonde narcotrafico barrio-pe.", "sentence2": "Ko'ã miembro de la banda oñeha'ã omotenonde tráfico de drogas ko barrio-pe.", "label": 1}
+{"index": 580, "sentence1": "Ndaikatúi aikytĩ ko yvyra rakã háchape, michĩetereí.", "sentence2": "Pe yvyra rakã michĩetereí.", "label": 0}
+{"index": 581, "sentence1": "Kuarahy ojaho’i peteĩ arai tuichava pyhareve pukukue, ha katu vy’arã, oñepyrũvo pe jekaru, ohopáma.", "sentence2": "Arai oho va´ekue", "label": 1}
+{"index": 583, "sentence1": "Fred ha Alice ohuereko ao aku ipoguasuva, yro ndojokomo'ai ara ro'yetei Alaska pe gua", "sentence2": "Fred ha Alice ao ndojokomo'ai roy Alaska pe gua", "label": 0}
+{"index": 584, "sentence1": "Thomson oho ohecha Cooper ñeñotỹha su pokoi sa papotei pa po. Upe ára peve, por ary pukukue oikundaha hína", "sentence2": "Po Ary pukukue Thomson oikunda oikovo", "label": 1}
+{"index": 586, "sentence1": "Dan oguapy tapykuépe Bill ojerure aja pe apyka tenondegua ha’e imbeguevégui", "sentence2": "Dan oguapy tapykuépe Bill ojerure aja pe apyka tenondegua ha’e imbeguevégui", "label": 1}
+{"index": 587, "sentence1": "pe kuña ojoko pe mitãkuñaipe mbaretepe", "sentence2": "pe kuña ojoko pe mitãkuñaipe mbaretepe", "label": 1}
+{"index": 588, "sentence1": "Ndaguerekói kuimbe upévare aipuru haiha ambojehe´a hagua café. Marö ndaiporãi che apytu'ũmegua, haiha henyhe cafégui", "sentence2": "Haiha henyhe cafégui", "label": 1}
+{"index": 590, "sentence1": "Ollie ohupi'aya Timmy-pe jupiha apu'a puku rupi, hasype hetyma.", "sentence2": "Ollie-pe hasypa hetyma.", "label": 1}
+{"index": 592, "sentence1": "Añohẽ y liméta guive kaguápe henyhé peve.", "sentence2": "Liméta henyhẽ peve,", "label": 0}
+{"index": 593, "sentence1": "Che aty oñepyrũva'ekue 16:00 aravo jave ha ajagarrava'erã tren 16:30 aravo jave, upévare ndahi'aréi. Ovy'aite, mbykymi ha opa mba'e osẽ porã.", "sentence2": "Pe tren ipya'e ha opa mba'e osẽ porã.", "label": 0}
+{"index": 594, "sentence1": "Sam oñeha'ã ombosa'y peteĩ ta'ãnga oĩha ovecha mymba rerekua ndive, ha térâ ambue katu ojoguave jagua pe.", "sentence2": "Umi mymba rerekua ojoguave jagua pe.", "label": 0}
+{"index": 596, "sentence1": "Emma sy omanóvaekue ymaiterei, ha koʼág̃a peteĩ mboʼehára porãite oĩ hendaguépe.", "sentence2": "Emma rendaguépe koʼág̃a oĩ peteĩ mboʼehára porãite", "label": 0}
+{"index": 597, "sentence1": "Mary oguenohê mimby ha ombopu peteĩ pehẽngue oguerohoryvéva. Oguereko imichĩguive.", "sentence2": "Oguereko pehẽngue imichĩguive.", "label": 0}
+{"index": 599, "sentence1": "Mark oityvyrova'ekue Sr. Singer. Ohendu ohenóiha capitan-pe, ha ome'êha iñe'ê, opavave oñe'êva'ekue upe pyharépe, ko'ápe mba'eve ndojapomo'âi mba'evépe, munición añónte, pero capitan ha tripulación opytase hikuái cabina-pe omohu'ã meve hembiapo.", "sentence2": "Capitán ha mayma tripulante-kuéra Singer-kuéra opytase hikuái kabina-pe omohu'ã meve tembiapo.", "label": 0}
+{"index": 601, "sentence1": "Fred ha'e va'ekue kuimba'e oikovéva imandu'áva che jarýi rehe. Ha'éniko peteî kuimba'e ijojaha'ỹva.", "sentence2": "Fred ha'eva'ekue peteî kuimba'e ijojaha'ŷva.", "label": 0}
+{"index": 602, "sentence1": "Joe ohepyme'ẽ peteî hekahape ipojai rire marandu paha ojehuva'ekue rehegua.", "sentence2": "Hekaha ipojai marandu paha ojehuva'ekue rehegua rehe.", "label": 0}
+{"index": 604, "sentence1": "Opa ára karai Schmidt oñeno jepi oke okaruparire. Mark oheja chupe oke peteĩ aravo aja ha upei omombay, oikovai hendie ha omomba'apoka chupe mbaretepe. Ha'e oikotevẽ ojapopa hembiapo, iporãiterei rupi.", "sentence2": "Mark rembiapo iporãiterei.", "label": 0}
+{"index": 605, "sentence1": "Paul oñeha'ã ohenói George-pe teléfonorupi, péro noiméi ra'e.", "sentence2": "Paul noiméi ra'e.", "label": 0}
+{"index": 606, "sentence1": "Lily oñe'ẽ Donnape, omondoho ikirirĩ", "sentence2": "Lily oñe'ẽ Donnape, omondoho kirirĩ Donna gui", "label": 0}
+{"index": 607, "sentence1": "Dakota ka'aguy hovyũ ha omimbíva kuarahy resẽvo ha'ete ku araka'eve ndojehechavéiva yvytu ha yrypy'a ro'y jave.", "sentence2": "Ha'eteva'ekue ndaikatumo'ãiha kuarahy oñehundi yvytu ha yrypy'a ro'y jave.", "label": 0}
+{"index": 608, "sentence1": "Temimbo'ekuéra ikakuaavéva omyangekõi imitãvévape, upévare roho romongavaju chupekuéra.", "sentence2": "Roho romongavaju temimbo'ekuéra imitãvévape.", "label": 0}
+{"index": 609, "sentence1": "Heta moñe'ẽhàra oñepyrû omoñe'ê Paul kuatiañe'ẽ ha ndaikatúi oheja hikuài. Ojeikuaaiterei Paul ohai porâite rei rupi.", "sentence2": "Moñe'ẽhakuèra ojeikuaaiterei Paul ohai porâiterei rupi.", "label": 0}
+{"index": 610, "sentence1": "Frank ipochykuri Tom ndive, pe tostadora ojoguava'ekue ichugui ndoikói haguére.", "sentence2": "Pe tostadora Tom ojoguava'ekue ichugui ndoikói.", "label": 0}
+{"index": 612, "sentence1": "Ann oporandu Maripe mba'e áravo omboty aranduka renda, ha ha'e Katu hesarái kuri.", "sentence2": "Ann hesarái kuri.", "label": 0}
+{"index": 613, "sentence1": "John oñekuâve'ẽ Billpe oñangareko hag̃ua hese.", "sentence2": "John oñekuâve'ẽ  oñangareko hag̃ua Billre.", "label": 1}
+{"index": 616, "sentence1": "Emma sy aretereíma omanohague, ha imbo'epy opyta mitã mbo'ehára ogapegua ha'evéva pópe.", "sentence2": "Emma sy mbo'epy  opyta mitã mbo'ehára ogapegua ha'evéva pópe.", "label": 0}
+{"index": 618, "sentence1": "Aguapy upépe añeñandu’imi pe karai upe tembiasakue amoñe’ẽva’ekuépe peteĩ jey, ojukava’ekue peteĩ kuñáme ha omokañy hetekue aripaka jekaruha guýpe, ha upéi ha’eva’erã pe vy'a guasu rekove, hendive upépe pe ára pukukue.", "sentence2": "Ha’eva’erãkuri pe vy'a guasu rekove, hi’ánga oĩ upépe pe ára pukukue.", "label": 0}
+{"index": 621, "sentence1": "Jhon oñeikuave'ẽ Bill pe oñangareko hag̃ua hese.", "sentence2": "Jhon oñeikuave'ẽ Bill pe oñangareko hag̃ua Jhon rehe.", "label": 0}
+{"index": 623, "sentence1": "Oipete'imi chupe ijatukupepe ha pe kuña opukavy mitãkuña'ipe.", "sentence2": "Oipete'imi mitãkuña'i atukupe ha pe kuña opukavy chupe.", "label": 1}
+{"index": 625, "sentence1": "Oky rupi, amoĩ momaranduha che voko pe ani hag̃uâ hykue.", "sentence2": "Amoĩ momaranduha che voko pe ani hag̃uã hykue.", "label": 0}
+{"index": 630, "sentence1": "Tommy oheja ronguare ho'a la ijelado, Timmy  opuka upeare i ru, omaña pukavy hese", "sentence2": "I ru omaña Timmy re ha opukavy", "label": 0}
+{"index": 633, "sentence1": "Emma sy aretereíma omanohague, ko'ãga oime hendaguépe mitã mbo'ehára ogapegua iporavopyréva.", "sentence2": "Mitã mbo'ehára ogapegua iporavopyréva ko'ãga oime Emma sy rendaguépe.", "label": 1}

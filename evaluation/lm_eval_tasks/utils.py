@@ -251,6 +251,46 @@ def process_global_mmlu_docs(dataset: datasets.Dataset) -> datasets.Dataset:
     return dataset.map(process_doc)
 
 
+def _process_flores_plus_direction(
+    dataset: Any, source_config: str, target_config: str
+) -> Any:
+    """Join aligned FLORES+ language configs by row id for one translation direction."""
+    if len(dataset) == 0:
+        return dataset
+
+    split = str(dataset[0]["split"])
+    source_dataset = datasets.load_dataset(
+        "openlanguagedata/flores_plus", source_config, split=split
+    )
+    source_by_id = {str(row["id"]): str(row["text"]) for row in source_dataset}
+    source_field = f"sentence_{source_config}"
+    target_field = f"sentence_{target_config}"
+
+    def add_source(row: dict[str, Any]) -> dict[str, str]:
+        row[source_field] = source_by_id[str(row["id"])]
+        row[target_field] = str(row["text"])
+        return row
+
+    return dataset.map(add_source)
+
+
+def process_flores_plus_eng_to_grn(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "eng_Latn", "gug_Latn")
+
+
+def process_flores_plus_grn_to_eng(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "gug_Latn", "eng_Latn")
+
+
+def process_flores_plus_grn_to_spa(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "gug_Latn", "spa_Latn")
+
+
+def process_flores_plus_spa_to_grn(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "spa_Latn", "gug_Latn")
+
+
+
 def process_2m_belebele_docs(dataset: datasets.Dataset) -> datasets.Dataset:
     """Convert 2M-Belebele rows to text-only lm-eval MCQA rows.
 

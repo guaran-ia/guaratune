@@ -18,7 +18,7 @@ defaults:
   env_file: .env
   cache_path: outputs/evaluation/cache/requests
   model: hf
-  num_fewshot: 0
+  num_fewshot: null
   cache_requests: true
   log_samples: false
   include_instruction_tasks: false
@@ -30,6 +30,16 @@ suites:
       - guarani_global_mmlu_lite
       - english_global_mmlu_lite
       - spanish_global_mmlu_lite
+    task_overrides:
+      guarani_global_mmlu_lite:
+        num_fewshot: 5
+        fewshot_split: dev
+      english_global_mmlu_lite:
+        num_fewshot: 5
+        fewshot_split: dev
+      spanish_global_mmlu_lite:
+        num_fewshot: 5
+        fewshot_split: dev
     log_samples: true
 
   belebele:
@@ -37,6 +47,16 @@ suites:
       - guarani_2m_belebele
       - english_2m_belebele
       - spanish_2m_belebele
+    task_overrides:
+      guarani_2m_belebele:
+        num_fewshot: 1
+        fewshot_split: test
+      english_2m_belebele:
+        num_fewshot: 1
+        fewshot_split: test
+      spanish_2m_belebele:
+        num_fewshot: 1
+        fewshot_split: test
     log_samples: true
 
   flores200:
@@ -45,6 +65,19 @@ suites:
       - guarani_flores200_grn_to_eng
       - guarani_flores200_grn_to_spa
       - guarani_flores200_spa_to_grn
+    task_overrides:
+      guarani_flores200_eng_to_grn:
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores200_grn_to_eng:
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores200_grn_to_spa:
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores200_spa_to_grn:
+        num_fewshot: 1
+        fewshot_split: devtest
     log_samples: true
 
   multiwikiqa:
@@ -52,24 +85,89 @@ suites:
       - guarani_multiwikiqa
       - english_multiwikiqa
       - spanish_multiwikiqa
+    task_overrides:
+      guarani_multiwikiqa:
+        num_fewshot: 2
+        fewshot_split: train
+      english_multiwikiqa:
+        num_fewshot: 2
+        fewshot_split: train
+      spanish_multiwikiqa:
+        num_fewshot: 2
+        fewshot_split: train
+    log_samples: true
+
+  guarani_benchmarks:
+    tasks:
+      - guarani_mgsm_direct
+      - guarani_wnli
+    task_overrides:
+      guarani_mgsm_direct:
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: test
+      guarani_wnli:
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: dev
     log_samples: true
 
   english_benchmarks:
     tasks:
       - arc_easy
       - arc_challenge
-      - piqa
+      - global_piqa_nonparallel_cloze_eng_latn
       - hellaswag
       - winogrande
       - xnli_en
       - xstorycloze_en
       - mgsm_direct_en
       - bbh
-      - gpqa_diamond_zeroshot
-      - truthfulqa_mc1
+      - gpqa_main_n_shot
+      - truthfulqa-multi_mc1_en
+      - wnli
+      - copa
+    task_overrides:
+      arc_easy:
+        num_fewshot: 0
+        test_split: validation
+      arc_challenge:
+        num_fewshot: 25
+        fewshot_split: train
+        test_split: validation
+      global_piqa_nonparallel_cloze_eng_latn:
+        num_fewshot: 0
+      hellaswag:
+        num_fewshot: 10
+        fewshot_split: train
+        test_split: validation
+      winogrande:
+        num_fewshot: 0
+      xnli_en:
+        num_fewshot: 0
+      xstorycloze_en:
+        num_fewshot: 5
+        fewshot_split: train
+      mgsm_direct_en:
+        num_fewshot: 8
+        fewshot_split: train
+      bbh:
+        num_fewshot: 0
+      gpqa_main_n_shot:
+        num_fewshot: 5
+        fewshot_split: train
+      truthfulqa-multi_mc1_en:
+        num_fewshot: 6
+        fewshot_split: train
+      wnli:
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: validation
+      copa:
+        num_fewshot: 0
+        test_split: validation
     log_samples: true
     confirm_run_unsafe_code: true
-
   spanish_benchmarks:
     tasks:
       - spanish_arc_easy
@@ -82,8 +180,42 @@ suites:
       - xnli_es
       - mgsm_direct_es_spanish_bench
       - spanish_gpqa_diamond
+      - wnli_es
+    task_overrides:
+      spanish_arc_easy:
+        num_fewshot: 0
+        test_split: validation
+      spanish_arc_challenge:
+        num_fewshot: 25
+        fewshot_split: validation
+        test_split: validation
+      global_piqa_nonparallel_cloze_spa_latn_spai:
+        num_fewshot: 0
+      hellaswag_es:
+        num_fewshot: 10
+        fewshot_split: val
+      copa_es:
+        num_fewshot: 0
+        test_split: validation
+      xstorycloze_es:
+        num_fewshot: 5
+        fewshot_split: train
+      truthfulqa_es_mc1:
+        num_fewshot: 6
+        fewshot_split: val
+      xnli_es:
+        num_fewshot: 0
+      mgsm_direct_es_spanish_bench:
+        num_fewshot: 8
+        fewshot_split: train
+      spanish_gpqa_diamond:
+        num_fewshot: 5
+        fewshot_split: train
+      wnli_es:
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: validation
     log_samples: true
-
   perplexity:
     tasks:
       - guarani_coreguapa_perplexity
@@ -115,6 +247,7 @@ profiles:
       - belebele
       - flores200
       - multiwikiqa
+      - guarani_benchmarks
       - english_benchmarks
       - spanish_benchmarks
       - perplexity

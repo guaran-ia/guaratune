@@ -3,7 +3,8 @@ dataset_path: json
 dataset_name: null
 dataset_kwargs:
   data_files:
-    test: data/evaluation/gmlgnt.jsonl
+    dev: data/evaluation/global-mmlu-lite/global-mmlu-lite-gn-dev.jsonl
+    test: data/evaluation/global-mmlu-lite/global-mmlu-lite-gn-test.jsonl
 test_split: test
 output_type: multiple_choice
 process_docs: !function utils.process_global_mmlu_docs

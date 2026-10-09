@@ -9,6 +9,7 @@ import os
 import yaml
 
 from src.eval_config import run_evaluation
+from src import generate_eval_configs
 from typing import Any
 
 
@@ -47,6 +48,59 @@ def model_config_dirs(profile_dir: str) -> list[str]:
 
     return sorted(models)
 
+
+
+def refresh_profile_configs(profile: str, model: str | None) -> int:
+    """Regenerate selected run configs from the current evaluation matrix."""
+    profile_dir = os.path.join('configs', 'evaluation', 'generated', profile)
+    existing_models = model_config_dirs(profile_dir) if os.path.isdir(profile_dir) else []
+    if model is not None:
+        selected_models = [model]
+    elif len(existing_models) == 1:
+        selected_models = existing_models
+    elif len(existing_models) > 1:
+        raise ValueError(
+            f'Profile {profile} contains multiple model config sets. Specify --model.'
+        )
+    else:
+        selected_models = []
+
+    matrix_paths = [
+        os.path.join('configs', 'evaluation', name)
+        for name in os.listdir('configs/evaluation')
+        if name.endswith('_eval_matrix.yaml')
+    ]
+    matrices = [generate_eval_configs.load_yaml(path) for path in sorted(matrix_paths)]
+    if not selected_models:
+        available_models = [
+            str(matrix.get('model', {}).get('key'))
+            for matrix in matrices
+            if profile in matrix.get('profiles', {})
+        ]
+        if len(available_models) > 1:
+            raise ValueError(
+                f'Profile {profile} has matrices for multiple models. Specify --model.'
+            )
+        selected_models = available_models
+    if not selected_models:
+        raise FileNotFoundError(f'No evaluation matrix defines profile {profile}.')
+
+    written = 0
+    for model_key in selected_models:
+        matches = [
+            (path, matrix)
+            for path, matrix in zip(sorted(matrix_paths), matrices)
+            if str(matrix.get('model', {}).get('key')) == model_key
+        ]
+        if not matches:
+            raise FileNotFoundError(f'No evaluation matrix found for model {model_key}.')
+        matrix_path, matrix = matches[0]
+        if profile not in matrix.get('profiles', {}):
+            raise ValueError(f'Matrix {matrix_path} does not define profile {profile}.')
+        for config_path, config in generate_eval_configs.iter_configs(matrix, profile):
+            generate_eval_configs.write_yaml(config_path, config, overwrite=True)
+            written += 1
+    return written
 
 def generated_configs(profile: str, model: str | None) -> list[str]:
     """List generated configs for one profile.
@@ -229,6 +283,8 @@ def main(profile: str, model_key: str | None, exclude_patterns: tuple[str, ...])
         None.
     """
     try:
+        refreshed = refresh_profile_configs(profile, model_key)
+        print(f'[done] refreshed {refreshed} config files from the evaluation matrix', flush=True)
         configs = generated_configs(profile, model_key)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc

@@ -1,0 +1,21 @@
+task: guarani_wnli
+dataset_path: json
+dataset_name: null
+dataset_kwargs:
+  data_files:
+    train: data/evaluation/wnli/wnli-gn-train.jsonl
+    dev: data/evaluation/wnli/wnli-gn-dev.jsonl
+test_split: dev
+training_split: train
+output_type: multiple_choice
+doc_to_text: "{{sentence1.strip()}}\n¿La segunda oración se desprende de la primera? Japu térã Añete?\nMbohovái:"
+doc_to_target: label
+doc_to_choice:
+  - Japu
+  - Añete
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

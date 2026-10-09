@@ -1,11 +1,12 @@
 task: guarani_flores200_grn_to_eng
-dataset_path: facebook/flores
-dataset_name: all
-test_split: devtest
-fewshot_split: dev
+dataset_path: openlanguagedata/flores_plus
+dataset_name: eng_Latn
+test_split: dev
+fewshot_split: devtest
 output_type: generate_until
+process_docs: !function utils.process_flores_plus_grn_to_eng
 target_delimiter: ''
-doc_to_text: "Translate the following Guarani sentence into English.\nGuarani: {{sentence_grn_Latn}}\nEnglish:"
+doc_to_text: "Translate the following Guarani sentence into English.\nGuarani: {{sentence_gug_Latn}}\nEnglish:"
 doc_to_target: "{{sentence_eng_Latn}}"
 generation_kwargs:
   until:
