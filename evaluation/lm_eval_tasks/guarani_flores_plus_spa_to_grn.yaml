@@ -1,4 +1,4 @@
-task: guarani_flores200_spa_to_grn
+task: guarani_flores_plus_spa_to_grn
 dataset_path: openlanguagedata/flores_plus
 dataset_name: gug_Latn
 test_split: dev

@@ -66,26 +66,26 @@ suites:
         fewshot_split: test
     log_samples: true
 
-  flores200:
+  flores_plus:
     tasks:
-      - guarani_flores200_eng_to_grn
-      - guarani_flores200_grn_to_eng
-      - guarani_flores200_grn_to_spa
-      - guarani_flores200_spa_to_grn
+      - guarani_flores_plus_eng_to_grn
+      - guarani_flores_plus_grn_to_eng
+      - guarani_flores_plus_grn_to_spa
+      - guarani_flores_plus_spa_to_grn
     task_overrides:
-      guarani_flores200_eng_to_grn:
+      guarani_flores_plus_eng_to_grn:
         metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
-      guarani_flores200_grn_to_eng:
+      guarani_flores_plus_grn_to_eng:
         metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
-      guarani_flores200_grn_to_spa:
+      guarani_flores_plus_grn_to_spa:
         metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
-      guarani_flores200_spa_to_grn:
+      guarani_flores_plus_spa_to_grn:
         metrics: [bleu, chrf_plus_plus]
         num_fewshot: 1
         fewshot_split: devtest
@@ -269,7 +269,7 @@ profiles:
     suites:
       - global_mmlu_lite
       - belebele
-      - flores200
+      - flores_plus
       - multiwikiqa
       - guarani_benchmarks
       - english_benchmarks
