@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from functools import wraps
 import click
 import importlib
 import importlib.util
@@ -389,8 +390,139 @@ def resolve_task_specs_for_evaluation(
             task.fewshot_cfg.split = spec['fewshot_split']
         if 'metrics' in spec:
             _restrict_task_metrics(task, spec['metrics'])
+        _add_process_results_context(task)
         resolved.append(task)
     return resolved
+
+
+def _add_process_results_context(task: Any) -> None:
+    """Add task and choice-count details when lm-eval scoring fails."""
+    process_results = getattr(task, 'process_results', None)
+    if not callable(process_results):
+        return
+    if getattr(process_results, '_includes_task_context', False):
+        return
+    announced = False
+
+    @wraps(process_results)
+    def process_results_with_context(doc: Any, results: Any) -> Any:
+        nonlocal announced
+        if not announced:
+            benchmark, language, metrics = _benchmark_log_details(task)
+            print(
+                f'[benchmark] {benchmark} | language: {language} | '
+                f'metric: {metrics}',
+                flush=True,
+            )
+            announced = True
+        try:
+            return process_results(doc, results)
+        except Exception as exc:
+            choice_count = None
+            if getattr(task.config, 'doc_to_choice', None) is not None:
+                try:
+                    choice_count = len(task.doc_to_choice(doc))
+                except Exception:
+                    pass
+            try:
+                result_count = len(results)
+            except (TypeError, AttributeError):
+                result_count = 'unknown'
+            doc_id = doc.get('idx', doc.get('id')) if isinstance(doc, dict) else None
+            raise RuntimeError(
+                f"LM-Eval failed processing task {task.config.task!r} "
+                f"(doc_id={doc_id!r}, choices={choice_count}, "
+                f"results={result_count}, metrics="
+                f"{sorted(getattr(task, '_metric_fn_list', {}))}): {exc}"
+            ) from exc
+
+    process_results_with_context._includes_task_context = True
+    task.process_results = process_results_with_context
+
+
+def _benchmark_log_details(task: Any) -> tuple[str, str, str]:
+    """Format the benchmark identity and selected metrics for run logs."""
+    task_name = str(task.config.task).lower()
+    if 'grn_to_spa' in task_name:
+        language = 'Guarani → Spanish'
+        name = task_name
+    elif 'spa_to_grn' in task_name:
+        language = 'Spanish → Guarani'
+        name = task_name
+    elif 'grn_to_eng' in task_name:
+        language = 'Guarani → English'
+        name = task_name
+    elif 'eng_to_grn' in task_name:
+        language = 'English → Guarani'
+        name = task_name
+    elif task_name.startswith('guarani_'):
+        language = 'Guarani'
+        name = task_name.removeprefix('guarani_')
+    elif task_name.startswith('spanish_') or any(
+        marker in task_name for marker in ('_es', 'spa_latn', 'spa_to_', 'grn_to_spa')
+    ):
+        language = 'Spanish'
+        name = task_name.removeprefix('spanish_')
+    elif task_name.startswith('english_') or any(
+        marker in task_name for marker in ('_en', 'eng_latn', 'eng_to_', 'grn_to_eng')
+    ):
+        language = 'English'
+        name = task_name.removeprefix('english_')
+    else:
+        language = 'English'
+        name = task_name
+
+    if 'global_mmlu_lite' in name:
+        benchmark = 'Global MMLU Lite'
+    elif 'belebele' in name:
+        benchmark = 'Belebele'
+    elif 'flores' in name:
+        benchmark = 'FLORES+'
+    elif 'multiwikiqa' in name:
+        benchmark = 'MultiWikiQA'
+    elif 'mgsm' in name:
+        benchmark = 'MGSM'
+    elif 'arc_easy' in name:
+        benchmark = 'ARC Easy'
+    elif 'arc_challenge' in name:
+        benchmark = 'ARC Challenge'
+    elif 'piqa' in name:
+        benchmark = 'PIQA'
+    elif 'hellaswag' in name:
+        benchmark = 'HellaSwag'
+    elif 'xstorycloze' in name:
+        benchmark = 'XStoryCloze'
+    elif 'gpqa' in name:
+        benchmark = 'GPQA'
+    elif 'wnli' in name:
+        benchmark = 'WNLI'
+    elif 'truthfulqa' in name:
+        benchmark = 'TruthfulQA-MC1'
+    elif 'copa' in name:
+        benchmark = 'COPA'
+    elif 'coreguapa_perplexity' in name:
+        benchmark = 'CoreGuapa perplexity'
+    elif 'ifeval' in name:
+        benchmark = 'IFEval'
+    else:
+        benchmark = name.replace('_', ' ').title()
+
+    metric_labels = {
+        'acc': 'Accuracy (acc)',
+        'acc_norm': 'Normalized accuracy (acc_norm)',
+        'exact_match': 'Exact match',
+        'f1': 'F1',
+        'bleu': 'BLEU',
+        'chrf_plus_plus': 'chrF++',
+        'pass@1': 'Pass@1',
+        'word_perplexity': 'Word perplexity',
+        'byte_perplexity': 'Byte perplexity',
+        'bits_per_byte': 'Bits per byte',
+    }
+    metrics = ', '.join(
+        metric_labels.get(metric, metric) for metric in sorted(task._metric_fn_list)
+    ) or 'unspecified'
+    return benchmark, language, metrics
 
 
 def _restrict_task_metrics(task: Any, selected_metrics: list[str]) -> None:

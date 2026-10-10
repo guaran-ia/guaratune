@@ -202,12 +202,12 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
         "model_key": "gemma4_4b",
         "variant": "base",
         "training_method": "base",
-        "global_mmlu_lite_acc_norm": 0.3875,
-        "global_mmlu_lite_acc_norm_stderr": 0.0125,
-        "guarani_2m_belebele_acc_norm": 0.43,
+        "global_mmlu_lite_acc": 0.3875,
+        "global_mmlu_lite_acc_stderr": 0.0125,
+        "guarani_2m_belebele_acc": 0.43,
         "guarani_multiwikiqa_f1": 0.2021,
-        "spanish_global_mmlu_lite_acc_norm": 0.6325,
-        "english_global_mmlu_lite_acc_norm": 0.70,
+        "spanish_global_mmlu_lite_acc": 0.6325,
+        "english_global_mmlu_lite_acc": 0.70,
         "guarani_flores200_eng_to_grn_bleu": 0.67,
         "guarani_flores200_eng_to_grn_chrf_plus_plus": 3.4,
     }
@@ -215,22 +215,22 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
         "variant": "full_C1_kuatia",
         "training_method": "full",
         "corpus": "C1_kuatia",
-        "global_mmlu_lite_acc_norm": 0.325,
-        "global_mmlu_lite_acc_norm_stderr": 0.005,
-        "guarani_2m_belebele_acc_norm": 0.4667,
+        "global_mmlu_lite_acc": 0.325,
+        "global_mmlu_lite_acc_stderr": 0.005,
+        "guarani_2m_belebele_acc": 0.4667,
         "guarani_multiwikiqa_f1": 0.2874,
-        "spanish_global_mmlu_lite_acc_norm": 0.5625,
-        "english_global_mmlu_lite_acc_norm": 0.665,
+        "spanish_global_mmlu_lite_acc": 0.5625,
+        "english_global_mmlu_lite_acc": 0.665,
         "guarani_flores200_eng_to_grn_bleu": 0.89,
         "guarani_flores200_eng_to_grn_chrf_plus_plus": 4.0,
     }
 
     sample_counts = {
-        "global_mmlu_lite_acc_norm": 2,
-        "guarani_2m_belebele_acc_norm": 2,
+        "global_mmlu_lite_acc": 2,
+        "guarani_2m_belebele_acc": 2,
         "guarani_multiwikiqa_f1": 2,
-        "spanish_global_mmlu_lite_acc_norm": 2,
-        "english_global_mmlu_lite_acc_norm": 2,
+        "spanish_global_mmlu_lite_acc": 2,
+        "english_global_mmlu_lite_acc": 2,
         "guarani_flores200_eng_to_grn_bleu": 2,
     }
     rows, columns = analyze_eval_results.benchmark_table(
@@ -247,8 +247,8 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert report.index("| Average |") < report.index("| **Spanish** |")
     assert report.index("| **Spanish** |") < report.index("| **English** |")
     assert report.index("| **English** |") < report.index("| **Translation** |")
-    assert "| Global MMLU Lite GN (acc_norm) | **38.75 (36.30, 41.20)** | **32.50 (31.52, 33.48)** | **-6.25** |" in report
-    assert "| Belebele GN (acc_norm) | 43.00 | **46.67** | **+3.67** |" in report
+    assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | **32.50 (31.52, 33.48)** | **-6.25** |" in report
+    assert "| Belebele GN (acc) | 43.00 | **46.67** | **+3.67** |" in report
     assert "| Average | 33.99 | **35.97** | **+1.98** |" in report
     assert "FLORES+ EN->GN (chrF++)" in report
     assert "FLORES+ EN->GN (BLEU)" not in report
@@ -256,7 +256,7 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "## Variant reference\n* C1: Kuatia\n" in report
     assert "| Instances |" not in report
     assert "Gain columns show signed score-point differences" in report
-    mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc_norm)")
+    mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc)")
     assert mmlu_row["_standard_errors"] == {"base": 1.25, "C1": 0.5}
     assert "standard_errors" not in columns
     assert "_standard_errors" not in report
@@ -283,7 +283,7 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     filtered_labels = [row["benchmark"] for row in filtered_rows]
     assert "**Spanish**" in filtered_labels
     assert "**Guarani**" not in filtered_labels
-    assert "Global MMLU Lite ES (acc_norm)" in filtered_labels
+    assert "Global MMLU Lite ES (acc)" in filtered_labels
     assert "FLORES+ EN->GN (BLEU)" not in filtered_labels
 
     assert analyze_eval_results.benchmark_report_heading(
@@ -361,6 +361,7 @@ def test_evaluation_matrix_generates_per_task_fewshot_overrides() -> None:
     assert config.get("num_fewshot") is None
     assert config["task_overrides"]["arc_easy"]["num_fewshot"] == 0
     assert config["task_overrides"]["arc_challenge"] == {
+        "metrics": ["acc_norm"],
         "num_fewshot": 25,
         "fewshot_split": "train",
         "test_split": "validation",
@@ -414,8 +415,8 @@ def test_benchmark_stderr_uses_the_selected_fallback_metric() -> None:
 
 def test_language_average_standard_error_propagates_available_metrics() -> None:
     row = {
-        "global_mmlu_lite_acc_norm": 0.5,
-        "global_mmlu_lite_acc_norm_stderr": 0.01,
+        "global_mmlu_lite_acc": 0.5,
+        "global_mmlu_lite_acc_stderr": 0.01,
         "guarani_mgsm_direct_exact_match": 0.6,
         "guarani_mgsm_direct_exact_match_stderr": 0.02,
     }
@@ -439,8 +440,8 @@ def test_language_average_includes_flores_chrf_but_not_bleu_and_formats_ci(
         "model_key": "gemma4_4b",
         "variant": "base",
         "training_method": "base",
-        "global_mmlu_lite_acc_norm": 0.5,
-        "global_mmlu_lite_acc_norm_stderr": 0.01,
+        "global_mmlu_lite_acc": 0.5,
+        "global_mmlu_lite_acc_stderr": 0.01,
         "guarani_flores200_eng_to_grn_chrf_plus_plus": 50.0,
         "guarani_flores200_eng_to_grn_chrf_plus_plus_stderr": 0.02,
         "guarani_flores200_eng_to_grn_bleu": 70.0,
@@ -598,11 +599,13 @@ def test_new_guarani_tasks_use_distinct_fewshot_and_scored_splits() -> None:
         suite = matrix["suites"]["guarani_benchmarks"]
         assert suite["tasks"] == ["guarani_mgsm_direct", "guarani_wnli"]
         assert suite["task_overrides"]["guarani_mgsm_direct"] == {
+            "metrics": ["exact_match"],
             "num_fewshot": 5,
             "fewshot_split": "train",
             "test_split": "test",
         }
         assert suite["task_overrides"]["guarani_wnli"] == {
+            "metrics": ["acc"],
             "num_fewshot": 5,
             "fewshot_split": "train",
             "test_split": "dev",

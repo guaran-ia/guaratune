@@ -80,6 +80,18 @@ def copa_doc_to_text(doc: dict[str, Any]) -> str:
     return f'{premise} {connector}'
 
 
+def process_wnli_results(doc: dict[str, Any], results: list[tuple[float, bool]]) -> dict[str, float]:
+    """Score GLUE WNLI with raw accuracy and avoid unused normalized accuracy."""
+    label = int(doc['label'])
+    if len(results) != 2 or label not in (0, 1):
+        raise ValueError(
+            f"Expected two WNLI choices and a binary label; got "
+            f"{len(results)} scores and label {label}."
+        )
+    prediction = max(range(2), key=lambda index: results[index][0])
+    return {'acc': float(prediction == label)}
+
+
 def choice_texts(doc: dict[str, Any]) -> list[str]:
     """Read answer choices from common ARC-like schemas.
 

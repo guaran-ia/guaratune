@@ -5,6 +5,7 @@ training_split: train
 validation_split: validation
 test_split: validation
 output_type: multiple_choice
+process_results: !function utils.process_wnli_results
 doc_to_text: "{{sentence1.strip()}} Does this imply that {{sentence2.strip()}}? Answer:"
 doc_to_choice:
   - "yes"
