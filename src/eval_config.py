@@ -376,21 +376,23 @@ def resolve_task_specs_for_evaluation(
     resolved = []
     for spec in task_specs:
         if isinstance(spec, str):
-            resolved.append(spec)
-            continue
+            task_name = spec
+            overrides = {}
+        else:
+            task_name = str(spec['task'])
+            overrides = spec
 
-        task_name = str(spec['task'])
         task = task_manager.load(task_name)['tasks'][task_name]
-        if 'num_fewshot' in spec:
-            task.set_config('num_fewshot', spec['num_fewshot'])
-        if 'test_split' in spec:
-            task.set_config('test_split', spec['test_split'])
-        if 'fewshot_split' in spec:
-            task.set_config('fewshot_split', spec['fewshot_split'])
-            task.fewshot_cfg.split = spec['fewshot_split']
-        if 'metrics' in spec:
-            _restrict_task_metrics(task, spec['metrics'])
-        if 'test_split' in spec or 'fewshot_split' in spec:
+        if 'num_fewshot' in overrides:
+            task.set_config('num_fewshot', overrides['num_fewshot'])
+        if 'test_split' in overrides:
+            task.set_config('test_split', overrides['test_split'])
+        if 'fewshot_split' in overrides:
+            task.set_config('fewshot_split', overrides['fewshot_split'])
+            task.fewshot_cfg.split = overrides['fewshot_split']
+        if 'metrics' in overrides:
+            _restrict_task_metrics(task, overrides['metrics'])
+        if 'test_split' in overrides or 'fewshot_split' in overrides:
             _disable_request_cache_for_split_overrides(task)
         _add_process_results_context(task)
         resolved.append(task)

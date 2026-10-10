@@ -294,6 +294,8 @@ def model_args_for_variant(
         'dtype': model.get('dtype'),
         'trust_remote_code': bool(model.get('trust_remote_code', False)),
     }
+    if model.get('max_length') is not None:
+        args['max_length'] = model['max_length']
 
     if variant_kind == 'base':
         return args
