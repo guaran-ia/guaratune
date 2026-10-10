@@ -316,6 +316,20 @@ def test_task_specs_apply_matrix_overrides_per_task() -> None:
     ]
 
 
+def test_split_overrides_bypass_lm_eval_request_cache() -> None:
+    task = SimpleNamespace()
+    calls = []
+
+    def build_all_requests(**kwargs: object) -> None:
+        calls.append(kwargs)
+
+    task.build_all_requests = build_all_requests
+    eval_config._disable_request_cache_for_split_overrides(task)
+    task.build_all_requests(cache_requests=True, rewrite_requests_cache=True)
+
+    assert calls == [{'cache_requests': False, 'rewrite_requests_cache': False}]
+
+
 def test_resolved_task_specs_apply_overrides_to_loaded_task_objects() -> None:
     class FakeTask:
         def __init__(self) -> None:

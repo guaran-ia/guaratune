@@ -390,9 +390,29 @@ def resolve_task_specs_for_evaluation(
             task.fewshot_cfg.split = spec['fewshot_split']
         if 'metrics' in spec:
             _restrict_task_metrics(task, spec['metrics'])
+        if 'test_split' in spec or 'fewshot_split' in spec:
+            _disable_request_cache_for_split_overrides(task)
         _add_process_results_context(task)
         resolved.append(task)
     return resolved
+
+
+def _disable_request_cache_for_split_overrides(task: Any) -> None:
+    """Avoid reusing request caches that do not include split names in their key."""
+    build_all_requests = getattr(task, 'build_all_requests', None)
+    if not callable(build_all_requests):
+        return
+    if getattr(build_all_requests, '_split_cache_disabled', False):
+        return
+
+    @wraps(build_all_requests)
+    def build_requests_without_stale_cache(*args: Any, **kwargs: Any) -> Any:
+        kwargs['cache_requests'] = False
+        kwargs['rewrite_requests_cache'] = False
+        return build_all_requests(*args, **kwargs)
+
+    build_requests_without_stale_cache._split_cache_disabled = True
+    task.build_all_requests = build_requests_without_stale_cache
 
 
 def _add_process_results_context(task: Any) -> None:
