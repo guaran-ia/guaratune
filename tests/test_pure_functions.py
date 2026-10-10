@@ -340,10 +340,12 @@ def test_resolved_task_specs_apply_overrides_to_loaded_task_objects() -> None:
             self.config[key] = value
 
     task = FakeTask()
+    plain_task = FakeTask()
+    loaded_tasks = {"local_task": task, "plain_task": plain_task}
 
     class FakeTaskManager:
         def load(self, name: str) -> dict[str, dict[str, FakeTask]]:
-            return {"tasks": {name: task}}
+            return {"tasks": {name: loaded_tasks[name]}}
 
     resolved = eval_config.resolve_task_specs_for_evaluation(
         ["local_task", "plain_task"],
@@ -356,7 +358,7 @@ def test_resolved_task_specs_apply_overrides_to_loaded_task_objects() -> None:
         },
         FakeTaskManager(),
     )
-    assert resolved == [task, "plain_task"]
+    assert resolved == [task, plain_task]
     assert task.config == {
         "num_fewshot": 5,
         "fewshot_split": "train",
