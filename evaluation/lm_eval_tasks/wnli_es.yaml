@@ -1,0 +1,23 @@
+task: wnli_es
+dataset_path: csv
+dataset_kwargs:
+  data_files:
+    train: https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/resolve/main/wnli-train-es.csv
+    validation: https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/resolve/main/wnli-dev-es.csv
+    test: https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/resolve/main/wnli-test-shuffled-es.csv
+training_split: train
+validation_split: validation
+test_split: test
+output_type: multiple_choice
+process_results: !function utils.process_wnli_results
+doc_to_text: "{{sentence1.strip()}} ¿La segunda oración se deduce de la primera? Respuesta:"
+doc_to_choice:
+  - "no"
+  - "sí"
+doc_to_target: "{{ 'no' if label == 0 else 'sí' }}"
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

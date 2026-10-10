@@ -628,3 +628,20 @@ def test_new_guarani_tasks_use_distinct_fewshot_and_scored_splits() -> None:
         assert matrix["suites"]["global_mmlu_lite"]["task_overrides"][
             "guarani_global_mmlu_lite"
         ]["fewshot_split"] == "dev"
+
+
+def test_spanish_wnli_uses_csv_files_instead_of_dataset_script() -> None:
+    task = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/wnli_es.yaml"
+    )
+    assert task["dataset_path"] == "csv"
+    assert set(task["dataset_kwargs"]["data_files"]) == {
+        "train",
+        "validation",
+        "test",
+    }
+    assert task["dataset_kwargs"]["data_files"]["validation"].endswith(
+        "wnli-dev-es.csv"
+    )
+    assert task["output_type"] == "multiple_choice"
+    assert task["metric_list"][0]["metric"] == "acc"
