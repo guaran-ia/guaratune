@@ -19,7 +19,7 @@ DEFAULT_RESULTS_DIR = 'results'
 SUMMARY_FILE_PREFIX = 'evaluation_summary'
 BENCHMARK_TABLE_FILE_PREFIX = 'evaluation_score_by_benchmark'
 AVERAGE_SCORE_BY_LANGUAGE_FILE_NAME = 'evaluation_average_score_by_language.md'
-TECHNICAL_SHEET_FILE_NAME = 'technical_sheet.md'
+TECHNICAL_SHEET_FILE_NAME = 'evaluation_information_sheet.md'
 PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
 COREGUAPA_PERPLEXITY_TASK = 'guarani_coreguapa_perplexity'
@@ -128,49 +128,73 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'FLORES+ EN->GN (BLEU)',
         'languages': ('en', 'gn'),
-        'metrics': ('guarani_flores200_eng_to_grn_bleu',),
+        'metrics': (
+            'guarani_flores_plus_eng_to_grn_bleu',
+            'guarani_flores200_eng_to_grn_bleu',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ EN->GN (chrF++)',
         'languages': ('en', 'gn'),
-        'metrics': ('guarani_flores200_eng_to_grn_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_eng_to_grn_chrf_plus_plus',
+            'guarani_flores200_eng_to_grn_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ GN->EN (BLEU)',
         'languages': ('gn', 'en'),
-        'metrics': ('guarani_flores200_grn_to_eng_bleu',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_eng_bleu',
+            'guarani_flores200_grn_to_eng_bleu',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ GN->EN (chrF++)',
         'languages': ('gn', 'en'),
-        'metrics': ('guarani_flores200_grn_to_eng_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_eng_chrf_plus_plus',
+            'guarani_flores200_grn_to_eng_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ ES->GN (BLEU)',
         'languages': ('es', 'gn'),
-        'metrics': ('guarani_flores200_spa_to_grn_bleu',),
+        'metrics': (
+            'guarani_flores_plus_spa_to_grn_bleu',
+            'guarani_flores200_spa_to_grn_bleu',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ ES->GN (chrF++)',
         'languages': ('es', 'gn'),
-        'metrics': ('guarani_flores200_spa_to_grn_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_spa_to_grn_chrf_plus_plus',
+            'guarani_flores200_spa_to_grn_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ GN->ES (BLEU)',
         'languages': ('gn', 'es'),
-        'metrics': ('guarani_flores200_grn_to_spa_bleu',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_spa_bleu',
+            'guarani_flores200_grn_to_spa_bleu',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'FLORES+ GN->ES (chrF++)',
         'languages': ('gn', 'es'),
-        'metrics': ('guarani_flores200_grn_to_spa_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_spa_chrf_plus_plus',
+            'guarani_flores200_grn_to_spa_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
@@ -1110,10 +1134,16 @@ def write_markdown(path: str, rows: list[dict[str, Any]], columns: list[str]) ->
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
 
+def is_flores_metric(metric: str) -> bool:
+    """Return whether a metric belongs to FLORES+ (including legacy IDs)."""
+    lowered = metric.lower()
+    return 'flores_plus' in lowered or 'flores200' in lowered
+
+
 def report_metric_language(metric: str) -> str:
     """Infer the benchmark language from a raw summary metric name."""
     lowered = metric.lower()
-    if 'flores200' in lowered:
+    if is_flores_metric(lowered):
         if '_to_grn_' in lowered:
             return 'gn'
         if '_to_eng_' in lowered:
@@ -1149,11 +1179,15 @@ def report_metric_label(metric: str) -> str:
     label = label.replace('_nonparallel_cloze_eng_latn', '')
     label = label.replace('_cot_fewshot', '')
     label = label.replace('_chrf_plus_plus', '_chrf++')
-    label = label.replace('flores200_eng_to_grn', 'flores200_en_to_gn')
-    label = label.replace('flores200_grn_to_eng', 'flores200_gn_to_en')
-    label = label.replace('flores200_spa_to_grn', 'flores200_es_to_gn')
-    label = label.replace('flores200_grn_to_spa', 'flores200_gn_to_es')
-    if 'flores200' not in label:
+    label = label.replace('flores200_eng_to_grn', 'flores_plus_en_to_gn')
+    label = label.replace('flores_plus_eng_to_grn', 'flores_plus_en_to_gn')
+    label = label.replace('flores200_grn_to_eng', 'flores_plus_gn_to_en')
+    label = label.replace('flores_plus_grn_to_eng', 'flores_plus_gn_to_en')
+    label = label.replace('flores200_spa_to_grn', 'flores_plus_es_to_gn')
+    label = label.replace('flores_plus_spa_to_grn', 'flores_plus_es_to_gn')
+    label = label.replace('flores200_grn_to_spa', 'flores_plus_gn_to_es')
+    label = label.replace('flores_plus_grn_to_spa', 'flores_plus_gn_to_es')
+    if not is_flores_metric(label):
         for code in ('_gn', '_es', '_en'):
             label = label.replace(code, '')
         label = label.rstrip('_')
@@ -1280,9 +1314,13 @@ def benchmark_name_for_metric(metric: str) -> str:
         'wnli_es': 'WNLI',
         'copa': 'COPA',
         'ifeval_prompt_level_strict': 'IFEval',
+        'flores_plus_en_to_gn': 'FLORES+ EN→GN',
         'flores200_en_to_gn': 'FLORES+ EN→GN',
+        'flores_plus_gn_to_en': 'FLORES+ GN→EN',
         'flores200_gn_to_en': 'FLORES+ GN→EN',
+        'flores_plus_es_to_gn': 'FLORES+ ES→GN',
         'flores200_es_to_gn': 'FLORES+ ES→GN',
+        'flores_plus_gn_to_es': 'FLORES+ GN→ES',
         'flores200_gn_to_es': 'FLORES+ GN→ES',
     }
     for prefix, name in names.items():
@@ -1352,7 +1390,7 @@ def report_markdown(
     }
     for metric in metric_names:
         lowered = metric.lower()
-        if 'flores200' in lowered:
+        if is_flores_metric(lowered):
             category = 'FLORES+ translations'
         elif metric in PERPLEXITY_METRIC_NAMES or any(
             token in lowered for token in ('perplexity', 'bits_per_byte')
@@ -1584,14 +1622,22 @@ def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
 def pretty_metric_label(metric: str) -> str:
     """Return a readable metric label without its language prefix."""
     lowered = metric.lower()
-    if 'flores200' in lowered:
+    if is_flores_metric(lowered):
         directions = (
+            ('flores_plus_eng_to_grn', 'EN', 'GN'),
+            ('guarani_flores200_eng_to_grn', 'EN', 'GN'),
             ('eng_to_grn', 'EN', 'GN'),
             ('en_to_gn', 'EN', 'GN'),
+            ('flores_plus_spa_to_grn', 'ES', 'GN'),
+            ('guarani_flores200_spa_to_grn', 'ES', 'GN'),
             ('spa_to_grn', 'ES', 'GN'),
             ('es_to_gn', 'ES', 'GN'),
+            ('flores_plus_grn_to_spa', 'GN', 'ES'),
+            ('guarani_flores200_grn_to_spa', 'GN', 'ES'),
             ('grn_to_spa', 'GN', 'ES'),
             ('gn_to_es', 'GN', 'ES'),
+            ('flores_plus_grn_to_eng', 'GN', 'EN'),
+            ('guarani_flores200_grn_to_eng', 'GN', 'EN'),
             ('grn_to_eng', 'GN', 'EN'),
             ('gn_to_en', 'GN', 'EN'),
         )
@@ -1601,8 +1647,8 @@ def pretty_metric_label(metric: str) -> str:
         )
         score_name = 'chrF++' if 'chrf' in lowered else 'BLEU'
         if direction:
-            return f'FLORES 200 {direction[0]}->{direction[1]} {score_name}'
-        return f'FLORES 200 {score_name}'
+            return f'FLORES+ {direction[0]}->{direction[1]} {score_name}'
+        return f'FLORES+ {score_name}'
 
     if metric == 'word_perplexity':
         return 'CoreGuapa Word Perplexity'
@@ -1637,7 +1683,7 @@ def pretty_metric_label(metric: str) -> str:
 def pretty_metric_section(metric: str) -> str:
     """Assign a regular-summary metric to its reference CSV section."""
     lowered = metric.lower()
-    if 'flores200' in lowered:
+    if is_flores_metric(lowered):
         if any(token in lowered for token in ('_to_grn', '_to_gn')):
             return 'TRANSLATION TO GN'
         return 'TRANSLATION FROM GN'
@@ -2239,6 +2285,47 @@ def benchmark_table(
     if translation_rows:
         table_rows.append({'benchmark': '**Translation**', '_section': True})
         table_rows.extend(translation_rows)
+        translation_average = {'benchmark': 'Average'}
+        translation_scores: dict[str, list[float]] = {
+            label: [] for label in model_labels
+        }
+        for variant_row, model_label in zip(variants, model_labels):
+            for spec in translation_specs:
+                score = benchmark_score(variant_row, spec)
+                if score is not None:
+                    translation_scores[model_label].append(score)
+        average_scores = {
+            label: sum(scores) / len(scores) if scores else None
+            for label, scores in translation_scores.items()
+        }
+        translation_average.update(average_scores)
+        average_differences = {}
+        average_errors = {}
+        for variant_row, model_label in zip(variants, model_labels):
+            base_row = bases.get(str(variant_row.get('model_key')))
+            base_scores = [
+                score
+                for spec in translation_specs
+                if (score := benchmark_score(base_row, spec)) is not None
+            ] if base_row else []
+            base_average = sum(base_scores) / len(base_scores) if base_scores else None
+            average_differences[model_label] = (
+                None if variant_row.get('variant') == 'base'
+                else score_point_difference(average_scores[model_label], base_average)
+            )
+            errors = [
+                benchmark_standard_error(variant_row, spec)
+                for spec in translation_specs
+                if benchmark_score(variant_row, spec) is not None
+            ]
+            average_errors[model_label] = (
+                math.sqrt(sum(error**2 for error in errors)) / len(errors)
+                if errors and all(error is not None for error in errors)
+                else None
+            )
+        translation_average['_differences'] = average_differences
+        translation_average['_standard_errors'] = average_errors
+        table_rows.append(translation_average)
     columns = ['benchmark']
     for variant, model_label in zip(variants, model_labels):
         columns.append(model_label)
@@ -2319,9 +2406,35 @@ def write_dataset_configuration_notes(
     handle: Any, heading: str = 'Dataset configurations'
 ) -> None:
     """Append the variant reference key to a report markdown file."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    manifest_dir = os.path.join(project_root, 'data', 'manifests')
     handle.write(f'\n## {heading}\n')
     for key, description in DATASET_CONFIGURATION_NOTES:
-        handle.write(f'* {key}: {description}\n')
+        # Manifest names use the corpus key (for example C1_kuatia), not the
+        # presentation label. Resolve by the C-number to support all labels.
+        candidates = [
+            os.path.join(manifest_dir, name)
+            for name in os.listdir(manifest_dir)
+            if name.startswith(f'{key}_') and name.endswith('.manifest.json')
+        ] if os.path.isdir(manifest_dir) else []
+        instance_count = None
+        if candidates:
+            try:
+                with open(candidates[0], encoding='utf-8') as manifest_file:
+                    manifest = json.load(manifest_file)
+                count = manifest.get('splits', {}).get('train', {}).get('documents')
+                if is_number(count):
+                    instance_count = int(count)
+            except (OSError, ValueError, TypeError):
+                pass
+        count_text = (
+            f' ({instance_count:,} instances)' if instance_count is not None else ''
+        )
+        handle.write(f'* {key}: {description}{count_text}\n')
+    handle.write(
+        '\nInstance totals are the number of examples in each configuration’s '
+        'training split, as recorded in its data manifest.\n'
+    )
 
 
 def language_average_table(
@@ -2411,10 +2524,12 @@ def write_language_average_markdown(
         if model_keys:
             heading = benchmark_report_heading(tuple(model_keys), rows)
             handle.write(f'# {heading}\n\n')
-        display_columns = [
-            column.removesuffix('_base').replace('_', ' ').title()
-            for column in columns
-        ]
+        display_columns = []
+        for column in columns:
+            label = column.removesuffix('_base').replace('_', ' ').title()
+            if column.endswith('_average'):
+                label += ' (-95% CI, +95% CI)'
+            display_columns.append(label)
         handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         column_maxima = {
@@ -2452,7 +2567,8 @@ def write_language_average_markdown(
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
         handle.write(
-            '\n95% confidence intervals are approximate normal intervals computed '
+            '\n>[!Note]\n'
+            '> 95% confidence intervals are approximate normal intervals computed '
             'as the average score ± 1.96 times its propagated standard error. '
             'Average standard errors assume independent benchmark estimates. '
             'An interval is omitted when any included benchmark lacks a finite '
@@ -2486,7 +2602,13 @@ def write_benchmark_markdown(
         if model_keys:
             heading = benchmark_report_heading(model_keys, variants)
             handle.write(f'# {heading}\n\n')
-        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        display_columns = [
+            f'{column} (-95% CI, +95% CI)'
+            if column != 'benchmark' and not column.startswith('Gain ')
+            else column
+            for column in columns
+        ]
+        handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
             label = str(row.get('benchmark', '')).replace('|', '\\|')
@@ -2501,12 +2623,6 @@ def write_benchmark_markdown(
             scores = [displayed_score(row.get(column)) for column in score_columns]
             maximum = max((score for score in scores if score is not None), default=None)
             differences = row.get('_differences', {})
-            gains = [
-                differences.get(column)
-                for column in score_columns
-                if column in differences and differences.get(column) is not None
-            ]
-            maximum_gain = max(gains, default=None)
             standard_errors = row.get('_standard_errors', {})
             values = [label]
             for column in columns[1:]:
@@ -2516,10 +2632,7 @@ def write_benchmark_markdown(
                     if difference is None:
                         values.append('')
                     else:
-                        rendered = f'{difference:+.2f}'
-                        if difference == maximum_gain:
-                            rendered = f'**{rendered}**'
-                        values.append(rendered)
+                        values.append(f'{difference:+.2f}')
                     continue
 
                 score = displayed_score(row.get(column))
@@ -2531,17 +2644,15 @@ def write_benchmark_markdown(
                 if is_number(stderr):
                     margin = 1.96 * float(stderr)
                     rendered += f' ({score - margin:.2f}, {score + margin:.2f})'
-                if score == maximum or (
-                    maximum_gain is not None
-                    and differences.get(column) == maximum_gain
-                ):
+                if score == maximum:
                     rendered = f'**{rendered}**'
                 values.append(rendered)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
         handle.write(
-            '\n95% confidence intervals are approximate normal intervals computed '
+            '\n>[!Note]\n'
+            '> 95% confidence intervals are approximate normal intervals computed '
             'as the score or average ± 1.96 times its standard error. Average '
             'standard errors assume independent benchmark estimates. An interval '
             'is omitted when the evaluation output lacks a finite standard error. '
@@ -2701,12 +2812,8 @@ def write_technical_sheet(
     """Write model/training and benchmark configuration details."""
     model_keys = tuple(sorted({str(row.get('model_key')) for row in variants if row.get('model_key')}))
     variant_labels = benchmark_model_labels(variants)
-    labels_by_variant = {
-        (str(row.get('model_key')), str(row.get('variant'))): label
-        for row, label in zip(variants, variant_labels)
-    }
     with open(path, 'w', encoding='utf-8') as handle:
-        handle.write('# Technical Sheet\n\n')
+        handle.write('# Evaluation Information Sheet\n\n')
         if model_keys:
             handle.write(f'**Evaluated:** {benchmark_report_heading(model_keys, variants)}\n\n')
         handle.write('## Model variants\n\n')
@@ -2732,13 +2839,36 @@ def write_technical_sheet(
             )
 
         handle.write('\n## Benchmarks\n\n')
-        columns = ('Model', 'Variant', 'Profile', 'Suite', 'Benchmark', 'Language', 'Instances', 'Shots', 'Score Split')
+        columns = ('Profile', 'Suite', 'Benchmark', 'Language', 'Instances', 'Shots', 'Score Split')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        language_order = {
+            'Guarani (GN)': 0,
+            'Spanish (ES)': 1,
+            'English (EN)': 2,
+            'Guarani → Spanish': 3,
+            'Spanish → Guarani': 4,
+            'English → Guarani': 5,
+            'Guarani → English': 6,
+        }
+        unique_rows = {}
         for row in benchmark_rows:
+            key = (
+                row.get('benchmark'), row.get('language'), row.get('instances'),
+                row.get('num_fewshot'), row.get('score_split'), row.get('profile'),
+                row.get('suite'),
+            )
+            unique_rows.setdefault(key, row)
+        sorted_rows = sorted(
+            unique_rows.values(),
+            key=lambda row: (
+                str(row.get('benchmark') or '').casefold(),
+                language_order.get(str(row.get('language')), 99),
+                str(row.get('language') or '').casefold(),
+            ),
+        )
+        for row in sorted_rows:
             values = [
-                model_display_name(str(row['model_key'])),
-                labels_by_variant.get((str(row['model_key']), str(row['variant'])), str(row['variant'])),
                 str(row.get('profile') or ''),
                 str(row.get('suite') or ''),
                 str(row.get('benchmark') or ''),
@@ -2895,13 +3025,21 @@ def write_perplexity_markdown(
         ]
         handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        score_columns = [column for column in columns if column != 'perplexity_metric']
         for row in rows:
+            present_values = [
+                float(row[column]) for column in score_columns
+                if is_number(row.get(column))
+            ]
+            minimum = min(present_values, default=None)
             values = []
             for column in columns:
                 if column == 'perplexity_metric':
                     value = str(row.get(column, '')).replace('|', '\\|')
                 else:
                     value = format_benchmark_score(row.get(column))
+                    if is_number(row.get(column)) and row[column] == minimum:
+                        value = f'**{value}**'
 
                 values.append(value)
 
