@@ -2417,23 +2417,22 @@ def write_dataset_configuration_notes(
             for name in os.listdir(manifest_dir)
             if name.startswith(f'{key}_') and name.endswith('.manifest.json')
         ] if os.path.isdir(manifest_dir) else []
-        instance_count = None
+        token_count = None
         if candidates:
             try:
                 with open(candidates[0], encoding='utf-8') as manifest_file:
                     manifest = json.load(manifest_file)
-                count = manifest.get('splits', {}).get('train', {}).get('documents')
+                count = manifest.get('splits', {}).get('train', {}).get('tokens')
                 if is_number(count):
-                    instance_count = int(count)
+                    token_count = int(count)
             except (OSError, ValueError, TypeError):
                 pass
-        count_text = (
-            f' ({instance_count:,} instances)' if instance_count is not None else ''
-        )
-        handle.write(f'* {key}: {description}{count_text}\n')
+        token_text = f' ({token_count:,} tokens)' if token_count is not None else ''
+        handle.write(f'* {key}: {description}{token_text}\n')
     handle.write(
-        '\nInstance totals are the number of examples in each configuration’s '
-        'training split, as recorded in its data manifest.\n'
+        '\n>[!Note]\n'
+        '> Token totals are the number of tokens in each configuration’s training '
+        'split, as recorded in its data manifest.\n'
     )
 
 
@@ -2839,7 +2838,7 @@ def write_technical_sheet(
             )
 
         handle.write('\n## Benchmarks\n\n')
-        columns = ('Profile', 'Suite', 'Benchmark', 'Language', 'Instances', 'Shots', 'Score Split')
+        columns = ('Benchmark', 'Language', 'Instances', 'Shots', 'Score Split')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         language_order = {
@@ -2855,8 +2854,7 @@ def write_technical_sheet(
         for row in benchmark_rows:
             key = (
                 row.get('benchmark'), row.get('language'), row.get('instances'),
-                row.get('num_fewshot'), row.get('score_split'), row.get('profile'),
-                row.get('suite'),
+                row.get('num_fewshot'), row.get('score_split'),
             )
             unique_rows.setdefault(key, row)
         sorted_rows = sorted(
@@ -2869,8 +2867,6 @@ def write_technical_sheet(
         )
         for row in sorted_rows:
             values = [
-                str(row.get('profile') or ''),
-                str(row.get('suite') or ''),
                 str(row.get('benchmark') or ''),
                 str(row.get('language') or ''),
                 f"{int(row['instances']):,}" if is_number(row.get('instances')) else 'not recorded',
@@ -2880,7 +2876,8 @@ def write_technical_sheet(
             handle.write('| ' + ' | '.join(value.replace('|', '\\|') for value in values) + ' |\n')
 
         handle.write(
-            '\nInstances are the effective examples evaluated by LM-Eval; shots are '
+            '\n>[!Note]\n'
+            '> Instances are the effective examples evaluated by LM-Eval; shots are '
             'the configured few-shot examples. Score split is the dataset split used '
             'to calculate the benchmark metrics.\n'
         )
