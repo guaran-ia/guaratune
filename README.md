@@ -530,7 +530,7 @@ python -m src.eval_benchmark --model <model_key> --benchmark flores --source_lan
 | `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
 | `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
 | `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
-| `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `full`, `lora`. If this parameters is omitted all full and LoRA CPT variants are evaluated.|
+| `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated.|
 | `--lora-rank` | `None` | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
 | `--dataset-configuration` | `None` | Optional dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. If this parameter is omitted all dataset configuration variants are evaluated. | 
 

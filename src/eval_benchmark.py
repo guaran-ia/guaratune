@@ -214,7 +214,7 @@ def build_run_configs(
         if lora_rank is not None and metadata.get("lora_rank") != lora_rank:
             continue
         corpus = metadata.get("corpus")
-        if dataset_configuration is not None and (
+        if cpt_method != "base" and dataset_configuration is not None and (
             corpus is None or not str(corpus).startswith(f"{dataset_configuration}_")
         ):
             continue
@@ -268,7 +268,7 @@ def run_configs(configs: list[dict[str, Any]]) -> None:
     "--cpt-method",
     "--cpt_method",
     "cpt_method",
-    type=click.Choice(["full", "lora"], case_sensitive=False),
+    type=click.Choice(["base", "full", "lora"], case_sensitive=False),
     help="Training method to evaluate. If omitted, include all available methods and base.",
 )
 @click.option(
@@ -283,7 +283,10 @@ def run_configs(configs: list[dict[str, Any]]) -> None:
     "--dataset-config",
     "dataset_configuration",
     type=click.Choice([f"c{number}" for number in range(1, 9)], case_sensitive=False),
-    help="Training dataset configuration. If omitted, include all available datasets.",
+    help=(
+        "Training dataset configuration. If omitted, include all available datasets. "
+        "Ignored when --cpt-method base is selected."
+    ),
 )
 @click.option("--profile", default=DEFAULT_PROFILE, help="Evaluation profile to run.")
 def main(
@@ -304,7 +307,7 @@ def main(
         dataset_configuration = dataset_configuration.upper() if dataset_configuration else None
         if cpt_method == "lora" and lora_rank is None:
             raise ValueError("LoRA evaluation requires --lora-rank. Specify the trained adapter rank.")
-        if cpt_method == "full" and lora_rank is not None:
+        if cpt_method in {"base", "full"} and lora_rank is not None:
             raise ValueError("--lora-rank can only be used with --cpt-method lora.")
         if cpt_method is None and lora_rank is not None:
             raise ValueError("Specify --cpt-method lora when using --lora-rank.")
