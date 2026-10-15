@@ -419,12 +419,15 @@ def _disable_request_cache_for_split_overrides(task: Any) -> None:
 
 
 def _log_benchmark_start(task: Any) -> None:
-    """Log the task identity and selected metrics before inference begins."""
+    """Log task identity, selected metrics, and few-shot count before inference."""
     if not hasattr(getattr(task, 'config', None), 'task'):
         return
     benchmark, language, metrics = _benchmark_log_details(task)
+    shots = getattr(task.config, 'num_fewshot', None)
+    if shots is None:
+        shots = 0
     print(
-        f'[benchmark] {benchmark} | language: {language} | metric: {metrics}',
+        f'[benchmark] {benchmark} | language: {language} | metric: {metrics} | shots: {shots}',
         flush=True,
     )
 
