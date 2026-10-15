@@ -118,7 +118,7 @@ suites:
     task_overrides:
       guarani_mgsm_direct:
         metrics: [exact_match]
-        num_fewshot: 5
+        num_fewshot: 0
         fewshot_split: train
         test_split: test
       guarani_wnli:
@@ -164,7 +164,7 @@ suites:
         fewshot_split: train
       mgsm_direct_en:
         metrics: [exact_match]
-        num_fewshot: 8
+        num_fewshot: 0
         fewshot_split: train
       gpqa_main_n_shot:
         metrics: [acc]
@@ -228,7 +228,7 @@ suites:
         fewshot_split: val
       mgsm_direct_es_spanish_bench:
         metrics: [exact_match]
-        num_fewshot: 8
+        num_fewshot: 0
         fewshot_split: train
       spanish_gpqa_main:
         metrics: [acc]
