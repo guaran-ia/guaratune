@@ -394,6 +394,7 @@ def resolve_task_specs_for_evaluation(
             _restrict_task_metrics(task, overrides['metrics'])
         if 'test_split' in overrides or 'fewshot_split' in overrides:
             _disable_request_cache_for_split_overrides(task)
+        _log_benchmark_start(task)
         _add_process_results_context(task)
         resolved.append(task)
     return resolved
@@ -417,6 +418,17 @@ def _disable_request_cache_for_split_overrides(task: Any) -> None:
     task.build_all_requests = build_requests_without_stale_cache
 
 
+def _log_benchmark_start(task: Any) -> None:
+    """Log the task identity and selected metrics before inference begins."""
+    if not hasattr(getattr(task, 'config', None), 'task'):
+        return
+    benchmark, language, metrics = _benchmark_log_details(task)
+    print(
+        f'[benchmark] {benchmark} | language: {language} | metric: {metrics}',
+        flush=True,
+    )
+
+
 def _add_process_results_context(task: Any) -> None:
     """Add task and choice-count details when lm-eval scoring fails."""
     process_results = getattr(task, 'process_results', None)
@@ -424,19 +436,9 @@ def _add_process_results_context(task: Any) -> None:
         return
     if getattr(process_results, '_includes_task_context', False):
         return
-    announced = False
 
     @wraps(process_results)
     def process_results_with_context(doc: Any, results: Any) -> Any:
-        nonlocal announced
-        if not announced:
-            benchmark, language, metrics = _benchmark_log_details(task)
-            print(
-                f'[benchmark] {benchmark} | language: {language} | '
-                f'metric: {metrics}',
-                flush=True,
-            )
-            announced = True
         try:
             return process_results(doc, results)
         except Exception as exc:
