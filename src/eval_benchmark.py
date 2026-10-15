@@ -193,23 +193,30 @@ def build_run_configs(
     task_name: str,
     suite_name: str,
     selected_metrics: list[str],
-    cpt_method: str,
+    cpt_method: str | None,
     lora_rank: int | None,
-    dataset_configuration: str,
+    dataset_configuration: str | None,
 ) -> list[dict[str, Any]]:
-    """Build one-task configs for the selected training variant."""
+    """Build one-task configs matching the requested variant filters."""
     configs = []
     for _, config in generate_eval_configs.iter_configs(matrix, profile):
         if config.get("metadata", {}).get("suite") != suite_name:
             continue
         if task_name not in config.get("tasks", []):
             continue
-        metadata_variant = str(config.get("metadata", {}).get("variant", ""))
-        expected_prefix = "full_" if cpt_method == "full" else f"lora_r{lora_rank}_"
-        if not metadata_variant.startswith(expected_prefix):
+        metadata = config.get("metadata", {})
+        variant = str(metadata.get("variant", ""))
+        variant_method = (
+            "base" if variant == "base" else "lora" if variant.startswith("lora_") else "full"
+        )
+        if cpt_method is not None and variant_method != cpt_method:
             continue
-        variant_corpus = metadata_variant.removeprefix(expected_prefix)
-        if not variant_corpus.startswith(f"{dataset_configuration}_"):
+        if lora_rank is not None and metadata.get("lora_rank") != lora_rank:
+            continue
+        corpus = metadata.get("corpus")
+        if dataset_configuration is not None and (
+            corpus is None or not str(corpus).startswith(f"{dataset_configuration}_")
+        ):
             continue
 
         config = dict(config)
@@ -231,8 +238,9 @@ def build_run_configs(
 
     if not configs:
         raise ValueError(
-            f"No run config found for {task_name} with method={cpt_method}, "
-            f"dataset={dataset_configuration}, and LoRA rank={lora_rank} "
+            f"No run config found for {task_name} matching method={cpt_method or 'all'}, "
+            f"dataset={dataset_configuration or 'all'}, and LoRA rank="
+            f"{lora_rank if lora_rank is not None else 'all'} "
             f"in profile {profile!r}."
         )
     return configs
@@ -262,18 +270,21 @@ def run_configs(configs: list[dict[str, Any]]) -> None:
     "--cpt_method",
     "cpt_method",
     type=click.Choice(["full", "lora"], case_sensitive=False),
-    default="full",
-    help="Training method to evaluate (defaults to full CPT).",
+    help="Training method to evaluate. If omitted, include all available methods and base.",
 )
-@click.option("--lora-rank", "--lora_rank", type=int, help="LoRA rank; required for --cpt-method lora.")
+@click.option(
+    "--lora-rank",
+    "--lora_rank",
+    type=int,
+    help="LoRA rank; required with --cpt-method lora. If omitted, include all ranks.",
+)
 @click.option(
     "--dataset-configuration",
     "--dataset_configuration",
     "--dataset-config",
     "dataset_configuration",
     type=click.Choice([f"c{number}" for number in range(1, 9)], case_sensitive=False),
-    default="c1",
-    help="Training dataset configuration (defaults to c1).",
+    help="Training dataset configuration. If omitted, include all available datasets.",
 )
 @click.option("--profile", default=DEFAULT_PROFILE, help="Evaluation profile to run.")
 def main(
@@ -283,19 +294,21 @@ def main(
     target_language: str | None,
     metric: str | None,
     model_key: str,
-    cpt_method: str,
+    cpt_method: str | None,
     lora_rank: int | None,
-    dataset_configuration: str,
+    dataset_configuration: str | None,
     profile: str,
 ) -> None:
-    """Run one benchmark for a selected model, training method, and dataset."""
+    """Run one benchmark across variants selected by the optional filters."""
     try:
-        cpt_method = cpt_method.lower()
-        dataset_configuration = dataset_configuration.upper()
+        cpt_method = cpt_method.lower() if cpt_method else None
+        dataset_configuration = dataset_configuration.upper() if dataset_configuration else None
         if cpt_method == "lora" and lora_rank is None:
             raise ValueError("LoRA evaluation requires --lora-rank. Specify the trained adapter rank.")
         if cpt_method == "full" and lora_rank is not None:
             raise ValueError("--lora-rank can only be used with --cpt-method lora.")
+        if cpt_method is None and lora_rank is not None:
+            raise ValueError("Specify --cpt-method lora when using --lora-rank.")
 
         is_flores = (
             BENCHMARK_ALIASES.get(normalize(benchmark), normalize(benchmark))
@@ -361,8 +374,10 @@ def main(
         )
         print(
             f"[benchmark] {benchmark} | task: {task_name} | metrics: {', '.join(metrics)} "
-            f"| model: {model_key} | method: {cpt_method} | dataset: {dataset_configuration} "
-            f"| LoRA rank: {lora_rank if lora_rank is not None else 'n/a'}",
+            f"| model: {model_key} | method: {cpt_method or 'all'} "
+            f"| dataset: {dataset_configuration or 'all'} "
+            f"| LoRA rank: {lora_rank if lora_rank is not None else 'all'} "
+            f"| variants: {len(configs)}",
             flush=True,
         )
         run_configs(configs)
