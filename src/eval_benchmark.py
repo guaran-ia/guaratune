@@ -260,7 +260,10 @@ def run_configs(configs: list[dict[str, Any]]) -> None:
 
 @click.command(context_settings={"show_default": True})
 @click.option("--benchmark", required=True, help="Benchmark name, for example mgsm or arc_easy.")
-@click.option("--language", help="Benchmark language: English, Spanish, or Guarani.")
+@click.option(
+    "--language",
+    help="Benchmark language: English, Spanish, or Guarani. If omitted, run all configured languages.",
+)
 @click.option("--source_language", "source_language", help="FLORES+ source language.")
 @click.option("--target_language", "target_language", help="FLORES+ target language.")
 @click.option("--metric", help="Metric ID. Defaults to the metric(s) configured in the matrix.")
@@ -334,13 +337,10 @@ def main(
             language_code = "gn"
             suite_name = "flores_plus"
         else:
-            if not language:
-                raise ValueError("--language is required for benchmarks other than FLORES+.")
             if source_language or target_language:
                 raise ValueError(
                     "--source_language and --target_language are only used with FLORES+."
                 )
-            language_code = normalize_language(language)
 
         matrix = load_model_matrix(model_key)
         if is_flores:
@@ -350,30 +350,59 @@ def main(
                     f"FLORES+ direction {source_language} to {target_language} "
                     "is not configured."
                 )
+            resolved_tasks = [(task_name, suite_name)]
         else:
-            task_name, suite_name = find_benchmark_task(matrix, benchmark, language_code, profile)
+            language_codes = [normalize_language(language)] if language else ["es", "en", "gn"]
+            resolved_tasks = []
+            unavailable_languages = []
+            for language_code in language_codes:
+                try:
+                    resolved_tasks.append(
+                        find_benchmark_task(matrix, benchmark, language_code, profile)
+                    )
+                except ValueError as exc:
+                    if language or "is not configured for language" not in str(exc):
+                        raise
+                    unavailable_languages.append(language_code)
+            if not resolved_tasks:
+                raise ValueError(
+                    f"Benchmark {benchmark!r} is not configured for Spanish, English, "
+                    f"or Guarani in profile {profile!r}."
+                )
+            if unavailable_languages:
+                print(
+                    "[skip] no configured task for language(s): "
+                    + ", ".join(unavailable_languages),
+                    flush=True,
+                )
 
-        default_metrics = configured_metrics(matrix, task_name, suite_name)
-        if not default_metrics:
-            raise ValueError(f"No metrics are configured for task {task_name}.")
-        if metric and metric not in default_metrics:
-            raise ValueError(
-                f"Unsupported metric {metric!r} for {benchmark} ({task_name}). "
-                f"Supported metrics: {', '.join(default_metrics)}."
+        configs = []
+        task_descriptions = []
+        for task_name, suite_name in resolved_tasks:
+            default_metrics = configured_metrics(matrix, task_name, suite_name)
+            if not default_metrics:
+                raise ValueError(f"No metrics are configured for task {task_name}.")
+            if metric and metric not in default_metrics:
+                raise ValueError(
+                    f"Unsupported metric {metric!r} for {benchmark} ({task_name}). "
+                    f"Supported metrics: {', '.join(default_metrics)}."
+                )
+            metrics = [metric] if metric else default_metrics
+            task_descriptions.append(f"{task_name} [{', '.join(metrics)}]")
+            configs.extend(
+                build_run_configs(
+                    matrix,
+                    profile,
+                    task_name,
+                    suite_name,
+                    metrics,
+                    cpt_method,
+                    lora_rank,
+                    dataset_configuration,
+                )
             )
-        metrics = [metric] if metric else default_metrics
-        configs = build_run_configs(
-            matrix,
-            profile,
-            task_name,
-            suite_name,
-            metrics,
-            cpt_method,
-            lora_rank,
-            dataset_configuration,
-        )
         print(
-            f"[benchmark] {benchmark} | task: {task_name} | metrics: {', '.join(metrics)} "
+            f"[benchmark] {benchmark} | tasks: {'; '.join(task_descriptions)} "
             f"| model: {model_key} | method: {cpt_method or 'all'} "
             f"| dataset: {dataset_configuration or 'all'} "
             f"| LoRA rank: {lora_rank if lora_rank is not None else 'all'} "

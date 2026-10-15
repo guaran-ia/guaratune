@@ -511,10 +511,10 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 | `--exclude` | `None` | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
 > [!Important]
-> To evaluate a model against a specific benchmark and language, execute:
+> To evaluate a model against a specific benchmark, execute:
 
 ```bash
-python -m src.eval_benchmark --model <model_key> --benchmark <benchmark_name> --language <language_name>
+python -m src.eval_benchmark --model <model_key> --benchmark <benchmark_name>
 ```
 
 For the `Flores+` benchkmark both the source and target languages should be specified
@@ -529,7 +529,7 @@ python -m src.eval_benchmark --model <model_key> --benchmark flores --source_lan
 | --- | --- | --- |
 | `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
 | `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
-| `--language` | `None` | Language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
+| `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
 | `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `full`, `lora`. If this parameters is omitted all full and LoRA CPT variants are evaluated.|
 | `--lora-rank` | `None` | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
 | `--dataset-configuration` | `None` | Optional dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. If this parameter is omitted all dataset configuration variants are evaluated. | 
