@@ -419,7 +419,7 @@ assesses, and the metric used in the evaluation.
 | --- | --- | --- | --- | --- |
 | Belele | [GN](https://huggingface.co/datasets/facebook/belebele/viewer/grn_Latn), [EN](https://huggingface.co/datasets/facebook/belebele/viewer/eng_Latn), [ES](https://huggingface.co/datasets/facebook/belebele/viewer/spa_Latn) | Reading comprenhension | Multiple-choice QA | Accuracy |
 | MultiWiki-QA | [GN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/gn), [EN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/en), [ES](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/es) | Reading comprenhension | Generation | F1, Exact match |
-| Flores | [GN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/gug_Latn/dev), [EN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/eng_Latn/dev), [ES](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/spa_Latn/dev) | Translation | Generation | BLEU, chrf++ |
+| Flores+ | [GN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/gug_Latn/dev), [EN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/eng_Latn/dev), [ES](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/spa_Latn/dev) | Translation | Generation | BLEU, chrf++ |
 | Global MMLU Lite | [GN](data/evaluation/global-mmlu-lite), [EN](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/en/test), [ES](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/es/test) | General knowledge | Multiple-choice QA | Accuracy |
 | MGSM | [GN](data/evaluation/mgsm), [EN](https://huggingface.co/datasets/juletxara/mgsm/viewer/en/test), [ES](https://huggingface.co/datasets/juletxara/mgsm/viewer/es/test) | Specialized reasoning (mathematics) | Generation| Exact match |
 | ARC Easy | [EN](https://huggingface.co/datasets/allenai/ai2_arc/viewer/ARC-Easy/validation), [ES](https://huggingface.co/datasets/BSC-LT/arc_es/viewer/ARC_Easy_es) | Specialized reasoning (science) | Multiple-choice QA | Normalized accuracy |
@@ -454,8 +454,7 @@ This writes config files under:
 - `configs/evaluation/generated/experiments/<model_key>/`
 
 > [!Note]
-> The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`:
-> - `guarani_global_mmlu_lite` reads `data/evaluation/gmlgnt.jsonl`
+> The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`
 > - `guarani_coreguapa_perplexity` reads `data/evaluation/coreguapa_identified_all.jsonl`
 > - Guarani, English, and Spanish benchmark tasks are grouped in the evaluation matrix suites.
 
