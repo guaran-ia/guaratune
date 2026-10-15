@@ -247,13 +247,15 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert report.index("| Average |") < report.index("| **Spanish** |")
     assert report.index("| **Spanish** |") < report.index("| **English** |")
     assert report.index("| **English** |") < report.index("| **Translation** |")
-    assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | **32.50 (31.52, 33.48)** | **-6.25** |" in report
-    assert "| Belebele GN (acc) | 43.00 | **46.67** | **+3.67** |" in report
-    assert "| Average | 33.99 | **35.97** | **+1.98** |" in report
+    assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | 32.50 (31.52, 33.48) | -6.25 |" in report
+    assert "| Belebele GN (acc) | 43.00 | **46.67** | +3.67 |" in report
+    assert "| Average | 33.99 | **35.97** | +1.98 |" in report
+    assert "| benchmark | base (-95% CI, +95% CI) | C1 (-95% CI, +95% CI) | Gain C1 |" in report
     assert "FLORES+ EN->GN (chrF++)" in report
     assert "FLORES+ EN->GN (BLEU)" not in report
     assert "Average of en benchmarks" not in report
-    assert "## Variant reference\n* C1: Kuatia\n" in report
+    assert "## Variant reference\n* C1: Kuatia (" in report
+    assert ">[!Note]" in report
     assert "| Instances |" not in report
     assert "Gain columns show signed score-point differences" in report
     mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc)")
@@ -271,10 +273,11 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     )
     average_report = average_path.read_text(encoding="utf-8")
     assert average_report.startswith("# Gemma4 4B (Full CPT)\n\n")
-    assert "| Variant | Guarani Average | Guarani Gain | English Average | English Gain | Spanish Average | Spanish Gain |" in average_report
+    assert "| Variant | Guarani Average (-95% CI, +95% CI) | Guarani Gain | English Average (-95% CI, +95% CI) | English Gain | Spanish Average (-95% CI, +95% CI) | Spanish Gain |" in average_report
     assert "| C1 |" in average_report
     assert "full_C1_kuatia" not in average_report
-    assert "## Variant reference\n* C1: Kuatia\n" in average_report
+    assert "## Variant reference\n* C1: Kuatia (" in average_report
+    assert ">[!Note]" in average_report
     assert "* C8: Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu" in average_report
 
     filtered_rows, _ = analyze_eval_results.benchmark_table(
@@ -553,9 +556,11 @@ def test_perplexity_report_uses_short_variant_headers_and_reference(tmp_path: Pa
     report = output_path.read_text(encoding="utf-8")
     assert report.startswith("# Gemma4 4B (Full CPT)\n\n")
     assert "| Perplexity metric | base | C1 |" in report
-    assert "| word perplexity | 100.00 | 10.00 |" in report
+    assert "| word perplexity | 100.00 | **10.00** |" in report
     assert "coreguapa" not in report.lower()
     assert "## Variant reference" in report
+    assert "tokens)" in report
+    assert ">[!Note]" in report
 
 
 def test_percentage_by_benchmark_csv_includes_variant_confidence_intervals(
