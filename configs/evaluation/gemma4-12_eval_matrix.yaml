@@ -195,7 +195,7 @@ suites:
       - xstorycloze_es
       - truthfulqa_es_mc1
       - mgsm_direct_es_spanish_bench
-      - spanish_gpqa_diamond
+      - spanish_gpqa_main
       - wnli_es
     task_overrides:
       spanish_arc_easy:
@@ -230,7 +230,7 @@ suites:
         metrics: [exact_match]
         num_fewshot: 8
         fewshot_split: train
-      spanish_gpqa_diamond:
+      spanish_gpqa_main:
         metrics: [acc]
         num_fewshot: 5
         fewshot_split: train

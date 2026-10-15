@@ -180,30 +180,15 @@ def deterministic_answer_order(
     ]
 
 
-def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
-    """Convert Spanish GPQA Diamond rows to lm-eval MCQA rows.
+def process_spanish_gpqa_main_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Convert all Spanish GPQA Main rows to lm-eval MCQA rows.
 
     Args:
         dataset: Hugging Face GPQA multilingual Spanish split.
 
     Returns:
-        Diamond-only dataset split with question, choices, and numeric gold columns.
+        GPQA Main split with question, choices, and numeric gold columns.
     """
-
-    def is_diamond_doc(doc: dict[str, Any]) -> bool:
-        """Return whether a GPQA row belongs to the Diamond subset.
-
-        Args:
-            doc: Raw GPQA row.
-
-        Returns:
-            True when the row is marked as Diamond.
-        """
-        value = doc.get('is_diamond')
-        if isinstance(value, str):
-            return value.strip().lower() == 'true'
-
-        return bool(value)
 
     def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
         """Convert one Spanish GPQA row.
@@ -239,9 +224,18 @@ def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
             'gold': gold,
         }
 
-    return dataset.filter(is_diamond_doc).map(
-        process_doc, remove_columns=dataset.column_names
-    )
+    return dataset.map(process_doc, remove_columns=dataset.column_names)
+
+
+def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Keep the legacy Spanish GPQA Diamond task behavior for old configs."""
+    def is_diamond_doc(doc: dict[str, Any]) -> bool:
+        value = doc.get('is_diamond')
+        if isinstance(value, str):
+            return value.strip().lower() == 'true'
+        return bool(value)
+
+    return process_spanish_gpqa_main_docs(dataset.filter(is_diamond_doc))
 
 
 def process_global_mmlu_docs(dataset: datasets.Dataset) -> datasets.Dataset:

@@ -363,9 +363,15 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Main ES (acc)',
+        'label': 'GPQA Diamond ES (acc)',
         'languages': ('es',),
         'metrics': ('spanish_gpqa_diamond_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'GPQA Main ES (acc)',
+        'languages': ('es',),
+        'metrics': ('spanish_gpqa_main_acc',),
         'scale': 100.0,
     },
 )
@@ -1305,6 +1311,7 @@ def benchmark_name_for_metric(metric: str) -> str:
         'xnli': 'XNLI',
         'xstorycloze': 'XStoryCloze',
         'mgsm_direct': 'MGSM',
+        'gpqa_main': 'GPQA Main',
         'gpqa_main_n_shot': 'GPQA Main',
         'gpqa_diamond_zeroshot': 'GPQA Diamond',
         'gpqa_diamond': 'GPQA Diamond',
