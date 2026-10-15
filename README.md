@@ -482,13 +482,13 @@ python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_
 | `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
 
 > [!Important]
-> Alternatively, a full generated profile can be executed:
+> Alternatively, a full profile can be executed:
 
 ```bash
 python -m src.eval_profile experiments --model <model_key>
 ```
 
-Generated evaluation profiles also support exclusions:
+The profile evaluation run support exclusions:
 
 ```bash
 python -m src.eval_profile experiments --model <model_key> --exclude '<model_key>_full_C1_kuatia_*'
@@ -499,9 +499,6 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 > and LoRA adapters against the benchmark suites listed in 
 > `configs/evaluation/<model_key>_matrix.yaml`. 
 > 
-> Instruction-following tasks live in the `instruction` suite and are controlled 
-> from the matrix through `include_instruction_tasks` and `variant_overrides`. 
-> 
 > The full and LoRA configs expect training outputs under the model-specific 
 > `outputs/train/<model_key>/experiments` directory.
 
@@ -511,8 +508,31 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 | --- | --- | --- |
 | `profile` | `experiments` | Generated evaluation profile to run. |
 | `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
-| `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| `--exclude` | `None` | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
+> [!Important]
+> To evaluate a model against a specific benchmark and language, execute:
+
+```bash
+python -m src.eval_benchmark --model <model_key> --benchmark <benchmark_name> --language <language_name>
+```
+
+For the `Flores+` benchkmark both the source and target languages should be specified
+
+```bash
+python -m src.eval_benchmark --model <model_key> --benchmark flores --source_language <language_name> --target_language <language_name> 
+```
+
+##### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
+| `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
+| `--language` | `None` | Language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
+| `--cpt-method` | `full` | CPT method to be evaluated. Accepted values: `full`, `lora`.|
+| `--lora-rank` | `None` | Lora rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
+| `--dataset-configuration` | `c1` | Dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. 
 
 > [!Note]
 > Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions 
