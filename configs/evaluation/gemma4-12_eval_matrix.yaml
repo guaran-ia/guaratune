@@ -13,7 +13,7 @@ model:
   device: cuda:0
   batch_size: 1
   max_batch_size: 1
-  max_length: 16000
+  max_length: 24000
 
 defaults:
   env_file: .env
