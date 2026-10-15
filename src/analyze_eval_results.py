@@ -2729,6 +2729,24 @@ def technical_sheet_language(task_name: str, config: dict[str, Any]) -> str:
     return 'English (EN)'
 
 
+def technical_sheet_metrics(task_metrics: dict[str, Any]) -> str:
+    """Return the metric names with numeric results for one LM-Eval task."""
+    metrics = []
+    for result_name, value in task_metrics.items():
+        metric = str(result_name).split(',', 1)[0]
+        if (
+            metric in {'name', 'alias', 'sample_len'}
+            or metric.endswith('_stderr')
+            or not is_number(value)
+        ):
+            continue
+        if metric == 'chrf_plus_plus':
+            metric = 'chrF++'
+        if metric not in metrics:
+            metrics.append(metric)
+    return ', '.join(metrics) if metrics else 'not recorded'
+
+
 def technical_sheet_rows(
     evaluation_root: str,
     model_keys: tuple[str, ...],
@@ -2777,6 +2795,7 @@ def technical_sheet_rows(
                 'task_name': str(task_name),
                 'benchmark': technical_sheet_benchmark_name(str(task_name)),
                 'language': technical_sheet_language(str(task_name), config),
+                'metric': technical_sheet_metrics(task_metrics),
                 'instances': count,
                 'num_fewshot': num_fewshot,
                 'score_split': score_split or 'not recorded',
@@ -2838,7 +2857,7 @@ def write_technical_sheet(
             )
 
         handle.write('\n## Benchmarks\n\n')
-        columns = ('Benchmark', 'Language', 'Instances', 'Shots', 'Score Split')
+        columns = ('Benchmark', 'Language', 'Metric', 'Instances', 'Shots', 'Score Split')
         handle.write('| ' + ' | '.join(columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         language_order = {
@@ -2853,7 +2872,10 @@ def write_technical_sheet(
         unique_rows = {}
         for row in benchmark_rows:
             key = (
-                row.get('benchmark'), row.get('language'), row.get('instances'),
+                row.get('benchmark'),
+                row.get('language'),
+                row.get('metric'),
+                row.get('instances'),
                 row.get('num_fewshot'), row.get('score_split'),
             )
             unique_rows.setdefault(key, row)
@@ -2869,7 +2891,10 @@ def write_technical_sheet(
             values = [
                 str(row.get('benchmark') or ''),
                 str(row.get('language') or ''),
-                f"{int(row['instances']):,}" if is_number(row.get('instances')) else 'not recorded',
+                str(row.get('metric') or 'not recorded'),
+                f"{int(row['instances']):,}"
+                if is_number(row.get('instances'))
+                else 'not recorded',
                 str(row.get('num_fewshot')) if is_number(row.get('num_fewshot')) else 'not recorded',
                 str(row.get('score_split') or 'not recorded'),
             ]
