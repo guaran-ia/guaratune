@@ -230,10 +230,6 @@ def build_run_configs(
         metadata = dict(config.get("metadata", {}))
         metadata["benchmark_task"] = task_name
         config["metadata"] = metadata
-        suffix = "_".join(selected_metrics)
-        config["output_path"] = os.path.join(
-            str(config["output_path"]), "single_benchmark", f"{task_name}_{suffix}"
-        )
         configs.append(config)
 
     if not configs:

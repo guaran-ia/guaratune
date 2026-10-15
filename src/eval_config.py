@@ -9,7 +9,9 @@ import importlib
 import importlib.util
 import json
 import os
+import tempfile
 import yaml
+from datetime import datetime, timezone
 
 from src.train_config import DEFAULT_SECRET_ENV_FILE, load_env_file, normalize_hf_token_env
 from typing import Any
@@ -270,6 +272,164 @@ def serializable_results(results: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in results.items() if key != 'samples'}
 
 
+TASK_RESULT_FIELDS = (
+    'results',
+    'groups',
+    'group_subtasks',
+    'configs',
+    'versions',
+    'higher_is_better',
+    'n-shot',
+    'n-samples',
+)
+
+
+def _task_related_keys(
+    task_names: set[str], *group_subtask_maps: Any
+) -> tuple[set[str], set[str]]:
+    """Expand task keys to include group results and subtasks affected by a rerun."""
+    result_keys = set(task_names)
+    group_keys = set(task_names)
+    for mapping in group_subtask_maps:
+        if not isinstance(mapping, dict):
+            continue
+        for group_name, subtasks in mapping.items():
+            if not isinstance(subtasks, list):
+                continue
+            if str(group_name) in task_names or task_names.intersection(map(str, subtasks)):
+                group_keys.add(str(group_name))
+                result_keys.update(map(str, subtasks))
+    return result_keys, group_keys
+
+
+def _atomic_write_json(path: str, value: Any) -> None:
+    """Atomically replace a JSON artifact after it has been fully serialized."""
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            encoding='utf-8',
+            dir=directory,
+            prefix=f'.{os.path.basename(path)}.',
+            suffix='.tmp',
+            delete=False,
+        ) as handle:
+            temporary_path = handle.name
+            json.dump(
+                value,
+                handle,
+                default=handle_non_serializable,
+                ensure_ascii=False,
+                indent=2,
+            )
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path and os.path.exists(temporary_path):
+            os.unlink(temporary_path)
+
+
+def _read_json_file(path: str) -> Any:
+    """Read one JSON artifact used by the task-level result merger."""
+    with open(path, 'r', encoding='utf-8') as handle:
+        return json.load(handle)
+
+
+def _merge_task_artifacts(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+    *,
+    executed_tasks: list[str],
+    skipped_tasks: list[dict[str, Any]],
+    completed_at: str,
+) -> dict[str, Any]:
+    """Merge the latest evaluation into an existing result file by task."""
+    previous_groups = previous.get('group_subtasks', {})
+    current_groups = current.get('group_subtasks', {})
+    current_results = current.get('results', {})
+    current_group_results = current.get('groups', {})
+    task_names = set(map(str, executed_tasks))
+    if isinstance(current_results, dict):
+        task_names.update(map(str, current_results))
+    if isinstance(current_group_results, dict):
+        task_names.update(map(str, current_group_results))
+
+    replace_result_keys, replace_group_keys = _task_related_keys(
+        task_names, previous_groups, current_groups
+    )
+    # Replacing one member also invalidates an aggregate group unless the current
+    # evaluation computed a fresh aggregate for that group.
+    affected_group_keys = set(replace_group_keys)
+    if isinstance(previous_groups, dict):
+        for group_name, subtasks in previous_groups.items():
+            if isinstance(subtasks, list) and task_names.intersection(map(str, subtasks)):
+                affected_group_keys.add(str(group_name))
+
+    merged = dict(previous)
+    for field in TASK_RESULT_FIELDS:
+        old_value = previous.get(field, {})
+        new_value = current.get(field, {})
+        old_map = dict(old_value) if isinstance(old_value, dict) else {}
+        new_map = dict(new_value) if isinstance(new_value, dict) else {}
+        affected_keys = affected_group_keys if field in ('groups', 'group_subtasks') else replace_result_keys
+        for key in affected_keys:
+            old_map.pop(key, None)
+        old_map.update(new_map)
+        merged[field] = old_map
+
+    # The top-level run metadata describes the latest invocation; task_runs holds
+    # completion history for results that were retained from earlier runs.
+    merged.update(
+        {
+            key: value
+            for key, value in current.items()
+            if key not in TASK_RESULT_FIELDS and key not in ('samples', 'guarania_evaluation')
+        }
+    )
+    old_evaluation = previous.get('guarania_evaluation', {})
+    if not isinstance(old_evaluation, dict):
+        old_evaluation = {}
+    task_runs = dict(old_evaluation.get('task_runs', {}))
+    skipped_by_name = {
+        str(item.get('task')): item
+        for item in skipped_tasks
+        if isinstance(item, dict) and item.get('task')
+    }
+    for task_name in executed_tasks:
+        task_runs[str(task_name)] = {
+            'status': 'complete',
+            'completed_at': completed_at,
+            'last_attempt_at': completed_at,
+        }
+    for task_name in task_names.difference(set(map(str, executed_tasks))):
+        task_runs[task_name] = {
+            'status': 'complete',
+            'completed_at': completed_at,
+            'last_attempt_at': completed_at,
+        }
+    for task_name, skipped in skipped_by_name.items():
+        prior = dict(task_runs.get(task_name, {}))
+        prior.update(
+            {
+                'status': 'skipped',
+                'last_attempt_at': completed_at,
+                'skip_reason': skipped.get('reason'),
+            }
+        )
+        task_runs[task_name] = prior
+    merged['guarania_evaluation'] = {
+        'status': 'incomplete' if skipped_tasks or not executed_tasks else 'complete',
+        'executed_tasks': executed_tasks,
+        'skipped_tasks': skipped_tasks,
+        'task_runs': task_runs,
+    }
+    merged['date'] = completed_at
+    return merged
+
+
 def write_results(
     output_path: str,
     results: dict[str, Any],
@@ -290,32 +450,38 @@ def write_results(
     """
     os.makedirs(output_path, exist_ok=True)
     summary_path = os.path.join(output_path, 'results.json')
-    summary = serializable_results(results)
-    summary['guarania_evaluation'] = {
-        'status': 'incomplete' if skipped_tasks or not executed_tasks else 'complete',
-        'executed_tasks': executed_tasks,
-        'skipped_tasks': skipped_tasks,
-    }
-    with open(summary_path, 'w', encoding='utf-8') as handle:
-        json.dump(
-            summary,
-            handle,
-            default=handle_non_serializable,
-            ensure_ascii=False,
-            indent=2,
-        )
+    previous = _read_json_file(summary_path) if os.path.isfile(summary_path) else {}
+    if not isinstance(previous, dict):
+        previous = {}
+    current = serializable_results(results)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    summary = _merge_task_artifacts(
+        previous,
+        current,
+        executed_tasks=executed_tasks,
+        skipped_tasks=skipped_tasks,
+        completed_at=completed_at,
+    )
+    _atomic_write_json(summary_path, summary)
 
-    samples = results.get('samples')
-    if samples is not None:
-        samples_path = os.path.join(output_path, 'samples.json')
-        with open(samples_path, 'w', encoding='utf-8') as handle:
-            json.dump(
-                samples,
-                handle,
-                default=handle_non_serializable,
-                ensure_ascii=False,
-                indent=2,
-            )
+    samples_path = os.path.join(output_path, 'samples.json')
+    previous_samples = _read_json_file(samples_path) if os.path.isfile(samples_path) else {}
+    if not isinstance(previous_samples, dict):
+        previous_samples = {}
+    current_samples = results.get('samples', {})
+    if not isinstance(current_samples, dict):
+        current_samples = {}
+    replace_result_keys, _ = _task_related_keys(
+        set(map(str, executed_tasks)),
+        previous.get('group_subtasks', {}),
+        current.get('group_subtasks', {}),
+    )
+    merged_samples = {
+        key: value for key, value in previous_samples.items() if key not in replace_result_keys
+    }
+    merged_samples.update(current_samples)
+    if merged_samples or os.path.isfile(samples_path):
+        _atomic_write_json(samples_path, merged_samples)
 
 
 def task_specs_for_evaluation(

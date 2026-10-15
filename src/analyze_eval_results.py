@@ -11,6 +11,7 @@ import os
 import re
 
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -609,6 +610,124 @@ def discover_result_paths(
     return sorted(paths)
 
 
+def _timestamp_value(value: Any) -> float | None:
+    """Convert an ISO timestamp or epoch value to a comparable UTC timestamp."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = value.strip().replace('Z', '+00:00')
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
+def result_artifact_timestamp(data: dict[str, Any], path: str, task_name: str | None) -> float:
+    """Read task completion time, then file run date, then filesystem mtime."""
+    evaluation = data.get('guarania_evaluation', {})
+    task_runs = evaluation.get('task_runs', {}) if isinstance(evaluation, dict) else {}
+    task_run = task_runs.get(task_name, {}) if isinstance(task_runs, dict) and task_name else {}
+    if isinstance(task_run, dict):
+        for field in ('completed_at', 'timestamp'):
+            if timestamp := _timestamp_value(task_run.get(field)):
+                return timestamp
+    if timestamp := _timestamp_value(data.get('date')):
+        return timestamp
+    return os.path.getmtime(path)
+
+
+def is_legacy_single_result(path: str, evaluation_root: str) -> bool:
+    """Return whether a result file belongs to the former single-run layout."""
+    parts = os.path.relpath(path, evaluation_root).split(os.sep)
+    return 'single_benchmark' in parts
+
+
+def selected_result_artifacts(
+    evaluation_root: str,
+    model_keys: tuple[str, ...],
+    profile_names: tuple[str, ...],
+) -> list[tuple[str, dict[str, Any]]]:
+    """Return task-filtered artifacts, selecting the latest result for each task."""
+    candidates: dict[tuple[Any, ...], tuple[float, int, str, str | None]] = {}
+    loaded: dict[str, dict[str, Any]] = {}
+
+    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
+        data = load_json(path)
+        if not isinstance(data, dict):
+            continue
+        loaded[path] = data
+        path_metadata = metadata_from_path(path, evaluation_root)
+        metadata = data.get('metadata', {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        identity = (
+            str(metadata.get('profile') or path_metadata['profile']),
+            str(metadata.get('model_key') or path_metadata['model_key']),
+            str(metadata.get('variant') or path_metadata['variant']),
+            str(path_metadata['suite']),
+        )
+        results = data.get('results', {})
+        groups = data.get('groups', {})
+        task_names = set(results) if isinstance(results, dict) else set()
+        if isinstance(groups, dict):
+            task_names.update(groups)
+        if not task_names:
+            task_names.add(None)
+
+        legacy_priority = 0 if is_legacy_single_result(path, evaluation_root) else 1
+        for raw_task_name in task_names:
+            task_name = str(raw_task_name) if raw_task_name is not None else None
+            key = (*identity, task_name)
+            order = (
+                result_artifact_timestamp(data, path, task_name),
+                legacy_priority,
+                path,
+            )
+            if key not in candidates or order > candidates[key][:3]:
+                candidates[key] = (*order, task_name)
+
+    selected_by_path: dict[str, set[str | None]] = defaultdict(set)
+    identity_winners: dict[tuple[Any, ...], tuple[str, str | None]] = {}
+    for key, (_, _, path, task_name) in candidates.items():
+        identity = key[:4]
+        if task_name is None:
+            identity_winners[identity] = (path, None)
+        else:
+            selected_by_path[path].add(task_name)
+
+    artifacts: list[tuple[str, dict[str, Any]]] = []
+    for path, task_names in selected_by_path.items():
+        data = dict(loaded[path])
+        selected = set(task_names)
+        for field in (
+            'results',
+            'groups',
+            'group_subtasks',
+            'configs',
+            'versions',
+            'higher_is_better',
+            'n-shot',
+            'n-samples',
+        ):
+            mapping = data.get(field)
+            if isinstance(mapping, dict):
+                data[field] = {key: value for key, value in mapping.items() if key in selected}
+        data['_selected_task_keys'] = sorted(selected)
+        artifacts.append((path, data))
+
+    for identity, (path, task_name) in identity_winners.items():
+        if task_name is None and path not in selected_by_path:
+            data = dict(loaded[path])
+            data['_selected_task_keys'] = []
+            artifacts.append((path, data))
+
+    return sorted(artifacts, key=lambda item: item[0])
+
+
 def metadata_from_path(result_path: str, evaluation_root: str) -> dict[str, str | None]:
     """Extract profile, model, variant, and suite from a result path.
 
@@ -672,7 +791,11 @@ def parse_variant(variant: str | None) -> dict[str, str | int | None]:
     }
 
 
-def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[str, Any]]:
+def extract_result_records(
+    result_path: str,
+    evaluation_root: str,
+    data: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Extract partial rows from an lm-eval result file.
 
     Args:
@@ -682,7 +805,8 @@ def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[
     Returns:
         Partial rows containing identity fields and metrics.
     """
-    data = load_json(result_path)
+    if data is None:
+        data = load_json(result_path)
     path_metadata = metadata_from_path(result_path, evaluation_root)
     result_metadata = data.get('metadata', {})
     if not isinstance(result_metadata, dict):
@@ -1227,8 +1351,9 @@ def collect_metric_sample_counts(
 ) -> dict[str, int]:
     """Collect evaluated sample counts by raw metric name from result artifacts."""
     counts: dict[str, int] = {}
-    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
-        data = load_json(path)
+    for path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
         task_counts = data.get('n-samples', {})
         if not isinstance(task_counts, dict):
             task_counts = {}
@@ -1236,6 +1361,8 @@ def collect_metric_sample_counts(
         samples = load_json(sample_path) if os.path.isfile(sample_path) else {}
         if not isinstance(samples, dict):
             samples = {}
+        selected_keys = set(data.get('_selected_task_keys', []))
+        samples = {key: value for key, value in samples.items() if key in selected_keys}
 
         results = data.get('results', {})
         groups = data.get('groups', {})
@@ -2761,8 +2888,9 @@ def technical_sheet_rows(
 ) -> list[dict[str, Any]]:
     """Collect benchmark split, few-shot, and sample-count metadata from results."""
     records: dict[tuple[Any, ...], dict[str, Any]] = {}
-    for result_path in discover_result_paths(evaluation_root, model_keys, profile_names):
-        data = load_json(result_path)
+    for result_path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
         path_metadata = metadata_from_path(result_path, evaluation_root)
         metadata = data.get('metadata', {})
         if not isinstance(metadata, dict):
@@ -3179,8 +3307,10 @@ def analyze_results(
         One summary row per model variant and evaluated corpus.
     """
     partial_rows = []
-    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
-        partial_rows.extend(extract_result_records(path, evaluation_root))
+    for path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
+        partial_rows.extend(extract_result_records(path, evaluation_root, data))
 
     return merge_rows(partial_rows)
 
