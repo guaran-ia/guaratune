@@ -2660,10 +2660,19 @@ def write_language_average_markdown(
         if model_keys:
             heading = benchmark_report_heading(tuple(model_keys), rows)
             handle.write(f'# {heading}\n\n')
+        ci_available = {
+            column: any(
+                is_number(row.get(column))
+                and is_number(row.get(f'{column}_stderr'))
+                for row in rows
+            )
+            for column in columns
+            if column.endswith('_average')
+        }
         display_columns = []
         for column in columns:
             label = column.removesuffix('_base').replace('_', ' ').title()
-            if column.endswith('_average'):
+            if ci_available.get(column, False):
                 label += ' (-95% CI, +95% CI)'
             display_columns.append(label)
         handle.write('| ' + ' | '.join(display_columns) + ' |\n')
@@ -2702,16 +2711,17 @@ def write_language_average_markdown(
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
-        handle.write(
-            '\n>[!Note]\n'
-            '> 95% confidence intervals are approximate normal intervals computed '
-            'as the average score ± 1.96 times its propagated standard error. '
-            'Average standard errors assume independent benchmark estimates. '
-            'An interval is omitted when any included benchmark lacks a finite '
-            'standard error in the evaluation output. '
-            'FLORES+ chrF++ directions contribute to both their source and target '
-            'language averages; FLORES+ BLEU is excluded.\n'
-        )
+        if any(ci_available.values()):
+            handle.write(
+                '\n>[!Note]\n'
+                '> 95% confidence intervals are approximate normal intervals computed '
+                'as the average score ± 1.96 times its propagated standard error. '
+                'Average standard errors assume independent benchmark estimates. '
+                'An interval is omitted when any included benchmark lacks a finite '
+                'standard error in the evaluation output. '
+                'FLORES+ chrF++ directions contribute to both their source and target '
+                'language averages; FLORES+ BLEU is excluded.\n'
+            )
         write_dataset_configuration_notes(handle, 'Variant reference')
 
 
@@ -2749,6 +2759,9 @@ def write_benchmark_markdown(
         for row in rows:
             label = str(row.get('benchmark', '')).replace('|', '\\|')
             if row.get('_section'):
+                if label in {'**Spanish**', '**English**'}:
+                    handle.write('| ' + ' | '.join(display_columns) + ' |\n')
+                    handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
                 values = [label] + [''] * (len(columns) - 1)
                 handle.write('| ' + ' | '.join(values) + ' |\n')
                 continue
@@ -2966,12 +2979,9 @@ def write_technical_sheet(
     benchmark_rows: list[dict[str, Any]],
 ) -> None:
     """Write model/training and benchmark configuration details."""
-    model_keys = tuple(sorted({str(row.get('model_key')) for row in variants if row.get('model_key')}))
     variant_labels = benchmark_model_labels(variants)
     with open(path, 'w', encoding='utf-8') as handle:
         handle.write('# Evaluation Information Sheet\n\n')
-        if model_keys:
-            handle.write(f'**Evaluated:** {benchmark_report_heading(model_keys, variants)}\n\n')
         handle.write('## Model variants\n\n')
         handle.write('| Model | Variant | Training Method | Training Data | LoRA Rank |\n')
         handle.write('| --- | --- | --- | --- | --- |\n')
