@@ -2301,6 +2301,12 @@ def benchmark_table(
     model_labels = benchmark_model_labels(variants)
     table_rows = []
     specs = benchmark_specs_for_language(language)
+    translation_specs = [
+        spec
+        for spec in specs
+        if str(spec['label']).startswith('FLORES+')
+        and any('chrf' in str(metric).lower() for metric in spec['metrics'])
+    ]
     language_specs = {
         code: [
             spec
@@ -2310,6 +2316,7 @@ def benchmark_table(
         ]
         for code in ('gn', 'es', 'en')
     }
+    language_specs['gn'].extend(translation_specs)
     bases = {
         str(row.get('model_key')): row
         for row in variants
@@ -2388,81 +2395,6 @@ def benchmark_table(
         }
         table_rows.append(average_row)
 
-    translation_specs = [
-        spec
-        for spec in specs
-        if str(spec['label']).startswith('FLORES+')
-        and any('chrf' in str(metric).lower() for metric in spec['metrics'])
-    ]
-    translation_rows = []
-    for spec in translation_specs:
-        table_row = {'benchmark': spec['label']}
-        has_score = False
-        differences = {}
-        standard_errors = {}
-        for variant_row, model_label in zip(variants, model_labels):
-            score = benchmark_score(variant_row, spec)
-            table_row[model_label] = score
-            standard_errors[model_label] = benchmark_standard_error(
-                variant_row, spec
-            )
-            has_score = has_score or score is not None
-            base_row = bases.get(str(variant_row.get('model_key')))
-            base_score = benchmark_score(base_row, spec) if base_row else None
-            differences[model_label] = (
-                None
-                if variant_row.get('variant') == 'base'
-                else score_point_difference(score, base_score)
-            )
-        if has_score:
-            table_row['_differences'] = differences
-            table_row['_standard_errors'] = standard_errors
-            translation_rows.append(table_row)
-
-    if translation_rows:
-        table_rows.append({'benchmark': '**Translation**', '_section': True})
-        table_rows.extend(translation_rows)
-        translation_average = {'benchmark': 'Average'}
-        translation_scores: dict[str, list[float]] = {
-            label: [] for label in model_labels
-        }
-        for variant_row, model_label in zip(variants, model_labels):
-            for spec in translation_specs:
-                score = benchmark_score(variant_row, spec)
-                if score is not None:
-                    translation_scores[model_label].append(score)
-        average_scores = {
-            label: sum(scores) / len(scores) if scores else None
-            for label, scores in translation_scores.items()
-        }
-        translation_average.update(average_scores)
-        average_differences = {}
-        average_errors = {}
-        for variant_row, model_label in zip(variants, model_labels):
-            base_row = bases.get(str(variant_row.get('model_key')))
-            base_scores = [
-                score
-                for spec in translation_specs
-                if (score := benchmark_score(base_row, spec)) is not None
-            ] if base_row else []
-            base_average = sum(base_scores) / len(base_scores) if base_scores else None
-            average_differences[model_label] = (
-                None if variant_row.get('variant') == 'base'
-                else score_point_difference(average_scores[model_label], base_average)
-            )
-            errors = [
-                benchmark_standard_error(variant_row, spec)
-                for spec in translation_specs
-                if benchmark_score(variant_row, spec) is not None
-            ]
-            average_errors[model_label] = (
-                math.sqrt(sum(error**2 for error in errors)) / len(errors)
-                if errors and all(error is not None for error in errors)
-                else None
-            )
-        translation_average['_differences'] = average_differences
-        translation_average['_standard_errors'] = average_errors
-        table_rows.append(translation_average)
     columns = ['benchmark']
     for variant, model_label in zip(variants, model_labels):
         columns.append(model_label)
