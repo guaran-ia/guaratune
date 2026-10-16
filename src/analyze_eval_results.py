@@ -2759,11 +2759,11 @@ def write_benchmark_markdown(
         for row in rows:
             label = str(row.get('benchmark', '')).replace('|', '\\|')
             if row.get('_section'):
+                values = [label] + [''] * (len(columns) - 1)
+                handle.write('| ' + ' | '.join(values) + ' |\n')
                 if label in {'**Spanish**', '**English**'}:
                     handle.write('| ' + ' | '.join(display_columns) + ' |\n')
                     handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
-                values = [label] + [''] * (len(columns) - 1)
-                handle.write('| ' + ' | '.join(values) + ' |\n')
                 continue
 
             score_columns = [
