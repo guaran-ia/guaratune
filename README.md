@@ -442,7 +442,7 @@ proprietary corpus curated by the Paraguayan Secretariat of Linguistic Policy. T
 evaluation is ignored if the set is not available at `data/evaluation`.
 
 > [!Important]
-> `src.eval_profile` refreshes the selected model's generated configs from its matrix before running. To generate the configs separately, run:
+> `src.eval_profile` refreshes the selected model's generated configs from its matrix before running, so no separate config-generation step is needed for a profile evaluation. To generate configs separately for inspection or to run one config with `src.eval_config`, run:
 
 ```bash
 python -m src.generate_eval_configs --matrix configs/evaluation/<model_key>_eval_matrix.yaml --overwrite
