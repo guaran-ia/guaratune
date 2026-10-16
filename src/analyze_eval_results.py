@@ -24,6 +24,7 @@ TECHNICAL_SHEET_FILE_NAME = 'evaluation_information_sheet.md'
 PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
 COREGUAPA_PERPLEXITY_TASK = 'guarani_coreguapa_perplexity'
+DEPRECATED_TASK_IDS = frozenset({'spanish_gpqa_diamond'})
 BENCHMARK_LANGUAGE_CHOICES = (
     'all',
     'en',
@@ -364,12 +365,6 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Diamond ES (acc)',
-        'languages': ('es',),
-        'metrics': ('spanish_gpqa_diamond_acc',),
-        'scale': 100.0,
-    },
-    {
         'label': 'GPQA Main ES (acc)',
         'languages': ('es',),
         'metrics': ('spanish_gpqa_main_acc',),
@@ -672,9 +667,17 @@ def selected_result_artifacts(
         )
         results = data.get('results', {})
         groups = data.get('groups', {})
-        task_names = set(results) if isinstance(results, dict) else set()
+        task_names = (
+            {str(task_name) for task_name in results}
+            if isinstance(results, dict)
+            else set()
+        )
         if isinstance(groups, dict):
-            task_names.update(groups)
+            task_names.update(str(task_name) for task_name in groups)
+        had_tasks = bool(task_names)
+        task_names.difference_update(DEPRECATED_TASK_IDS)
+        if had_tasks and not task_names:
+            continue
         if not task_names:
             task_names.add(None)
 
