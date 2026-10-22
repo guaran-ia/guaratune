@@ -191,16 +191,19 @@ can also be run step by step.
 
 ### 1. Data preparation
 
+To prevent training and validation leakage, the Kuatia train and validation splits were defined manually in `data/kuatia_config.yaml`. Before splitting, we excluded corpora included 
+in Kuatia but intended for benchmarking, such as Flores-200, Belebele, and MultiWikiQA, as well as the instruction-tuning corpus Alpaca. We also excluded the AmericasNLP corpora, [Glot500](https://huggingface.co/datasets/cis-lmu/Glot500), and [MaLA-monolingual](https://huggingface.co/datasets/MaLA-LM/mala-monolingual-split) because they are sourced from Flores-200, which provides 
+the passages used in the Belebele benchmark.
+
 To avoid "catastrophic forgetting" where the model forgets its old knowledge as 
 it learns new things, CPT is proposed to be conducted through several data mixture
 configurations that combine Guarani with Spanish and English. A refined 
 version of [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu), 
 the collection of high-quality educational web pages developed by Hugging Face, is 
 used to include English in the training process. Similarly, a refined version of the 
-Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), 
-is used in some configurations of the training set, as shown below
+Spanish translation of [FineWeb-Edu](https://huggingface.co/datasets/TokenHaven/FineWeb-Edu-Spanish), is used in some configurations of the training set, as shown below
 
-- `C1_kuatia`: Full Kuatia.
+- `C1_kuatia`: Kuatia.
 - `C2_kuatia_no_synthetic`: Kuatia but excluding synthetic documents.
 - `C3_kuatia_es20`: `C1` plus Spanish FineWeb-Edu at 20% of `C1` tokens.
 - `C4_kuatia_no_synthetic_es20`: `C2` plus Spanish FineWeb-Edu at 20% of `C2` tokens.
@@ -208,10 +211,6 @@ is used in some configurations of the training set, as shown below
 - `C6_kuatia_no_synthetic_en20`: `C2` plus English FineWeb-Edu at 20% of `C2` tokens.
 - `C7_kuatia_es10_en10`: `C1` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C1` tokens.
 - `C8_kuatia_no_synthetic_es10_en10`: `C2` plus Spanish FineWeb-Edu at 10% and English FineWeb-Edu at 10% of `C2` tokens.
-
-Kuatia train and validation splits are pre-defined in `data/kuatia_config.yaml` to 
-avoid train/validation leakage, and each final corpus is declared in 
-`configs/data/gemma4_cpt.yaml`.
 
 FineWeb-Edu samples, both English and Spanish, are fixed, seeded, full-document samples. 
 The configured percentages are approximate token proportions: the sampler keeps complete 
@@ -409,23 +408,41 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 
 ### 3. Evaluation
 
-Evaluation is based on analyzing the model performance on state-of-the-art downstream
-tasks such as: [Flores 200](https://huggingface.co/datasets/facebook/flores), 
-[Belele](https://huggingface.co/datasets/facebook/2M-Belebele), 
-[MultiWiki-QA](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa), 
-Global MMLU Lite, MGSM, and WLNI. For Flores 200, Belele, and MultiWiki-QA the Guarani 
-split of the set is used in the evaluation tasks while for Global MMLU Lite, MGSM, 
-and WLNI a Guarani version were created by language experts and
-are available at `data/evaluation`.
+The framework evaluates models using state-of-the-art benchmarks across diverse tasks. 
+Assessment not only includes Guarani but also Spanish--important because Jopara, 
+a widely used Guarani variant, blends Guarani and Spanish--and English to preserve 
+the model's multilingual capabilities. The table below lists each benchmark, 
+its language (GN = Guarani, ES = Spanish, EN = English), the capability it 
+assesses, and the metric used in the evaluation.
 
->[!Warning]
-> The evaluation `evaluation/lm_eval_tasks/guarani_coreguapa_perplexity.yaml` 
-> depends on a proprietary dataset that cannot be publicly released. The task is 
-> ignored if the set is not available at `data/evaluation`.
+| Benchmark | Language | Capacity | Task | Metric |
+| --- | --- | --- | --- | --- |
+| Belele | [GN](https://huggingface.co/datasets/facebook/belebele/viewer/grn_Latn), [EN](https://huggingface.co/datasets/facebook/belebele/viewer/eng_Latn), [ES](https://huggingface.co/datasets/facebook/belebele/viewer/spa_Latn) | Reading comprenhension | Multiple-choice QA | Accuracy |
+| MultiWiki-QA | [GN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/gn), [EN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/en), [ES](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/es) | Reading comprenhension | Generation | F1, Exact match |
+| Flores+ | [GN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/gug_Latn/dev), [EN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/eng_Latn/dev), [ES](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/spa_Latn/dev) | Translation | Generation | BLEU, chrf++ |
+| Global MMLU Lite | [GN](data/evaluation/global-mmlu-lite), [EN](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/en/test), [ES](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/es/test) | General knowledge | Multiple-choice QA | Accuracy |
+| MGSM | [GN](data/evaluation/mgsm), [EN](https://huggingface.co/datasets/juletxara/mgsm/viewer/en/test), [ES](https://huggingface.co/datasets/juletxara/mgsm/viewer/es/test) | Specialized reasoning (mathematics) | Generation| Exact match |
+| ARC Easy | [EN](https://huggingface.co/datasets/allenai/ai2_arc/viewer/ARC-Easy/validation), [ES](https://huggingface.co/datasets/BSC-LT/arc_es/viewer/ARC_Easy_es) | Specialized reasoning (science) | Multiple-choice QA | Normalized accuracy |
+| ARC Challenge | [EN](https://huggingface.co/datasets/allenai/ai2_arc/viewer/ARC-Challenge/validation), [ES](https://huggingface.co/datasets/BSC-LT/arc_es/viewer/ARC_Challenge_es) | Specialized reasoning (science) | Multiple-choice QA | Normalized accuracy |
+| GPQA (main) | [EN](https://huggingface.co/datasets/Idavidrein/gpqa/viewer/gpqa_main), [ES](https://huggingface.co/datasets/ellamind/gpqa-multilingual/viewer/spa) | Specialized reasoning (biology, physics, chemistry) | Multiple-choice QA | Accuracy |
+| WNLI | [GN](data/evaluation/wnli), [EN](https://huggingface.co/datasets/nyu-mll/glue/viewer/wnli/test), [ES](https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/blob/main/wnli-test-shuffled-es.csv) | Common sense & inference | Multiple-choice QA | Accuracy |
+| XStoryCloze | [EN](https://huggingface.co/datasets/juletxara/xstory_cloze/viewer/en/eval), [ES](https://huggingface.co/datasets/juletxara/xstory_cloze/viewer/es/eval) | Common sense & inference | Multiple-choice QA | Accuracy |
+| HellaSwag | [EN](https://huggingface.co/datasets/Rowan/hellaswag/viewer/default/validation), [ES](https://huggingface.co/datasets/alvarobartt/hellaswag-okapi-eval-es) | Common sense & inference | Multiple-choice QA | Normalized accuracy |
+| PIQA | [EN](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/eng_latn), [ES](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/spa_latn_spai) | Common sense & inference | Multiple-choice QA | Normalized accuracy | 
+| COPA | [EN](https://huggingface.co/datasets/aps/super_glue/viewer/copa/validation), [ES](https://huggingface.co/datasets/BSC-LT/COPA-es) | Causal reasoning | Multiple-choice QA | Accuracy |
+| TruthfulQA-MC1 | [EN](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/en/validation), [ES](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/es/validation) | Truthfulness and factuality | Multiple-choice QA | Accuracy |
 
+>[!Note]
+>A Guarani version of Global MMLU Lite, MGSM, and WLNI were 
+>created by language experts and are available at `data/evaluation`. 
+
+Complementing the evaluations conducted with the mentioned benchkmarks, the framework
+assesses model performance through perplexity on [COREGUAPA](https://corpus.spl.gov.py), a high-quality 
+proprietary corpus curated by the Paraguayan Secretariat of Linguistic Policy. This 
+evaluation is ignored if the set is not available at `data/evaluation`.
 
 > [!Important]
-> As the first step, generate the evaluation configs from the target model matrix by running:
+> `src.eval_profile` refreshes the selected model's generated configs from its matrix before running, so no separate config-generation step is needed for a profile evaluation. To generate configs separately for inspection or to run one config with `src.eval_config`, run:
 
 ```bash
 python -m src.generate_eval_configs --matrix configs/evaluation/<model_key>_eval_matrix.yaml --overwrite
@@ -437,8 +454,7 @@ This writes config files under:
 - `configs/evaluation/generated/experiments/<model_key>/`
 
 > [!Note]
-> The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`:
-> - `guarani_global_mmlu_lite` reads `data/evaluation/gmlgnt.jsonl`
+> The local lm-eval task definitions live in `evaluation/lm_eval_tasks/`
 > - `guarani_coreguapa_perplexity` reads `data/evaluation/coreguapa_identified_all.jsonl`
 > - Guarani, English, and Spanish benchmark tasks are grouped in the evaluation matrix suites.
 
@@ -466,13 +482,13 @@ python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_
 | `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
 
 > [!Important]
-> Alternatively, a full generated profile can be executed:
+> Alternatively, a full profile can be executed:
 
 ```bash
 python -m src.eval_profile experiments --model <model_key>
 ```
 
-Generated evaluation profiles also support exclusions:
+The profile evaluation run support exclusions:
 
 ```bash
 python -m src.eval_profile experiments --model <model_key> --exclude '<model_key>_full_C1_kuatia_*'
@@ -483,9 +499,6 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 > and LoRA adapters against the benchmark suites listed in 
 > `configs/evaluation/<model_key>_matrix.yaml`. 
 > 
-> Instruction-following tasks live in the `instruction` suite and are controlled 
-> from the matrix through `include_instruction_tasks` and `variant_overrides`. 
-> 
 > The full and LoRA configs expect training outputs under the model-specific 
 > `outputs/train/<model_key>/experiments` directory.
 
@@ -495,8 +508,31 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 | --- | --- | --- |
 | `profile` | `experiments` | Generated evaluation profile to run. |
 | `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
-| `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| `--exclude` | `None` | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
+> [!Important]
+> To evaluate a model against a specific benchmark, execute:
+
+```bash
+python -m src.eval_benchmark --model <model_key> --benchmark <benchmark_name>
+```
+
+For the `Flores+` benchkmark both the source and target languages should be specified
+
+```bash
+python -m src.eval_benchmark --model <model_key> --benchmark flores --source_language <language_name> --target_language <language_name> 
+```
+
+##### CLI reference
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
+| `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
+| `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
+| `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated.|
+| `--lora-rank` | `None` | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
+| `--dataset-configuration` | `None` | Optional dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. If this parameter is omitted all dataset configuration variants are evaluated. | 
 
 > [!Note]
 > Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions 
@@ -512,20 +548,35 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 python -m src.analyze_eval_results --model <model_key> --model another_model_key --profile experiments
 ```
 
+The evaluation profile runner writes per-variant evaluation results; it does not
+generate summary tables. Run the analyzer after the profile finishes to produce the
+summary and perplexity comparison reports.
+
 The benchmark comparison table can be restricted to one evaluation language:
 
 ```bash
 python -m src.analyze_eval_results --model <model_key> --profile experiments --benchmark-language en
 ```
 
-The analyzer produces:
+The analyzer writes reports under `results/<model_key>/` for one model or
+`results/combined_<model_keys>/` for multiple models. It produces:
 
-- `results/evaluation_summary_<model_key>.csv` for one model
-- `results/evaluation_summary_combined_<model_keys>.csv` for multiple models
-- matching `.md` files with the same filename stem
-- `results/evaluation_benchmark_table.md`, a benchmark-by-model table with rounded scores and a final average row
-- `results/evaluation_benchmark_table_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
-- `results/evaluation_perplexity_table.md` when multiple models are analyzed, a cross-model perplexity comparison table
+- `<model_dir>/evaluation_percentage_by_benchmark_<model_key>.csv`, a grouped
+  report using the regular summary's selected metrics, with 95% confidence
+  intervals beside variant scores
+- `<model_dir>/evaluation_score_by_benchmark.md`, a benchmark-by-model table grouped by language, with score and gain columns, approximate 95% confidence intervals, language averages, and FLORES chrF++ results at the bottom
+- `<model_dir>/evaluation_score_by_benchmark_<language>.md` when `--benchmark-language` is set to `en`, `es`, or `gn`
+- `<model_dir>/evaluation_perplexity.md` when multiple model variants are available, comparing base and CPT variants for the selected models
+
+Here, `<model_dir>` is `results/<model_key>` for one model and
+`results/combined_<model_keys>` for multiple models. `--output-dir` sets the
+parent directory in which this model-specific directory is created.
+
+The percentage-by-benchmark CSV contains the metrics selected for the regular
+summary, with each variant score followed by its 95% confidence interval. It omits
+instance counts, fallback metrics, BBH subtasks, and standard errors as standalone
+metrics. The score-by-benchmark Markdown report includes signed differences from
+the matching base model.
 
 ##### CLI reference
 
@@ -534,9 +585,7 @@ The analyzer produces:
 | `--model` | Required | Model key to analyze. Repeat the option to analyze multiple models. |
 | `--evaluation-root` | `outputs/evaluation` | Root directory containing evaluation outputs. |
 | `--profile` | All profiles | Evaluation profile to include. Repeat the option to include multiple profiles. |
-| `--output-dir` | `results` | Directory where analysis tables are written. |
-| `--csv-name` | Auto-generated | CSV output filename. |
-| `--markdown-name` | Auto-generated | Markdown summary output filename. |
+| `--output-dir` | `results` | Parent directory for model-specific analysis report directories. |
 | `--benchmark-markdown-name` | Auto-generated | Benchmark-by-model markdown output filename. |
 | `--benchmark-language` | `all` | Benchmark language to include in the comparison table. Supported values: `all`, `en`, `es`, `gn`. |
 | `--perplexity-markdown-name` | Auto-generated | Perplexity-by-model markdown output filename. |

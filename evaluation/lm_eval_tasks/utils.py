@@ -53,6 +53,45 @@ def answer_index(value: Any) -> int:
     return ANSWER_TO_INDEX[answer]
 
 
+def process_copa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Normalize SuperGLUE COPA options and labels for multiple-choice scoring."""
+
+    def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
+        label = int(doc['label'])
+        if label not in (0, 1):
+            raise ValueError(f'Unsupported COPA label: {label}')
+        return {
+            **doc,
+            'choices': [clean_option(doc['choice1']), clean_option(doc['choice2'])],
+            'gold': label,
+        }
+
+    return dataset.map(process_doc)
+
+
+def copa_doc_to_text(doc: dict[str, Any]) -> str:
+    """Build the COPA cause/effect prompt used by the English benchmark."""
+    connector = {'cause': 'because', 'effect': 'therefore'}.get(doc['question'])
+    if connector is None:
+        raise ValueError(f'Unsupported COPA question type: {doc["question"]!r}')
+    premise = str(doc['premise']).strip()
+    if premise.endswith('.'):
+        premise = premise[:-1]
+    return f'{premise} {connector}'
+
+
+def process_wnli_results(doc: dict[str, Any], results: list[tuple[float, bool]]) -> dict[str, float]:
+    """Score GLUE WNLI with raw accuracy and avoid unused normalized accuracy."""
+    label = int(doc['label'])
+    if len(results) != 2 or label not in (0, 1):
+        raise ValueError(
+            f"Expected two WNLI choices and a binary label; got "
+            f"{len(results)} scores and label {label}."
+        )
+    prediction = max(range(2), key=lambda index: results[index][0])
+    return {'acc': float(prediction == label)}
+
+
 def choice_texts(doc: dict[str, Any]) -> list[str]:
     """Read answer choices from common ARC-like schemas.
 
@@ -141,30 +180,15 @@ def deterministic_answer_order(
     ]
 
 
-def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
-    """Convert Spanish GPQA Diamond rows to lm-eval MCQA rows.
+def process_spanish_gpqa_main_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Convert all Spanish GPQA Main rows to lm-eval MCQA rows.
 
     Args:
         dataset: Hugging Face GPQA multilingual Spanish split.
 
     Returns:
-        Diamond-only dataset split with question, choices, and numeric gold columns.
+        GPQA Main split with question, choices, and numeric gold columns.
     """
-
-    def is_diamond_doc(doc: dict[str, Any]) -> bool:
-        """Return whether a GPQA row belongs to the Diamond subset.
-
-        Args:
-            doc: Raw GPQA row.
-
-        Returns:
-            True when the row is marked as Diamond.
-        """
-        value = doc.get('is_diamond')
-        if isinstance(value, str):
-            return value.strip().lower() == 'true'
-
-        return bool(value)
 
     def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
         """Convert one Spanish GPQA row.
@@ -200,9 +224,18 @@ def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
             'gold': gold,
         }
 
-    return dataset.filter(is_diamond_doc).map(
-        process_doc, remove_columns=dataset.column_names
-    )
+    return dataset.map(process_doc, remove_columns=dataset.column_names)
+
+
+def process_spanish_gpqa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Keep the legacy Spanish GPQA Diamond task behavior for old configs."""
+    def is_diamond_doc(doc: dict[str, Any]) -> bool:
+        value = doc.get('is_diamond')
+        if isinstance(value, str):
+            return value.strip().lower() == 'true'
+        return bool(value)
+
+    return process_spanish_gpqa_main_docs(dataset.filter(is_diamond_doc))
 
 
 def process_global_mmlu_docs(dataset: datasets.Dataset) -> datasets.Dataset:
@@ -249,6 +282,46 @@ def process_global_mmlu_docs(dataset: datasets.Dataset) -> datasets.Dataset:
         }
 
     return dataset.map(process_doc)
+
+
+def _process_flores_plus_direction(
+    dataset: Any, source_config: str, target_config: str
+) -> Any:
+    """Join aligned FLORES+ language configs by row id for one translation direction."""
+    if len(dataset) == 0:
+        return dataset
+
+    split = str(dataset[0]["split"])
+    source_dataset = datasets.load_dataset(
+        "openlanguagedata/flores_plus", source_config, split=split
+    )
+    source_by_id = {str(row["id"]): str(row["text"]) for row in source_dataset}
+    source_field = f"sentence_{source_config}"
+    target_field = f"sentence_{target_config}"
+
+    def add_source(row: dict[str, Any]) -> dict[str, str]:
+        row[source_field] = source_by_id[str(row["id"])]
+        row[target_field] = str(row["text"])
+        return row
+
+    return dataset.map(add_source)
+
+
+def process_flores_plus_eng_to_grn(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "eng_Latn", "gug_Latn")
+
+
+def process_flores_plus_grn_to_eng(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "gug_Latn", "eng_Latn")
+
+
+def process_flores_plus_grn_to_spa(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "gug_Latn", "spa_Latn")
+
+
+def process_flores_plus_spa_to_grn(dataset: Any) -> Any:
+    return _process_flores_plus_direction(dataset, "spa_Latn", "gug_Latn")
+
 
 
 def process_2m_belebele_docs(dataset: datasets.Dataset) -> datasets.Dataset:

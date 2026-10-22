@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+from functools import wraps
 import click
 import importlib
 import importlib.util
 import json
 import os
+import tempfile
 import yaml
+from datetime import datetime, timezone
 
 from src.train_config import DEFAULT_SECRET_ENV_FILE, load_env_file, normalize_hf_token_env
 from typing import Any
@@ -269,6 +272,164 @@ def serializable_results(results: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in results.items() if key != 'samples'}
 
 
+TASK_RESULT_FIELDS = (
+    'results',
+    'groups',
+    'group_subtasks',
+    'configs',
+    'versions',
+    'higher_is_better',
+    'n-shot',
+    'n-samples',
+)
+
+
+def _task_related_keys(
+    task_names: set[str], *group_subtask_maps: Any
+) -> tuple[set[str], set[str]]:
+    """Expand task keys to include group results and subtasks affected by a rerun."""
+    result_keys = set(task_names)
+    group_keys = set(task_names)
+    for mapping in group_subtask_maps:
+        if not isinstance(mapping, dict):
+            continue
+        for group_name, subtasks in mapping.items():
+            if not isinstance(subtasks, list):
+                continue
+            if str(group_name) in task_names or task_names.intersection(map(str, subtasks)):
+                group_keys.add(str(group_name))
+                result_keys.update(map(str, subtasks))
+    return result_keys, group_keys
+
+
+def _atomic_write_json(path: str, value: Any) -> None:
+    """Atomically replace a JSON artifact after it has been fully serialized."""
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            encoding='utf-8',
+            dir=directory,
+            prefix=f'.{os.path.basename(path)}.',
+            suffix='.tmp',
+            delete=False,
+        ) as handle:
+            temporary_path = handle.name
+            json.dump(
+                value,
+                handle,
+                default=handle_non_serializable,
+                ensure_ascii=False,
+                indent=2,
+            )
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path and os.path.exists(temporary_path):
+            os.unlink(temporary_path)
+
+
+def _read_json_file(path: str) -> Any:
+    """Read one JSON artifact used by the task-level result merger."""
+    with open(path, 'r', encoding='utf-8') as handle:
+        return json.load(handle)
+
+
+def _merge_task_artifacts(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+    *,
+    executed_tasks: list[str],
+    skipped_tasks: list[dict[str, Any]],
+    completed_at: str,
+) -> dict[str, Any]:
+    """Merge the latest evaluation into an existing result file by task."""
+    previous_groups = previous.get('group_subtasks', {})
+    current_groups = current.get('group_subtasks', {})
+    current_results = current.get('results', {})
+    current_group_results = current.get('groups', {})
+    task_names = set(map(str, executed_tasks))
+    if isinstance(current_results, dict):
+        task_names.update(map(str, current_results))
+    if isinstance(current_group_results, dict):
+        task_names.update(map(str, current_group_results))
+
+    replace_result_keys, replace_group_keys = _task_related_keys(
+        task_names, previous_groups, current_groups
+    )
+    # Replacing one member also invalidates an aggregate group unless the current
+    # evaluation computed a fresh aggregate for that group.
+    affected_group_keys = set(replace_group_keys)
+    if isinstance(previous_groups, dict):
+        for group_name, subtasks in previous_groups.items():
+            if isinstance(subtasks, list) and task_names.intersection(map(str, subtasks)):
+                affected_group_keys.add(str(group_name))
+
+    merged = dict(previous)
+    for field in TASK_RESULT_FIELDS:
+        old_value = previous.get(field, {})
+        new_value = current.get(field, {})
+        old_map = dict(old_value) if isinstance(old_value, dict) else {}
+        new_map = dict(new_value) if isinstance(new_value, dict) else {}
+        affected_keys = affected_group_keys if field in ('groups', 'group_subtasks') else replace_result_keys
+        for key in affected_keys:
+            old_map.pop(key, None)
+        old_map.update(new_map)
+        merged[field] = old_map
+
+    # The top-level run metadata describes the latest invocation; task_runs holds
+    # completion history for results that were retained from earlier runs.
+    merged.update(
+        {
+            key: value
+            for key, value in current.items()
+            if key not in TASK_RESULT_FIELDS and key not in ('samples', 'guarania_evaluation')
+        }
+    )
+    old_evaluation = previous.get('guarania_evaluation', {})
+    if not isinstance(old_evaluation, dict):
+        old_evaluation = {}
+    task_runs = dict(old_evaluation.get('task_runs', {}))
+    skipped_by_name = {
+        str(item.get('task')): item
+        for item in skipped_tasks
+        if isinstance(item, dict) and item.get('task')
+    }
+    for task_name in executed_tasks:
+        task_runs[str(task_name)] = {
+            'status': 'complete',
+            'completed_at': completed_at,
+            'last_attempt_at': completed_at,
+        }
+    for task_name in task_names.difference(set(map(str, executed_tasks))):
+        task_runs[task_name] = {
+            'status': 'complete',
+            'completed_at': completed_at,
+            'last_attempt_at': completed_at,
+        }
+    for task_name, skipped in skipped_by_name.items():
+        prior = dict(task_runs.get(task_name, {}))
+        prior.update(
+            {
+                'status': 'skipped',
+                'last_attempt_at': completed_at,
+                'skip_reason': skipped.get('reason'),
+            }
+        )
+        task_runs[task_name] = prior
+    merged['guarania_evaluation'] = {
+        'status': 'incomplete' if skipped_tasks or not executed_tasks else 'complete',
+        'executed_tasks': executed_tasks,
+        'skipped_tasks': skipped_tasks,
+        'task_runs': task_runs,
+    }
+    merged['date'] = completed_at
+    return merged
+
+
 def write_results(
     output_path: str,
     results: dict[str, Any],
@@ -289,32 +450,318 @@ def write_results(
     """
     os.makedirs(output_path, exist_ok=True)
     summary_path = os.path.join(output_path, 'results.json')
-    summary = serializable_results(results)
-    summary['guarania_evaluation'] = {
-        'status': 'incomplete' if skipped_tasks or not executed_tasks else 'complete',
-        'executed_tasks': executed_tasks,
-        'skipped_tasks': skipped_tasks,
+    previous = _read_json_file(summary_path) if os.path.isfile(summary_path) else {}
+    if not isinstance(previous, dict):
+        previous = {}
+    current = serializable_results(results)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    summary = _merge_task_artifacts(
+        previous,
+        current,
+        executed_tasks=executed_tasks,
+        skipped_tasks=skipped_tasks,
+        completed_at=completed_at,
+    )
+    _atomic_write_json(summary_path, summary)
+
+    samples_path = os.path.join(output_path, 'samples.json')
+    previous_samples = _read_json_file(samples_path) if os.path.isfile(samples_path) else {}
+    if not isinstance(previous_samples, dict):
+        previous_samples = {}
+    current_samples = results.get('samples', {})
+    if not isinstance(current_samples, dict):
+        current_samples = {}
+    replace_result_keys, _ = _task_related_keys(
+        set(map(str, executed_tasks)),
+        previous.get('group_subtasks', {}),
+        current.get('group_subtasks', {}),
+    )
+    merged_samples = {
+        key: value for key, value in previous_samples.items() if key not in replace_result_keys
     }
-    with open(summary_path, 'w', encoding='utf-8') as handle:
-        json.dump(
-            summary,
-            handle,
-            default=handle_non_serializable,
-            ensure_ascii=False,
-            indent=2,
+    merged_samples.update(current_samples)
+    if merged_samples or os.path.isfile(samples_path):
+        _atomic_write_json(samples_path, merged_samples)
+
+
+def task_specs_for_evaluation(
+    tasks: list[str], task_overrides: Any
+) -> list[str | dict[str, Any]]:
+    """Attach per-task settings to the task specs passed to lm-eval."""
+    if task_overrides is None:
+        task_overrides = {}
+    if not isinstance(task_overrides, dict):
+        raise ValueError("task_overrides must be a mapping.")
+
+    specs: list[str | dict[str, Any]] = []
+    for task_name in tasks:
+        overrides = task_overrides.get(task_name)
+        if overrides is None:
+            specs.append(task_name)
+            continue
+        if not isinstance(overrides, dict):
+            raise ValueError(f"task_overrides for {task_name} must be a mapping.")
+        invalid = set(overrides) - {
+            "num_fewshot",
+            "fewshot_split",
+            "test_split",
+            "metrics",
+        }
+        if invalid:
+            raise ValueError(
+                f"Unsupported task overrides for {task_name}: {', '.join(sorted(invalid))}"
+            )
+        num_fewshot = overrides.get("num_fewshot")
+        if num_fewshot is not None and (
+            not isinstance(num_fewshot, int)
+            or isinstance(num_fewshot, bool)
+            or num_fewshot < 0
+        ):
+            raise ValueError(
+                f"num_fewshot for {task_name} must be a non-negative integer."
+            )
+        metrics = overrides.get("metrics")
+        if metrics is not None and (
+            not isinstance(metrics, list)
+            or not metrics
+            or any(not isinstance(metric, str) or not metric for metric in metrics)
+            or len(set(metrics)) != len(metrics)
+        ):
+            raise ValueError(
+                f"metrics for {task_name} must be a non-empty list of unique names."
+            )
+        specs.append({"task": task_name, **overrides})
+    return specs
+
+
+def resolve_task_specs_for_evaluation(
+    tasks: list[str], task_overrides: Any, task_manager: Any
+) -> list[Any]:
+    """Load named tasks and apply matrix overrides to their task objects."""
+    task_specs = task_specs_for_evaluation(tasks, task_overrides)
+    resolved = []
+    for spec in task_specs:
+        if isinstance(spec, str):
+            task_name = spec
+            overrides = {}
+        else:
+            task_name = str(spec['task'])
+            overrides = spec
+
+        task = task_manager.load(task_name)['tasks'][task_name]
+        if 'num_fewshot' in overrides:
+            task.set_config('num_fewshot', overrides['num_fewshot'])
+        if 'test_split' in overrides:
+            task.set_config('test_split', overrides['test_split'])
+        if 'fewshot_split' in overrides:
+            task.set_config('fewshot_split', overrides['fewshot_split'])
+            task.fewshot_cfg.split = overrides['fewshot_split']
+        if 'metrics' in overrides:
+            _restrict_task_metrics(task, overrides['metrics'])
+        if 'test_split' in overrides or 'fewshot_split' in overrides:
+            _disable_request_cache_for_split_overrides(task)
+        _log_benchmark_start(task)
+        _add_process_results_context(task)
+        resolved.append(task)
+    return resolved
+
+
+def _disable_request_cache_for_split_overrides(task: Any) -> None:
+    """Avoid reusing request caches that do not include split names in their key."""
+    build_all_requests = getattr(task, 'build_all_requests', None)
+    if not callable(build_all_requests):
+        return
+    if getattr(build_all_requests, '_split_cache_disabled', False):
+        return
+
+    @wraps(build_all_requests)
+    def build_requests_without_stale_cache(*args: Any, **kwargs: Any) -> Any:
+        kwargs['cache_requests'] = False
+        kwargs['rewrite_requests_cache'] = False
+        return build_all_requests(*args, **kwargs)
+
+    build_requests_without_stale_cache._split_cache_disabled = True
+    task.build_all_requests = build_requests_without_stale_cache
+
+
+def _log_benchmark_start(task: Any) -> None:
+    """Log task identity, selected metrics, and few-shot count before inference."""
+    if not hasattr(getattr(task, 'config', None), 'task'):
+        return
+    benchmark, language, metrics = _benchmark_log_details(task)
+    shots = getattr(task.config, 'num_fewshot', None)
+    if shots is None:
+        shots = 0
+    print(
+        f'[benchmark] {benchmark} | language: {language} | metric: {metrics} | shots: {shots}',
+        flush=True,
+    )
+
+
+def _add_process_results_context(task: Any) -> None:
+    """Add task and choice-count details when lm-eval scoring fails."""
+    process_results = getattr(task, 'process_results', None)
+    if not callable(process_results):
+        return
+    if getattr(process_results, '_includes_task_context', False):
+        return
+
+    @wraps(process_results)
+    def process_results_with_context(doc: Any, results: Any) -> Any:
+        try:
+            return process_results(doc, results)
+        except Exception as exc:
+            choice_count = None
+            if getattr(task.config, 'doc_to_choice', None) is not None:
+                try:
+                    choice_count = len(task.doc_to_choice(doc))
+                except Exception:
+                    pass
+            try:
+                result_count = len(results)
+            except (TypeError, AttributeError):
+                result_count = 'unknown'
+            doc_id = doc.get('idx', doc.get('id')) if isinstance(doc, dict) else None
+            raise RuntimeError(
+                f"LM-Eval failed processing task {task.config.task!r} "
+                f"(doc_id={doc_id!r}, choices={choice_count}, "
+                f"results={result_count}, metrics="
+                f"{sorted(getattr(task, '_metric_fn_list', {}))}): {exc}"
+            ) from exc
+
+    process_results_with_context._includes_task_context = True
+    task.process_results = process_results_with_context
+
+
+def _benchmark_log_details(task: Any) -> tuple[str, str, str]:
+    """Format the benchmark identity and selected metrics for run logs."""
+    task_name = str(task.config.task).lower()
+    if 'grn_to_spa' in task_name:
+        language = 'Guarani → Spanish'
+        name = task_name
+    elif 'spa_to_grn' in task_name:
+        language = 'Spanish → Guarani'
+        name = task_name
+    elif 'grn_to_eng' in task_name:
+        language = 'Guarani → English'
+        name = task_name
+    elif 'eng_to_grn' in task_name:
+        language = 'English → Guarani'
+        name = task_name
+    elif task_name.startswith('guarani_'):
+        language = 'Guarani'
+        name = task_name.removeprefix('guarani_')
+    elif task_name.startswith('spanish_') or any(
+        marker in task_name for marker in ('_es', 'spa_latn', 'spa_to_', 'grn_to_spa')
+    ):
+        language = 'Spanish'
+        name = task_name.removeprefix('spanish_')
+    elif task_name.startswith('english_') or any(
+        marker in task_name for marker in ('_en', 'eng_latn', 'eng_to_', 'grn_to_eng')
+    ):
+        language = 'English'
+        name = task_name.removeprefix('english_')
+    else:
+        language = 'English'
+        name = task_name
+
+    if 'global_mmlu_lite' in name:
+        benchmark = 'Global MMLU Lite'
+    elif 'belebele' in name:
+        benchmark = 'Belebele'
+    elif 'flores' in name:
+        benchmark = 'FLORES+'
+    elif 'multiwikiqa' in name:
+        benchmark = 'MultiWikiQA'
+    elif 'mgsm' in name:
+        benchmark = 'MGSM'
+    elif 'arc_easy' in name:
+        benchmark = 'ARC Easy'
+    elif 'arc_challenge' in name:
+        benchmark = 'ARC Challenge'
+    elif 'piqa' in name:
+        benchmark = 'PIQA'
+    elif 'hellaswag' in name:
+        benchmark = 'HellaSwag'
+    elif 'xstorycloze' in name:
+        benchmark = 'XStoryCloze'
+    elif 'gpqa' in name:
+        benchmark = 'GPQA'
+    elif 'wnli' in name:
+        benchmark = 'WNLI'
+    elif 'truthfulqa' in name:
+        benchmark = 'TruthfulQA-MC1'
+    elif 'copa' in name:
+        benchmark = 'COPA'
+    elif 'coreguapa_perplexity' in name:
+        benchmark = 'CoreGuapa perplexity'
+    elif 'ifeval' in name:
+        benchmark = 'IFEval'
+    else:
+        benchmark = name.replace('_', ' ').title()
+
+    metric_labels = {
+        'acc': 'Accuracy (acc)',
+        'acc_norm': 'Normalized accuracy (acc_norm)',
+        'exact_match': 'Exact match',
+        'f1': 'F1',
+        'bleu': 'BLEU',
+        'chrf_plus_plus': 'chrF++',
+        'pass@1': 'Pass@1',
+        'word_perplexity': 'Word perplexity',
+        'byte_perplexity': 'Byte perplexity',
+        'bits_per_byte': 'Bits per byte',
+    }
+    metrics = ', '.join(
+        metric_labels.get(metric, metric) for metric in sorted(task._metric_fn_list)
+    ) or 'unspecified'
+    return benchmark, language, metrics
+
+
+def _restrict_task_metrics(task: Any, selected_metrics: list[str]) -> None:
+    """Keep only the configured metrics on an already loaded lm-eval task."""
+    metric_maps = (
+        '_metric_fn_list',
+        '_metric_fn_kwargs',
+        '_aggregation_list',
+        '_higher_is_better',
+    )
+    available = set(getattr(task, '_metric_fn_list', {}))
+    missing = set(selected_metrics) - available
+    if missing:
+        raise ValueError(
+            f"Configured metrics for {task.config.task} are unavailable: "
+            f"{', '.join(sorted(missing))}. Available metrics: "
+            f"{', '.join(sorted(available))}."
         )
 
-    samples = results.get('samples')
-    if samples is not None:
-        samples_path = os.path.join(output_path, 'samples.json')
-        with open(samples_path, 'w', encoding='utf-8') as handle:
-            json.dump(
-                samples,
-                handle,
-                default=handle_non_serializable,
-                ensure_ascii=False,
-                indent=2,
-            )
+    for attribute in metric_maps:
+        values = getattr(task, attribute)
+        setattr(
+            task,
+            attribute,
+            {name: values[name] for name in selected_metrics if name in values},
+        )
+
+    configured_metrics = task.config.metric_list
+    if configured_metrics is None:
+        task.set_config(
+            'metric_list', [{'metric': metric} for metric in selected_metrics]
+        )
+    else:
+        def metric_config_name(config: dict[str, Any]) -> str:
+            name = config['metric']
+            return name if isinstance(name, str) else name.__name__
+
+        task.set_config(
+            'metric_list',
+            [
+                config
+                for config in configured_metrics
+                if metric_config_name(config) in selected_metrics
+            ],
+        )
+
 
 
 def do_run_evaluation(config: dict[str, Any]) -> None:
@@ -329,6 +776,9 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     task_manager = TaskManager(include_path=config.get('include_path'))
     seed = config.get('seed')
     tasks, skipped_tasks = available_tasks(config)
+    task_specs = resolve_task_specs_for_evaluation(
+        tasks, config.get('task_overrides'), task_manager
+    )
     if not tasks:
         print('[skip] no evaluation tasks configured', flush=True)
         write_results(
@@ -346,8 +796,8 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     results = lm_eval.simple_evaluate(
         model=config['model'],
         model_args=config.get('model_args'),
-        tasks=tasks,
-        num_fewshot=config.get('num_fewshot'),
+        tasks=task_specs,
+        num_fewshot=None,
         batch_size=config.get('batch_size'),
         max_batch_size=config.get('max_batch_size'),
         device=config.get('device'),

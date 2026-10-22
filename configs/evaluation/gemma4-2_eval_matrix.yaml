@@ -8,17 +8,18 @@ model:
   key: gemma4_2b
   model_name_or_path: google/gemma-4-E2B
   model_revision: main
-  trust_remote_code: true
+  trust_remote_code: false
   dtype: bfloat16
   device: cuda:0
   batch_size: 1
   max_batch_size: 1
+  max_length: 24000
 
 defaults:
   env_file: .env
   cache_path: outputs/evaluation/cache/requests
   model: hf
-  num_fewshot: 0
+  num_fewshot: null
   cache_requests: true
   log_samples: false
   include_instruction_tasks: false
@@ -30,6 +31,19 @@ suites:
       - guarani_global_mmlu_lite
       - english_global_mmlu_lite
       - spanish_global_mmlu_lite
+    task_overrides:
+      guarani_global_mmlu_lite:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: dev
+      english_global_mmlu_lite:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: dev
+      spanish_global_mmlu_lite:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: dev
     log_samples: true
 
   belebele:
@@ -37,14 +51,44 @@ suites:
       - guarani_2m_belebele
       - english_2m_belebele
       - spanish_2m_belebele
+    task_overrides:
+      guarani_2m_belebele:
+        metrics: [acc]
+        num_fewshot: 1
+        fewshot_split: test
+      english_2m_belebele:
+        metrics: [acc]
+        num_fewshot: 1
+        fewshot_split: test
+      spanish_2m_belebele:
+        metrics: [acc]
+        num_fewshot: 1
+        fewshot_split: test
     log_samples: true
 
-  flores200:
+  flores_plus:
     tasks:
-      - guarani_flores200_eng_to_grn
-      - guarani_flores200_grn_to_eng
-      - guarani_flores200_grn_to_spa
-      - guarani_flores200_spa_to_grn
+      - guarani_flores_plus_eng_to_grn
+      - guarani_flores_plus_grn_to_eng
+      - guarani_flores_plus_grn_to_spa
+      - guarani_flores_plus_spa_to_grn
+    task_overrides:
+      guarani_flores_plus_eng_to_grn:
+        metrics: [bleu, chrf_plus_plus]
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores_plus_grn_to_eng:
+        metrics: [bleu, chrf_plus_plus]
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores_plus_grn_to_spa:
+        metrics: [bleu, chrf_plus_plus]
+        num_fewshot: 1
+        fewshot_split: devtest
+      guarani_flores_plus_spa_to_grn:
+        metrics: [bleu, chrf_plus_plus]
+        num_fewshot: 1
+        fewshot_split: devtest
     log_samples: true
 
   multiwikiqa:
@@ -52,25 +96,95 @@ suites:
       - guarani_multiwikiqa
       - english_multiwikiqa
       - spanish_multiwikiqa
+    task_overrides:
+      guarani_multiwikiqa:
+        metrics: [f1, exact_match]
+        num_fewshot: 2
+        fewshot_split: train
+      english_multiwikiqa:
+        metrics: [f1, exact_match]
+        num_fewshot: 2
+        fewshot_split: train
+      spanish_multiwikiqa:
+        metrics: [f1, exact_match]
+        num_fewshot: 2
+        fewshot_split: train
+    log_samples: true
+
+  guarani_benchmarks:
+    tasks:
+      - guarani_mgsm_direct
+      - guarani_wnli
+    task_overrides:
+      guarani_mgsm_direct:
+        metrics: [exact_match]
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: test
+      guarani_wnli:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: dev
     log_samples: true
 
   english_benchmarks:
     tasks:
       - arc_easy
       - arc_challenge
-      - piqa
+      - global_piqa_nonparallel_cloze_eng_latn
       - hellaswag
-      - winogrande
-      - xnli_en
       - xstorycloze_en
       - mgsm_direct_en
-      - bbh
-      - gpqa_diamond_zeroshot
-      - truthfulqa_mc1
-      - humaneval
+      - gpqa_main_n_shot
+      - truthfulqa-multi_mc1_en
+      - english_wnli
+      - english_copa
+    task_overrides:
+      arc_easy:
+        metrics: [acc_norm]
+        num_fewshot: 0
+        test_split: validation
+      arc_challenge:
+        metrics: [acc_norm]
+        num_fewshot: 25
+        fewshot_split: train
+        test_split: validation
+      global_piqa_nonparallel_cloze_eng_latn:
+        metrics: [acc_norm]
+        num_fewshot: 0
+      hellaswag:
+        metrics: [acc_norm]
+        num_fewshot: 10
+        fewshot_split: train
+        test_split: validation
+      xstorycloze_en:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+      mgsm_direct_en:
+        metrics: [exact_match]
+        num_fewshot: 8
+        fewshot_split: train
+      gpqa_main_n_shot:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+      truthfulqa-multi_mc1_en:
+        metrics: [acc]
+        num_fewshot: 6
+        fewshot_split: train
+      english_wnli:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: validation
+      english_copa:
+        metrics: [acc]
+        num_fewshot: 0
+        test_split: validation
     log_samples: true
     confirm_run_unsafe_code: true
-
   spanish_benchmarks:
     tasks:
       - spanish_arc_easy
@@ -80,11 +194,52 @@ suites:
       - copa_es
       - xstorycloze_es
       - truthfulqa_es_mc1
-      - xnli_es
       - mgsm_direct_es_spanish_bench
-      - spanish_gpqa_diamond
+      - spanish_gpqa_main
+      - wnli_es
+    task_overrides:
+      spanish_arc_easy:
+        metrics: [acc_norm]
+        num_fewshot: 0
+        test_split: validation
+      spanish_arc_challenge:
+        metrics: [acc_norm]
+        num_fewshot: 25
+        fewshot_split: validation
+        test_split: validation
+      global_piqa_nonparallel_cloze_spa_latn_spai:
+        metrics: [acc_norm]
+        num_fewshot: 0
+      hellaswag_es:
+        metrics: [acc_norm]
+        num_fewshot: 10
+        fewshot_split: val
+      copa_es:
+        metrics: [acc]
+        num_fewshot: 0
+        test_split: validation
+      xstorycloze_es:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+      truthfulqa_es_mc1:
+        metrics: [acc]
+        num_fewshot: 6
+        fewshot_split: val
+      mgsm_direct_es_spanish_bench:
+        metrics: [exact_match]
+        num_fewshot: 8
+        fewshot_split: train
+      spanish_gpqa_main:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+      wnli_es:
+        metrics: [acc]
+        num_fewshot: 5
+        fewshot_split: train
+        test_split: validation
     log_samples: true
-
   perplexity:
     tasks:
       - guarani_coreguapa_perplexity
@@ -114,8 +269,9 @@ profiles:
     suites:
       - global_mmlu_lite
       - belebele
-      - flores200
+      - flores_plus
       - multiwikiqa
+      - guarani_benchmarks
       - english_benchmarks
       - spanish_benchmarks
       - perplexity

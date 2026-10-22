@@ -294,6 +294,8 @@ def model_args_for_variant(
         'dtype': model.get('dtype'),
         'trust_remote_code': bool(model.get('trust_remote_code', False)),
     }
+    if model.get('max_length') is not None:
+        args['max_length'] = model['max_length']
 
     if variant_kind == 'base':
         return args
@@ -453,7 +455,41 @@ def evaluation_config(
         suite,
         profile_overrides,
     )
+    raw_task_overrides = suite.get('task_overrides', {})
+    if not isinstance(raw_task_overrides, dict):
+        raise ValueError(f'suites.{suite_name}.task_overrides must be a mapping.')
+
+    task_overrides = {}
+    for task_name, overrides in raw_task_overrides.items():
+        if task_name not in tasks:
+            continue
+        if not isinstance(overrides, dict):
+            raise ValueError(
+                f'task_overrides for {task_name} in suite {suite_name} must be a mapping.'
+            )
+        num_fewshot = overrides.get('num_fewshot')
+        if num_fewshot is not None and (
+            not isinstance(num_fewshot, int)
+            or isinstance(num_fewshot, bool)
+            or num_fewshot < 0
+        ):
+            raise ValueError(
+                f'num_fewshot for {task_name} in suite {suite_name} must be a non-negative integer.'
+            )
+        metrics = overrides.get('metrics')
+        if metrics is not None and (
+            not isinstance(metrics, list)
+            or not metrics
+            or any(not isinstance(metric, str) or not metric for metric in metrics)
+            or len(set(metrics)) != len(metrics)
+        ):
+            raise ValueError(
+                f'metrics for {task_name} in suite {suite_name} must be a non-empty list of unique names.'
+            )
+        task_overrides[task_name] = overrides
+
     config['tasks'] = tasks
+    config['task_overrides'] = task_overrides
     config['include_instruction_tasks'] = include_instruction_tasks
     return config
 

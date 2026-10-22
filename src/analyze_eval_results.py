@@ -8,28 +8,38 @@ import csv
 import json
 import math
 import os
+import re
 
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 
 DEFAULT_EVALUATION_ROOT = 'outputs/evaluation'
 DEFAULT_RESULTS_DIR = 'results'
 SUMMARY_FILE_PREFIX = 'evaluation_summary'
-BENCHMARK_TABLE_FILE_PREFIX = 'evaluation_benchmark_table'
-LANGUAGE_AVERAGE_TABLE_FILE_PREFIX = 'evaluation_language_average_table'
-PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity_table'
+BENCHMARK_TABLE_FILE_PREFIX = 'evaluation_score_by_benchmark'
+AVERAGE_SCORE_BY_LANGUAGE_FILE_NAME = 'evaluation_average_score_by_language.md'
+TECHNICAL_SHEET_FILE_NAME = 'evaluation_information_sheet.md'
+PERPLEXITY_TABLE_FILE_PREFIX = 'evaluation_perplexity'
 PERPLEXITY_TASK_PREFIX = 'guarani_cpt_perplexity_'
+COREGUAPA_PERPLEXITY_TASK = 'guarani_coreguapa_perplexity'
+DEPRECATED_TASK_IDS = frozenset({'spanish_gpqa_diamond'})
 BENCHMARK_LANGUAGE_CHOICES = (
     'all',
     'en',
     'es',
     'gn',
 )
-IGNORED_METRIC_SUFFIXES = (
-    '_stderr',
-    '_stderr,none',
-    '_stderr,bootstrap',
+DATASET_CONFIGURATION_NOTES = (
+    ('C1', 'Kuatia'),
+    ('C2', 'Kuatia without synthetic'),
+    ('C3', 'Kuatia + 20% Spanish FineWeb-Edu'),
+    ('C4', 'Kuatia without synthetic + 20% Spanish FineWeb-Edu'),
+    ('C5', 'Kuatia + 20% FineWeb-Edu'),
+    ('C6', 'Kuatia without synthetic + 20% FineWeb-Edu'),
+    ('C7', 'Kuatia + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu'),
+    ('C8', 'Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu'),
 )
 IGNORED_METRIC_NAMES = (
     'sample_len',
@@ -52,39 +62,51 @@ IDENTITY_COLUMNS = (
 )
 BENCHMARK_SCORE_SPECS = (
     {
-        'label': 'Global MMLU Lite GN (acc_norm)',
+        'label': 'Global MMLU Lite GN (acc)',
         'languages': ('gn',),
-        'metrics': ('global_mmlu_lite_acc_norm', 'global_mmlu_lite_acc'),
+        'metrics': ('global_mmlu_lite_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Global MMLU Lite EN (acc_norm)',
-        'languages': ('en',),
-        'metrics': ('english_global_mmlu_lite_acc_norm', 'english_global_mmlu_lite_acc'),
-        'scale': 100.0,
-    },
-    {
-        'label': 'Global MMLU Lite ES (acc_norm)',
-        'languages': ('es',),
-        'metrics': ('spanish_global_mmlu_lite_acc_norm', 'spanish_global_mmlu_lite_acc'),
-        'scale': 100.0,
-    },
-    {
-        'label': 'Belebele GN (acc_norm)',
+        'label': 'MGSM GN (exact_match)',
         'languages': ('gn',),
-        'metrics': ('guarani_2m_belebele_acc_norm', 'guarani_2m_belebele_acc'),
+        'metrics': ('guarani_mgsm_direct_exact_match',),
         'scale': 100.0,
     },
     {
-        'label': 'Belebele EN (acc_norm)',
+        'label': 'WNLI GN (acc)',
+        'languages': ('gn',),
+        'metrics': ('guarani_wnli_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Global MMLU Lite EN (acc)',
         'languages': ('en',),
-        'metrics': ('english_2m_belebele_acc_norm', 'english_2m_belebele_acc'),
+        'metrics': ('english_global_mmlu_lite_acc',),
         'scale': 100.0,
     },
     {
-        'label': 'Belebele ES (acc_norm)',
+        'label': 'Global MMLU Lite ES (acc)',
         'languages': ('es',),
-        'metrics': ('spanish_2m_belebele_acc_norm', 'spanish_2m_belebele_acc'),
+        'metrics': ('spanish_global_mmlu_lite_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele GN (acc)',
+        'languages': ('gn',),
+        'metrics': ('guarani_2m_belebele_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele EN (acc)',
+        'languages': ('en',),
+        'metrics': ('english_2m_belebele_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'Belebele ES (acc)',
+        'languages': ('es',),
+        'metrics': ('spanish_2m_belebele_acc',),
         'scale': 100.0,
     },
     {
@@ -106,75 +128,101 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'FLORES-200 EN->GN (BLEU)',
+        'label': 'FLORES+ EN->GN (BLEU)',
         'languages': ('en', 'gn'),
-        'metrics': ('guarani_flores200_eng_to_grn_bleu',),
+        'metrics': (
+            'guarani_flores_plus_eng_to_grn_bleu',
+            'guarani_flores200_eng_to_grn_bleu',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 EN->GN (chrF++)',
+        'label': 'FLORES+ EN->GN (chrF++)',
         'languages': ('en', 'gn'),
-        'metrics': ('guarani_flores200_eng_to_grn_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_eng_to_grn_chrf_plus_plus',
+            'guarani_flores200_eng_to_grn_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 GN->EN (BLEU)',
+        'label': 'FLORES+ GN->EN (BLEU)',
         'languages': ('gn', 'en'),
-        'metrics': ('guarani_flores200_grn_to_eng_bleu',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_eng_bleu',
+            'guarani_flores200_grn_to_eng_bleu',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 GN->EN (chrF++)',
+        'label': 'FLORES+ GN->EN (chrF++)',
         'languages': ('gn', 'en'),
-        'metrics': ('guarani_flores200_grn_to_eng_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_eng_chrf_plus_plus',
+            'guarani_flores200_grn_to_eng_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 ES->GN (BLEU)',
+        'label': 'FLORES+ ES->GN (BLEU)',
         'languages': ('es', 'gn'),
-        'metrics': ('guarani_flores200_spa_to_grn_bleu',),
+        'metrics': (
+            'guarani_flores_plus_spa_to_grn_bleu',
+            'guarani_flores200_spa_to_grn_bleu',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 ES->GN (chrF++)',
+        'label': 'FLORES+ ES->GN (chrF++)',
         'languages': ('es', 'gn'),
-        'metrics': ('guarani_flores200_spa_to_grn_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_spa_to_grn_chrf_plus_plus',
+            'guarani_flores200_spa_to_grn_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 GN->ES (BLEU)',
+        'label': 'FLORES+ GN->ES (BLEU)',
         'languages': ('gn', 'es'),
-        'metrics': ('guarani_flores200_grn_to_spa_bleu',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_spa_bleu',
+            'guarani_flores200_grn_to_spa_bleu',
+        ),
         'scale': 1.0,
     },
     {
-        'label': 'FLORES-200 GN->ES (chrF++)',
+        'label': 'FLORES+ GN->ES (chrF++)',
         'languages': ('gn', 'es'),
-        'metrics': ('guarani_flores200_grn_to_spa_chrf_plus_plus',),
+        'metrics': (
+            'guarani_flores_plus_grn_to_spa_chrf_plus_plus',
+            'guarani_flores200_grn_to_spa_chrf_plus_plus',
+        ),
         'scale': 1.0,
     },
     {
         'label': 'ARC Easy EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('arc_easy_acc_norm', 'arc_easy_acc'),
+        'metrics': ('arc_easy_acc_norm',),
         'scale': 100.0,
     },
     {
         'label': 'ARC Challenge EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('arc_challenge_acc_norm', 'arc_challenge_acc'),
+        'metrics': ('arc_challenge_acc_norm',),
         'scale': 100.0,
     },
     {
         'label': 'PIQA EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('piqa_acc_norm', 'piqa_acc'),
+        'metrics': (
+            'global_piqa_nonparallel_cloze_eng_latn_acc_norm',
+        ),
         'scale': 100.0,
     },
     {
         'label': 'HellaSwag EN (acc_norm)',
         'languages': ('en',),
-        'metrics': ('hellaswag_acc_norm', 'hellaswag_acc'),
+        'metrics': ('hellaswag_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -187,6 +235,18 @@ BENCHMARK_SCORE_SPECS = (
         'label': 'XNLI EN (acc)',
         'languages': ('en',),
         'metrics': ('xnli_en_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'WNLI EN (acc)',
+        'languages': ('en',),
+        'metrics': ('english_wnli_acc', 'wnli_acc'),
+        'scale': 100.0,
+    },
+    {
+        'label': 'COPA EN (acc)',
+        'languages': ('en',),
+        'metrics': ('english_copa_acc', 'copa_acc'),
         'scale': 100.0,
     },
     {
@@ -208,15 +268,17 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Diamond EN (acc_norm)',
+        'label': 'GPQA Main EN (acc)',
         'languages': ('en',),
-        'metrics': ('gpqa_diamond_zeroshot_acc_norm', 'gpqa_diamond_zeroshot_acc'),
+        'metrics': (
+            'gpqa_main_n_shot_acc',
+        ),
         'scale': 100.0,
     },
     {
         'label': 'TruthfulQA-MC1 EN (acc)',
         'languages': ('en',),
-        'metrics': ('truthfulqa_mc1_acc',),
+        'metrics': ('truthfulqa-multi_mc1_en_acc', 'truthfulqa_mc1_acc'),
         'scale': 100.0,
     },
     {
@@ -234,13 +296,13 @@ BENCHMARK_SCORE_SPECS = (
     {
         'label': 'ARC Easy ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('spanish_arc_easy_acc_norm', 'spanish_arc_easy_acc'),
+        'metrics': ('spanish_arc_easy_acc_norm',),
         'scale': 100.0,
     },
     {
         'label': 'ARC Challenge ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('spanish_arc_challenge_acc_norm', 'spanish_arc_challenge_acc'),
+        'metrics': ('spanish_arc_challenge_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -248,14 +310,13 @@ BENCHMARK_SCORE_SPECS = (
         'languages': ('es',),
         'metrics': (
             'global_piqa_nonparallel_cloze_spa_latn_spai_acc_norm',
-            'global_piqa_nonparallel_cloze_spa_latn_spai_acc',
         ),
         'scale': 100.0,
     },
     {
         'label': 'HellaSwag ES (acc_norm)',
         'languages': ('es',),
-        'metrics': ('hellaswag_es_acc_norm', 'hellaswag_es_acc'),
+        'metrics': ('hellaswag_es_acc_norm',),
         'scale': 100.0,
     },
     {
@@ -274,6 +335,12 @@ BENCHMARK_SCORE_SPECS = (
         'label': 'TruthfulQA-MC1 ES (acc)',
         'languages': ('es',),
         'metrics': ('truthfulqa_es_mc1_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'WNLI ES (acc)',
+        'languages': ('es',),
+        'metrics': ('wnli_es_acc',),
         'scale': 100.0,
     },
     {
@@ -298,9 +365,9 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
-        'label': 'GPQA Diamond ES (acc_norm)',
+        'label': 'GPQA Main ES (acc)',
         'languages': ('es',),
-        'metrics': ('spanish_gpqa_diamond_acc_norm', 'spanish_gpqa_diamond_acc'),
+        'metrics': ('spanish_gpqa_main_acc',),
         'scale': 100.0,
     },
 )
@@ -309,6 +376,7 @@ PERPLEXITY_METRICS = (
     ('byte_perplexity', 'byte perplexity'),
     ('bits_per_byte', 'bits per byte'),
 )
+PERPLEXITY_METRIC_NAMES = tuple(metric for metric, _ in PERPLEXITY_METRICS)
 
 
 def load_json(path: str) -> dict[str, Any]:
@@ -360,7 +428,7 @@ def is_metric_key(key: str, value: Any) -> bool:
     if clean_metric_name(key) in IGNORED_METRIC_NAMES:
         return False
 
-    return not any(key.endswith(suffix) for suffix in IGNORED_METRIC_SUFFIXES)
+    return True
 
 
 def clean_metric_name(metric_name: str) -> str:
@@ -386,6 +454,8 @@ def task_suffix(task_name: str) -> str:
     """
     if task_name.startswith(PERPLEXITY_TASK_PREFIX):
         return task_name[len(PERPLEXITY_TASK_PREFIX):]
+    if task_name == COREGUAPA_PERPLEXITY_TASK:
+        return 'coreguapa'
     if task_name == 'guarani_global_mmlu_lite':
         return 'global_mmlu_lite'
 
@@ -430,7 +500,10 @@ def is_perplexity_task(task_name: str) -> bool:
     Returns:
         True when the task is a CPT perplexity task.
     """
-    return task_name.startswith(PERPLEXITY_TASK_PREFIX)
+    return (
+        task_name.startswith(PERPLEXITY_TASK_PREFIX)
+        or task_name == COREGUAPA_PERPLEXITY_TASK
+    )
 
 
 def result_metric_column(task_name: str, metric_name: str) -> str:
@@ -459,6 +532,9 @@ def should_include_perplexity_task(task_name: str, row_corpus: str | int | None)
     Returns:
         True when the task should be included in the summary.
     """
+    if task_name == COREGUAPA_PERPLEXITY_TASK:
+        return True
+
     normalized_row_corpus = normalize_corpus(row_corpus)
     if normalized_row_corpus is None:
         return True
@@ -529,6 +605,132 @@ def discover_result_paths(
     return sorted(paths)
 
 
+def _timestamp_value(value: Any) -> float | None:
+    """Convert an ISO timestamp or epoch value to a comparable UTC timestamp."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = value.strip().replace('Z', '+00:00')
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
+def result_artifact_timestamp(data: dict[str, Any], path: str, task_name: str | None) -> float:
+    """Read task completion time, then file run date, then filesystem mtime."""
+    evaluation = data.get('guarania_evaluation', {})
+    task_runs = evaluation.get('task_runs', {}) if isinstance(evaluation, dict) else {}
+    task_run = task_runs.get(task_name, {}) if isinstance(task_runs, dict) and task_name else {}
+    if isinstance(task_run, dict):
+        for field in ('completed_at', 'timestamp'):
+            if timestamp := _timestamp_value(task_run.get(field)):
+                return timestamp
+    if timestamp := _timestamp_value(data.get('date')):
+        return timestamp
+    return os.path.getmtime(path)
+
+
+def is_legacy_single_result(path: str, evaluation_root: str) -> bool:
+    """Return whether a result file belongs to the former single-run layout."""
+    parts = os.path.relpath(path, evaluation_root).split(os.sep)
+    return 'single_benchmark' in parts
+
+
+def selected_result_artifacts(
+    evaluation_root: str,
+    model_keys: tuple[str, ...],
+    profile_names: tuple[str, ...],
+) -> list[tuple[str, dict[str, Any]]]:
+    """Return task-filtered artifacts, selecting the latest result for each task."""
+    candidates: dict[tuple[Any, ...], tuple[float, int, str, str | None]] = {}
+    loaded: dict[str, dict[str, Any]] = {}
+
+    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
+        data = load_json(path)
+        if not isinstance(data, dict):
+            continue
+        loaded[path] = data
+        path_metadata = metadata_from_path(path, evaluation_root)
+        metadata = data.get('metadata', {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        identity = (
+            str(metadata.get('profile') or path_metadata['profile']),
+            str(metadata.get('model_key') or path_metadata['model_key']),
+            str(metadata.get('variant') or path_metadata['variant']),
+            str(path_metadata['suite']),
+        )
+        results = data.get('results', {})
+        groups = data.get('groups', {})
+        task_names = (
+            {str(task_name) for task_name in results}
+            if isinstance(results, dict)
+            else set()
+        )
+        if isinstance(groups, dict):
+            task_names.update(str(task_name) for task_name in groups)
+        had_tasks = bool(task_names)
+        task_names.difference_update(DEPRECATED_TASK_IDS)
+        if had_tasks and not task_names:
+            continue
+        if not task_names:
+            task_names.add(None)
+
+        legacy_priority = 0 if is_legacy_single_result(path, evaluation_root) else 1
+        for raw_task_name in task_names:
+            task_name = str(raw_task_name) if raw_task_name is not None else None
+            key = (*identity, task_name)
+            order = (
+                result_artifact_timestamp(data, path, task_name),
+                legacy_priority,
+                path,
+            )
+            if key not in candidates or order > candidates[key][:3]:
+                candidates[key] = (*order, task_name)
+
+    selected_by_path: dict[str, set[str | None]] = defaultdict(set)
+    identity_winners: dict[tuple[Any, ...], tuple[str, str | None]] = {}
+    for key, (_, _, path, task_name) in candidates.items():
+        identity = key[:4]
+        if task_name is None:
+            identity_winners[identity] = (path, None)
+        else:
+            selected_by_path[path].add(task_name)
+
+    artifacts: list[tuple[str, dict[str, Any]]] = []
+    for path, task_names in selected_by_path.items():
+        data = dict(loaded[path])
+        selected = set(task_names)
+        for field in (
+            'results',
+            'groups',
+            'group_subtasks',
+            'configs',
+            'versions',
+            'higher_is_better',
+            'n-shot',
+            'n-samples',
+        ):
+            mapping = data.get(field)
+            if isinstance(mapping, dict):
+                data[field] = {key: value for key, value in mapping.items() if key in selected}
+        data['_selected_task_keys'] = sorted(selected)
+        artifacts.append((path, data))
+
+    for identity, (path, task_name) in identity_winners.items():
+        if task_name is None and path not in selected_by_path:
+            data = dict(loaded[path])
+            data['_selected_task_keys'] = []
+            artifacts.append((path, data))
+
+    return sorted(artifacts, key=lambda item: item[0])
+
+
 def metadata_from_path(result_path: str, evaluation_root: str) -> dict[str, str | None]:
     """Extract profile, model, variant, and suite from a result path.
 
@@ -592,7 +794,11 @@ def parse_variant(variant: str | None) -> dict[str, str | int | None]:
     }
 
 
-def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[str, Any]]:
+def extract_result_records(
+    result_path: str,
+    evaluation_root: str,
+    data: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Extract partial rows from an lm-eval result file.
 
     Args:
@@ -602,7 +808,8 @@ def extract_result_records(result_path: str, evaluation_root: str) -> list[dict[
     Returns:
         Partial rows containing identity fields and metrics.
     """
-    data = load_json(result_path)
+    if data is None:
+        data = load_json(result_path)
     path_metadata = metadata_from_path(result_path, evaluation_root)
     result_metadata = data.get('metadata', {})
     if not isinstance(result_metadata, dict):
@@ -867,6 +1074,53 @@ def metric_columns(rows: list[dict[str, Any]]) -> list[str]:
     return sorted(columns)
 
 
+def main_summary_metric_columns(metrics: list[str]) -> list[str]:
+    """Select preferred metrics, aggregate BBH scores, and omit stderr values."""
+    candidates = []
+    for metric in metrics:
+        lowered = metric.lower()
+        if lowered.endswith(('stderr', '_stderr')):
+            continue
+        if '_bbh_' in lowered:
+            tail = lowered.split('_bbh_', 1)[1]
+            if tail not in {'acc', 'acc_norm', 'acc_bytes', 'exact_match', 'f1'}:
+                continue
+        candidates.append(metric)
+
+    choices: dict[tuple[str, str], tuple[int, str]] = {}
+    selected = set()
+    suffix_priorities = {
+        'acc_norm': ('accuracy', 0),
+        'acc_bytes': ('accuracy', 1),
+        'acc': ('accuracy', 2),
+        'f1': ('overlap', 0),
+        'exact_match': ('overlap', 1),
+    }
+    for metric in candidates:
+        lowered = metric.lower()
+        match = next(
+            (
+                (suffix, family, priority)
+                for suffix, (family, priority) in suffix_priorities.items()
+                if lowered.endswith(f'_{suffix}')
+            ),
+            None,
+        )
+        if match is None:
+            selected.add(metric)
+            continue
+
+        suffix, family, priority = match
+        stem = lowered[: -(len(suffix) + 1)]
+        group_key = (stem, family)
+        current = choices.get(group_key)
+        if current is None or priority < current[0]:
+            choices[group_key] = (priority, metric)
+
+    selected.update(metric for _, metric in choices.values())
+    return sorted(selected)
+
+
 def higher_is_better(metric_name: str) -> bool:
     """Return whether larger values indicate improvement for a metric.
 
@@ -891,12 +1145,16 @@ def percentage_improvement(value: Any, base_value: Any, metric_name: str) -> flo
     Returns:
         Percentage improvement, or None when it cannot be computed.
     """
-    if not is_number(value) or not is_number(base_value) or base_value == 0:
+    if not is_number(value) or not is_number(base_value):
+        return None
+    rounded_value = float(f'{float(value):.3f}')
+    rounded_base = float(f'{float(base_value):.3f}')
+    if rounded_base == 0:
         return None
     if higher_is_better(metric_name):
-        return ((float(value) - float(base_value)) / float(base_value)) * 100
+        return ((rounded_value - rounded_base) / rounded_base) * 100
 
-    return ((float(base_value) - float(value)) / float(base_value)) * 100
+    return ((rounded_base - rounded_value) / rounded_base) * 100
 
 
 def base_metric_value(
@@ -939,11 +1197,11 @@ def add_improvement_columns(rows: list[dict[str, Any]], metrics: list[str]) -> l
         if row.get('variant') == 'base':
             base_by_model[str(row['model_key'])].append(row)
 
-    improvement_columns = [f'{metric}_improvement_vs_base_pct' for metric in metrics]
+    improvement_columns = [f'{metric}_gain_base' for metric in metrics]
     for row in rows:
         base_rows = base_by_model.get(str(row.get('model_key')))
         for metric in metrics:
-            column = f'{metric}_improvement_vs_base_pct'
+            column = f'{metric}_gain_base'
             if not base_rows or row.get('variant') == 'base':
                 row[column] = None
                 continue
@@ -1008,6 +1266,753 @@ def write_markdown(path: str, rows: list[dict[str, Any]], columns: list[str]) ->
             values = [format_value(row.get(column)).replace('|', '\\|') for column in columns]
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
+
+def is_flores_metric(metric: str) -> bool:
+    """Return whether a metric belongs to FLORES+ (including legacy IDs)."""
+    lowered = metric.lower()
+    return 'flores_plus' in lowered or 'flores200' in lowered
+
+
+def report_metric_language(metric: str) -> str:
+    """Infer the benchmark language from a raw summary metric name."""
+    lowered = metric.lower()
+    if is_flores_metric(lowered):
+        if '_to_grn_' in lowered:
+            return 'gn'
+        if '_to_eng_' in lowered:
+            return 'en'
+        if '_to_spa_' in lowered:
+            return 'es'
+    if lowered.startswith('guarani_') or lowered in PERPLEXITY_METRIC_NAMES:
+        return 'gn'
+    if lowered.startswith('spanish_') or '_es_' in lowered or lowered.endswith('_es'):
+        return 'es'
+    if 'spa_latn' in lowered or 'spai' in lowered:
+        return 'es'
+    if lowered.startswith('english_') or '_en_' in lowered or lowered.endswith('_en'):
+        return 'en'
+    if 'global_mmlu_lite' in lowered:
+        return 'gn'
+    return 'en'
+
+
+def report_metric_label(metric: str) -> str:
+    """Create a concise metric label with its language code."""
+    language = report_metric_language(metric)
+    label = metric
+    for prefix in ('guarani_', 'english_', 'spanish_'):
+        if label.startswith(prefix):
+            label = label.removeprefix(prefix)
+            break
+
+    label = label.replace('_spanish_bench', '')
+    label = label.replace('2m_belebele', 'belebele')
+    label = label.replace('global_piqa_', 'piqa_')
+    label = label.replace('_nonparallel_cloze_spa_latn_spai', '')
+    label = label.replace('_nonparallel_cloze_eng_latn', '')
+    label = label.replace('_cot_fewshot', '')
+    label = label.replace('_chrf_plus_plus', '_chrf++')
+    label = label.replace('flores200_eng_to_grn', 'flores_plus_en_to_gn')
+    label = label.replace('flores_plus_eng_to_grn', 'flores_plus_en_to_gn')
+    label = label.replace('flores200_grn_to_eng', 'flores_plus_gn_to_en')
+    label = label.replace('flores_plus_grn_to_eng', 'flores_plus_gn_to_en')
+    label = label.replace('flores200_spa_to_grn', 'flores_plus_es_to_gn')
+    label = label.replace('flores_plus_spa_to_grn', 'flores_plus_es_to_gn')
+    label = label.replace('flores200_grn_to_spa', 'flores_plus_gn_to_es')
+    label = label.replace('flores_plus_grn_to_spa', 'flores_plus_gn_to_es')
+    if not is_flores_metric(label):
+        for code in ('_gn', '_es', '_en'):
+            label = label.replace(code, '')
+        label = label.rstrip('_')
+        label = f'{language}_{label}'
+
+    return label
+
+
+def report_metric_sort_key(metric: str) -> tuple[int, str]:
+    """Sort benchmark metrics by Guarani, Spanish, then English."""
+    language_order = {'gn': 0, 'es': 1, 'en': 2}
+    if any(token in metric.lower() for token in LOWER_IS_BETTER_TOKENS):
+        return (3, metric)
+
+    return (language_order[report_metric_language(metric)], report_metric_label(metric))
+
+
+def result_sample_count(value: Any) -> int | None:
+    """Extract the effective sample count from an lm-eval count record."""
+    if isinstance(value, dict):
+        value = value.get('effective', value.get('original'))
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return int(value)
+    return None
+
+
+def collect_metric_sample_counts(
+    evaluation_root: str,
+    model_keys: tuple[str, ...],
+    profile_names: tuple[str, ...],
+) -> dict[str, int]:
+    """Collect evaluated sample counts by raw metric name from result artifacts."""
+    counts: dict[str, int] = {}
+    for path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
+        task_counts = data.get('n-samples', {})
+        if not isinstance(task_counts, dict):
+            task_counts = {}
+        sample_path = os.path.join(os.path.dirname(path), 'samples.json')
+        samples = load_json(sample_path) if os.path.isfile(sample_path) else {}
+        if not isinstance(samples, dict):
+            samples = {}
+        selected_keys = set(data.get('_selected_task_keys', []))
+        samples = {key: value for key, value in samples.items() if key in selected_keys}
+
+        results = data.get('results', {})
+        groups = data.get('groups', {})
+        if not isinstance(results, dict):
+            results = {}
+        if not isinstance(groups, dict):
+            groups = {}
+
+        for task_name, task_metrics in (results | groups).items():
+            if not isinstance(task_metrics, dict):
+                continue
+            count = result_sample_count(task_counts.get(task_name))
+            if count is None and isinstance(samples.get(task_name), list):
+                count = len(samples[task_name])
+            metric_counts = task_metrics.get('sample_count', {})
+            if not isinstance(metric_counts, dict):
+                metric_counts = {}
+            for raw_metric, value in task_metrics.items():
+                if is_metric_key(raw_metric, value):
+                    metric_count = count
+                    if metric_count is None:
+                        metric_count = result_sample_count(
+                            metric_counts.get(raw_metric)
+                        )
+                    if metric_count is None:
+                        continue
+                    metric = result_metric_column(
+                        str(task_name), clean_metric_name(str(raw_metric))
+                    )
+                    counts[metric] = max(metric_count, counts.get(metric, 0))
+
+    return counts
+
+
+def benchmark_name_for_metric(metric: str) -> str:
+    """Return a readable benchmark name for a report metric."""
+    label = report_metric_label(metric)
+    if 'perplexity' in metric.lower() or 'bits_per_byte' in metric.lower():
+        return 'CoreGuapa perplexity'
+    if metric.startswith('bbh_'):
+        return 'BIG-Bench Hard'
+
+    base = label
+    for language in ('gn_', 'es_', 'en_'):
+        if base.startswith(language):
+            base = base.removeprefix(language)
+            break
+    for language in ('_gn', '_es', '_en'):
+        if base.endswith(language):
+            base = base.removesuffix(language)
+            break
+    base = base.removesuffix('_stderr')
+    for suffix in (
+        '_acc_norm',
+        '_exact_match',
+        '_acc',
+        '_f1',
+        '_bleu',
+        '_chrf++',
+    ):
+        if base.endswith(suffix):
+            base = base.removesuffix(suffix)
+            break
+    names = {
+        'global_mmlu_lite': 'Global MMLU Lite',
+        'belebele': 'Belebele',
+        'multiwikiqa': 'MultiWikiQA',
+        'arc_easy': 'ARC Easy',
+        'arc_challenge': 'ARC Challenge',
+        'piqa': 'PIQA',
+        'hellaswag': 'HellaSwag',
+        'winogrande': 'WinoGrande',
+        'xnli': 'XNLI',
+        'xstorycloze': 'XStoryCloze',
+        'mgsm_direct': 'MGSM',
+        'gpqa_main': 'GPQA Main',
+        'gpqa_main_n_shot': 'GPQA Main',
+        'gpqa_diamond_zeroshot': 'GPQA Diamond',
+        'gpqa_diamond': 'GPQA Diamond',
+        'truthfulqa-multi_mc1_en': 'TruthfulQA MC1',
+        'truthfulqa_mc1': 'TruthfulQA MC1',
+        'wnli': 'WNLI',
+        'wnli_es': 'WNLI',
+        'copa': 'COPA',
+        'ifeval_prompt_level_strict': 'IFEval',
+        'flores_plus_en_to_gn': 'FLORES+ EN→GN',
+        'flores200_en_to_gn': 'FLORES+ EN→GN',
+        'flores_plus_gn_to_en': 'FLORES+ GN→EN',
+        'flores200_gn_to_en': 'FLORES+ GN→EN',
+        'flores_plus_es_to_gn': 'FLORES+ ES→GN',
+        'flores200_es_to_gn': 'FLORES+ ES→GN',
+        'flores_plus_gn_to_es': 'FLORES+ GN→ES',
+        'flores200_gn_to_es': 'FLORES+ GN→ES',
+    }
+    for prefix, name in names.items():
+        if base.startswith(prefix):
+            return name
+
+    return base.replace('_', ' ').title()
+
+
+def metric_meaning(metric: str) -> str:
+    """Explain the scoring metric and how to interpret it."""
+    lowered = metric.lower()
+    if 'stderr' in lowered:
+        return 'Standard error of the reported score; lower means less sampling uncertainty.'
+    if 'word_perplexity' in lowered:
+        return 'Word-level perplexity; lower is better.'
+    if 'byte_perplexity' in lowered:
+        return 'Byte-level perplexity; lower is better.'
+    if 'bits_per_byte' in lowered:
+        return 'Bits per byte; lower is better.'
+    if 'chrf' in lowered:
+        return 'Character n-gram F-score; higher is better.'
+    if 'bleu' in lowered:
+        return 'BLEU translation score; higher is better.'
+    if 'acc_norm' in lowered:
+        return 'Length-normalized multiple-choice accuracy; higher is better.'
+    if lowered.endswith('_acc') or '_acc_' in lowered:
+        return 'Accuracy; higher is better.'
+    if '_f1' in lowered:
+        return 'Token-overlap F1 score; higher is better.'
+    if 'exact_match' in lowered or lowered.startswith('mgsm_'):
+        return 'Exact-match accuracy; higher is better.'
+
+    return 'Benchmark score; higher is better.'
+
+
+def report_markdown(
+    path: str,
+    rows: list[dict[str, Any]],
+    metrics: list[str],
+    sample_counts: dict[str, int],
+) -> None:
+    """Write a transposed metrics-by-variant report with explanatory notes."""
+    variants = unique_variant_rows(rows)
+    variants.sort(
+        key=lambda row: (
+            str(row.get('model_key') or ''),
+            row.get('variant') != 'base',
+            str(row.get('training_method') or ''),
+            str(row.get('corpus') or ''),
+            str(row.get('lora_rank') or ''),
+        )
+    )
+    model_names = sorted(
+        {str(row.get('model_key')) for row in variants if row.get('model_key')}
+    )
+    model_labels = [str(row.get('variant') or 'unknown') for row in variants]
+    metric_names = [metric for metric in metrics if not metric.endswith('_gain_base')]
+    metric_names = sorted(metric_names, key=report_metric_sort_key)
+
+    grouped_metrics: dict[str, list[str]] = {
+        'FLORES+ translations': [],
+        'Perplexity': [],
+        'Guarani benchmarks': [],
+        'Spanish benchmarks': [],
+        'English benchmarks': [],
+    }
+    for metric in metric_names:
+        lowered = metric.lower()
+        if is_flores_metric(lowered):
+            category = 'FLORES+ translations'
+        elif metric in PERPLEXITY_METRIC_NAMES or any(
+            token in lowered for token in ('perplexity', 'bits_per_byte')
+        ):
+            category = 'Perplexity'
+        else:
+            language = report_metric_language(metric)
+            category = {
+                'gn': 'Guarani benchmarks',
+                'es': 'Spanish benchmarks',
+                'en': 'English benchmarks',
+            }[language]
+        grouped_metrics[category].append(metric)
+
+    with open(path, 'w', encoding='utf-8') as handle:
+        if len(model_names) == 1:
+            handle.write(f'# Model: {model_names[0]}\n\n')
+        elif model_names:
+            handle.write(f"# Models: {', '.join(model_names)}\n\n")
+        handle.write(
+            'Gain rows show relative percentage change from the matching base model; '
+            'positive values indicate improvement.\n\n'
+        )
+        columns = ['metric', 'Instances'] + model_labels
+        for category, category_metrics in grouped_metrics.items():
+            handle.write(f'## {category}\n\n')
+            handle.write('| ' + ' | '.join(columns) + ' |\n')
+            handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+            for metric in category_metrics:
+                label = report_metric_label(metric)
+                values = [row.get(metric) for row in variants]
+                maximum = (
+                    max(
+                        (float(value) for value in values if is_number(value)),
+                        default=None,
+                    )
+                    if 'stderr' not in metric.lower()
+                    and not any(
+                        token in metric.lower() for token in LOWER_IS_BETTER_TOKENS
+                    )
+                    else None
+                )
+                count = sample_counts.get(metric)
+                count_label = f'{count:,}' if count is not None else 'not recorded'
+                cells = [label.replace('|', '\\|'), count_label]
+                for value in values:
+                    if value is None:
+                        cells.append('')
+                        continue
+                    rendered = f'{float(value):.3f}' if is_number(value) else str(value)
+                    if maximum is not None and is_number(value) and float(value) == maximum:
+                        rendered = f'**{rendered}**'
+                    cells.append(rendered.replace('|', '\\|'))
+                handle.write('| ' + ' | '.join(cells) + ' |\n')
+
+                gain_column = f'{metric}_gain_base'
+                if any(gain_column in row for row in variants):
+                    gains = [row.get(gain_column) for row in variants]
+                    cells = [f'{label}_gain_base', '']
+                    for variant, value in zip(variants, gains):
+                        if variant.get('variant') == 'base':
+                            cells.append('--')
+                        elif is_number(value):
+                            cells.append(f'{float(value):+.2f}%')
+                        else:
+                            cells.append('')
+                    handle.write('| ' + ' | '.join(cells) + ' |\n')
+
+            if category in ('Guarani benchmarks', 'Spanish benchmarks', 'English benchmarks'):
+                average_scores = []
+                average_gains = []
+                for variant in variants:
+                    scores = [
+                        float(variant[metric])
+                        for metric in category_metrics
+                        if is_number(variant.get(metric))
+                    ]
+                    gains = [
+                        float(variant[f'{metric}_gain_base'])
+                        for metric in category_metrics
+                        if is_number(variant.get(f'{metric}_gain_base'))
+                    ]
+                    average_scores.append(
+                        sum(scores) / len(scores) if scores else None
+                    )
+                    average_gains.append(
+                        sum(gains) / len(gains) if gains else None
+                    )
+
+                score_cells = ['Average of variant across benchmarks', '']
+                score_max = max(
+                    (value for value in average_scores if value is not None),
+                    default=None,
+                )
+                for value in average_scores:
+                    rendered = f'{value:.3f}' if value is not None else ''
+                    if value is not None and value == score_max:
+                        rendered = f'**{rendered}**'
+                    score_cells.append(rendered)
+                handle.write('| ' + ' | '.join(score_cells) + ' |\n')
+
+                gain_cells = [
+                    'Average of variant gain in relation to base across benchmarks',
+                    '',
+                ]
+                for variant, value in zip(variants, average_gains):
+                    if variant.get('variant') == 'base':
+                        gain_cells.append('--')
+                    elif value is not None:
+                        gain_cells.append(f'{value:+.2f}%')
+                    else:
+                        gain_cells.append('')
+                handle.write('| ' + ' | '.join(gain_cells) + ' |\n')
+            handle.write('\n')
+
+        handle.write('\n## Metric notes\n\n')
+        handle.write('| Metric | Benchmark | Language | Meaning and interpretation | Instances |\n')
+        handle.write('| --- | --- | --- | --- | ---: |\n')
+        for metric in metric_names:
+            label = report_metric_label(metric)
+            language = report_metric_language(metric)
+            language_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[language]
+            count = sample_counts.get(metric)
+            count_label = f'{count:,}' if count is not None else 'not recorded'
+            handle.write(
+                f'| {label} | {benchmark_name_for_metric(metric)} | '
+                f'{language_name} ({language}) | {metric_meaning(metric)} | '
+                f'{count_label} |\n'
+            )
+
+
+def report_csv(
+    path: str,
+    rows: list[dict[str, Any]],
+    metrics: list[str],
+    sample_counts: dict[str, int],
+) -> None:
+    """Write the transposed evaluation summary as CSV."""
+    variants = unique_variant_rows(rows)
+    variants.sort(
+        key=lambda row: (
+            str(row.get('model_key') or ''),
+            row.get('variant') != 'base',
+            str(row.get('training_method') or ''),
+            str(row.get('corpus') or ''),
+            str(row.get('lora_rank') or ''),
+        )
+    )
+    metric_names = sorted(
+        (metric for metric in metrics if not metric.endswith('_gain_base')),
+        key=report_metric_sort_key,
+    )
+    with open(path, 'w', encoding='utf-8', newline='') as handle:
+        writer = csv.writer(handle)
+        writer.writerow(['Gain rows show relative percentage change from the matching base model; positive values indicate improvement.'])
+        writer.writerow(
+            ['metric', 'Instances']
+            + [model_column_label(row) for row in variants]
+        )
+        for metric in metric_names:
+            label = report_metric_label(metric)
+            writer.writerow(
+                [label, sample_counts.get(metric, '')]
+                + [
+                    f'{float(row[metric]):.3f}' if is_number(row.get(metric)) else ''
+                    for row in variants
+                ]
+            )
+            gain_column = f'{metric}_gain_base'
+            if any(gain_column in row for row in variants):
+                writer.writerow(
+                    [f'{label}_gain_base', '']
+                    + [
+                        (
+                            '--'
+                            if row.get('variant') == 'base'
+                            else f'{float(row[gain_column]):+.2f}%'
+                            if is_number(row.get(gain_column))
+                            else ''
+                        )
+                        for row in variants
+                    ]
+                )
+
+
+def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
+    """Create short, unique corpus-based labels for the pretty CSV columns."""
+    labels = []
+    for row in variants:
+        if row.get('variant') == 'base':
+            labels.append('base')
+            continue
+        variant = str(row.get('variant') or '')
+        corpus = str(row.get('corpus') or '')
+        match = re.search(r'(?:^|_)C\d+(?:_|$)', variant)
+        if match is None:
+            match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
+        labels.append(
+            match.group(0).strip('_')
+            if match
+            else variant.removeprefix('full_') or corpus or 'unknown'
+        )
+    original_labels = labels.copy()
+
+    for index, label in enumerate(labels):
+        if original_labels.count(label) <= 1:
+            continue
+
+        row = variants[index]
+        if row.get('variant') == 'base':
+            labels[index] = f'{label} ({row.get("model_key") or "model"})'
+            continue
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            disambiguator = f'LoRA r{row["lora_rank"]}' if row.get('lora_rank') else 'LoRA'
+        elif method == 'full':
+            disambiguator = 'full'
+        else:
+            disambiguator = method or str(row.get('variant') or 'variant')
+        labels[index] = f'{label} ({disambiguator})'
+
+    for index, label in enumerate(labels):
+        if labels.count(label) > 1:
+            labels[index] = f'{label}, {variants[index].get("model_key") or "model"}'
+
+    return labels
+
+
+def pretty_metric_label(metric: str) -> str:
+    """Return a readable metric label without its language prefix."""
+    lowered = metric.lower()
+    if is_flores_metric(lowered):
+        directions = (
+            ('flores_plus_eng_to_grn', 'EN', 'GN'),
+            ('guarani_flores200_eng_to_grn', 'EN', 'GN'),
+            ('eng_to_grn', 'EN', 'GN'),
+            ('en_to_gn', 'EN', 'GN'),
+            ('flores_plus_spa_to_grn', 'ES', 'GN'),
+            ('guarani_flores200_spa_to_grn', 'ES', 'GN'),
+            ('spa_to_grn', 'ES', 'GN'),
+            ('es_to_gn', 'ES', 'GN'),
+            ('flores_plus_grn_to_spa', 'GN', 'ES'),
+            ('guarani_flores200_grn_to_spa', 'GN', 'ES'),
+            ('grn_to_spa', 'GN', 'ES'),
+            ('gn_to_es', 'GN', 'ES'),
+            ('flores_plus_grn_to_eng', 'GN', 'EN'),
+            ('guarani_flores200_grn_to_eng', 'GN', 'EN'),
+            ('grn_to_eng', 'GN', 'EN'),
+            ('gn_to_en', 'GN', 'EN'),
+        )
+        direction = next(
+            ((source, target) for token, source, target in directions if token in lowered),
+            None,
+        )
+        score_name = 'chrF++' if 'chrf' in lowered else 'BLEU'
+        if direction:
+            return f'FLORES+ {direction[0]}->{direction[1]} {score_name}'
+        return f'FLORES+ {score_name}'
+
+    if metric == 'word_perplexity':
+        return 'CoreGuapa Word Perplexity'
+    if metric == 'byte_perplexity':
+        return 'CoreGuapa Byte Perplexity'
+    if metric == 'bits_per_byte':
+        return 'CoreGuapa Bits per byte Perplexity'
+
+    benchmark = benchmark_name_for_metric(metric)
+    if 'bbh' in lowered:
+        benchmark = 'BBH'
+    elif 'humaneval' in lowered:
+        benchmark = 'HumanEval'
+
+    metric_names = (
+        ('_acc_norm', 'Normalized Accuracy'),
+        ('_acc_bytes', 'Byte Accuracy'),
+        ('_acc', 'Accuracy'),
+        ('_exact_match', 'Exact Match'),
+        ('_f1', 'F1'),
+        ('_pass@1', 'Pass@1'),
+    )
+    suffix = next(
+        ((token, name) for token, name in metric_names if lowered.endswith(token)),
+        None,
+    )
+    if suffix:
+        return f'{benchmark} {suffix[1]}'
+    return benchmark
+
+
+def pretty_metric_section(metric: str) -> str:
+    """Assign a regular-summary metric to its reference CSV section."""
+    lowered = metric.lower()
+    if is_flores_metric(lowered):
+        if any(token in lowered for token in ('_to_grn', '_to_gn')):
+            return 'TRANSLATION TO GN'
+        return 'TRANSLATION FROM GN'
+    if metric in PERPLEXITY_METRIC_NAMES or any(
+        token in lowered for token in ('perplexity', 'bits_per_byte')
+    ):
+        return 'Guarani benchmarks'
+    return {
+        'gn': 'Guarani benchmarks',
+        'es': 'Spanish benchmarks',
+        'en': 'English benchmarks',
+    }[report_metric_language(metric)]
+
+
+def pretty_language_average(
+    variants: list[dict[str, Any]], language: str
+) -> tuple[list[float | None], list[float | None]]:
+    """Calculate language average scores and base-relative percentage gains."""
+    base_rows = {
+        str(row.get('model_key')): row
+        for row in variants
+        if row.get('variant') == 'base'
+    }
+    scores: list[float | None] = []
+    gains: list[float | None] = []
+    for row in variants:
+        average = language_average_score(row, language)
+        # The language-average helper reports 0-100; this CSV keeps the
+        # evaluation summary's native 0-1 scale.
+        score = average / 100 if average is not None else None
+        scores.append(score)
+
+        base_row = base_rows.get(str(row.get('model_key')))
+        base_average = language_average_score(base_row, language) if base_row else None
+        base_score = base_average / 100 if base_average is not None else None
+        if row.get('variant') == 'base' or score is None or base_score is None:
+            gains.append(None)
+        else:
+            gains.append(percentage_improvement(score, base_score, 'accuracy'))
+
+    return scores, gains
+
+
+def pretty_report_csv(
+    path: str,
+    rows: list[dict[str, Any]],
+    metrics: list[str],
+    sample_counts: dict[str, int],
+) -> None:
+    """Write grouped benchmark scores, their CIs, and base-relative gains."""
+    variants = unique_variant_rows(rows)
+    variants.sort(
+        key=lambda row: (
+            str(row.get('model_key') or ''),
+            row.get('variant') != 'base',
+            str(row.get('training_method') or ''),
+            str(row.get('corpus') or ''),
+            str(row.get('lora_rank') or ''),
+        )
+    )
+    labels = pretty_variant_labels(variants)
+    metric_names = [
+        metric
+        for metric in metrics
+        if not metric.endswith('_gain_base')
+        and not ('bbh' in metric.lower() and 'cot_fewshot' in metric.lower())
+        and any(is_number(row.get(metric)) for row in variants)
+    ]
+    metric_names.sort(key=report_metric_sort_key)
+
+    section_order = (
+        'TRANSLATION TO GN',
+        'TRANSLATION FROM GN',
+        'Guarani benchmarks',
+        'Spanish benchmarks',
+        'English benchmarks',
+    )
+    grouped: dict[str, list[str]] = {section: [] for section in section_order}
+    for metric in metric_names:
+        grouped[pretty_metric_section(metric)].append(metric)
+
+    with open(path, 'w', encoding='utf-8', newline='') as handle:
+        writer = csv.writer(handle)
+        header = ['Metric']
+        for label in labels:
+            header.extend([label, f'CI {label}'])
+        writer.writerow(header)
+        for section in section_order:
+            section_metrics = grouped[section]
+            if not section_metrics:
+                continue
+
+            if section == 'Guarani benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'GUARANI BENCHMARKS ({benchmark_count})'
+            elif section == 'Spanish benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'SPANISH BENCHMARKS ({benchmark_count})'
+            elif section == 'English benchmarks':
+                benchmark_count = len(
+                    {
+                        benchmark_name_for_metric(metric)
+                        for metric in section_metrics
+                    }
+                )
+                heading = f'ENGLISH BENCHMARKS ({benchmark_count})'
+            else:
+                heading = section
+
+            writer.writerow([heading, '', *([''] * len(variants))])
+
+            for metric in section_metrics:
+                label = pretty_metric_label(metric)
+                score_cells = [label]
+                for row in variants:
+                    score = row.get(metric)
+                    if not is_number(score):
+                        score_cells.extend(['', ''])
+                        continue
+                    displayed = float(f'{float(score):.3f}')
+                    stderr = metric_standard_error(row, metric)
+                    if stderr is None:
+                        ci = ''
+                    else:
+                        margin = 1.96 * stderr
+                        ci = f'[{displayed - margin:.3f}, {displayed + margin:.3f}]'
+                    score_cells.extend([f'{displayed:.3f}', ci])
+                writer.writerow(score_cells)
+                gain_column = f'{metric}_gain_base'
+                if any(gain_column in row for row in variants):
+                    gain_cells = [f'Gain {label}']
+                    for row in variants:
+                        gain_cells.extend(
+                            [
+                                '--'
+                                if row.get('variant') == 'base'
+                                else f'{float(row[gain_column]):.2f}%'
+                                if is_number(row.get(gain_column))
+                                else '',
+                                '',
+                            ]
+                        )
+                    writer.writerow(gain_cells)
+
+            language = {
+                'Guarani benchmarks': 'gn',
+                'Spanish benchmarks': 'es',
+                'English benchmarks': 'en',
+            }.get(section)
+            if language:
+                averages, average_gains = pretty_language_average(variants, language)
+                average_cells = ['Average']
+                for row, score in zip(variants, averages):
+                    stderr = language_average_standard_error(row, language)
+                    if score is None or stderr is None:
+                        average_cells.extend(
+                            [f'{score:.3f}' if score is not None else '', '']
+                        )
+                        continue
+                    displayed = float(f'{score:.3f}')
+                    margin = 1.96 * (stderr / 100)
+                    average_cells.extend(
+                        [
+                            f'{displayed:.3f}',
+                            f'[{displayed - margin:.3f}, {displayed + margin:.3f}]',
+                        ]
+                    )
+                writer.writerow(average_cells)
+                average_gain_cells = ['Average gain']
+                for row, gain in zip(variants, average_gains):
+                    average_gain_cells.extend(
+                        [
+                            '--'
+                            if row.get('variant') == 'base'
+                            else f'{gain:.2f}%'
+                            if gain is not None
+                            else '',
+                            '',
+                        ]
+                    )
+                writer.writerow(average_gain_cells)
+            writer.writerow([])
 
 def model_column_label(row: dict[str, Any]) -> str:
     """Build a display label for one model variant column.
@@ -1101,6 +2106,64 @@ def benchmark_score(row: dict[str, Any], spec: dict[str, Any]) -> float | None:
     return float(value) * float(spec['scale'])
 
 
+def selected_benchmark_metric(
+    row: dict[str, Any], spec: dict[str, Any]
+) -> str | None:
+    """Return the first available metric selected for a benchmark."""
+    return next(
+        (metric for metric in spec['metrics'] if is_number(row.get(metric))), None
+    )
+
+
+def metric_standard_error(row: dict[str, Any], metric: str) -> float | None:
+    """Return a finite standard error matched to a score metric."""
+    value = row.get(f'{metric}_stderr')
+    return float(value) if is_number(value) else None
+
+
+def benchmark_standard_error(row: dict[str, Any], spec: dict[str, Any]) -> float | None:
+    """Return the selected benchmark metric's stderr on the benchmark scale."""
+    metric = selected_benchmark_metric(row, spec)
+    if metric is None:
+        return None
+    stderr = metric_standard_error(row, metric)
+    if stderr is None:
+        return None
+    return stderr * float(spec['scale'])
+
+
+def average_standard_error(
+    row: dict[str, Any], specs: list[dict[str, Any]]
+) -> float | None:
+    """Propagate stderr values for an equal-weight mean of benchmark scores.
+
+    Assumes independent benchmark estimates. Returns None if any included score
+    has no finite stderr.
+    """
+    standard_errors = []
+    for spec in specs:
+        if not include_in_language_average(spec):
+            continue
+        metric = selected_benchmark_metric(row, spec)
+        if metric is None:
+            continue
+        stderr = benchmark_standard_error(row, spec)
+        if stderr is None:
+            return None
+        standard_errors.append(stderr)
+
+    if not standard_errors:
+        return None
+    return math.sqrt(sum(stderr**2 for stderr in standard_errors)) / len(standard_errors)
+
+
+def include_in_language_average(spec: dict[str, Any]) -> bool:
+    """Keep primary benchmarks and FLORES+ chrF++, excluding FLORES+ BLEU."""
+    if not str(spec['label']).startswith('FLORES+'):
+        return True
+    return any('chrf' in str(metric).lower() for metric in spec['metrics'])
+
+
 def format_benchmark_score(value: Any) -> str:
     """Format one benchmark table score.
 
@@ -1114,6 +2177,90 @@ def format_benchmark_score(value: Any) -> str:
         return ''
 
     return f'{float(value):.2f}'
+
+
+def displayed_score(value: Any) -> float | None:
+    """Return a score rounded to the precision shown in the benchmark table."""
+    if not is_number(value):
+        return None
+
+    return float(format_benchmark_score(value))
+
+
+def model_display_name(model_key: str) -> str:
+    """Format a model key as a compact human-readable title."""
+    words = []
+    for token in re.split(r'[_-]+', model_key):
+        match = re.fullmatch(r'(\d+)([a-zA-Z]+)', token)
+        if match:
+            words.append(f'{match.group(1)}{match.group(2).upper()}')
+        else:
+            words.append(token[:1].upper() + token[1:])
+    return ' '.join(words)
+
+
+def benchmark_report_heading(
+    model_keys: tuple[str, ...], variants: list[dict[str, Any]]
+) -> str:
+    """Build a readable heading from model keys and training methods."""
+    model_names = list(dict.fromkeys(model_display_name(key) for key in model_keys))
+    methods = list(
+        dict.fromkeys(
+            str(row.get('training_method'))
+            for row in variants
+            if row.get('training_method') and row.get('training_method') != 'base'
+        )
+    )
+    method_names = [
+        {'full': 'Full CPT', 'lora': 'LoRA'}.get(method, method.replace('_', ' ').title())
+        for method in methods
+    ]
+    heading = ', '.join(model_names)
+    if method_names:
+        heading += f" ({', '.join(method_names)})"
+    return heading
+
+
+def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
+    """Return concise corpus labels with qualifiers where labels collide."""
+    labels = []
+    for row in variants:
+        if row.get('variant') == 'base':
+            labels.append('base')
+            continue
+        corpus = str(row.get('corpus') or '')
+        variant = str(row.get('variant') or 'unknown')
+        labels.append(corpus.split('_', 1)[0] if corpus else variant)
+
+    for index, (label, row) in enumerate(zip(labels.copy(), variants)):
+        if labels.count(label) <= 1:
+            continue
+        if row.get('variant') == 'base':
+            continue
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            rank = row.get('lora_rank')
+            qualifier = f'LoRA r{rank}' if rank else 'LoRA'
+        elif method == 'full':
+            qualifier = 'Full CPT'
+        else:
+            qualifier = method.title() if method else str(row.get('variant'))
+        labels[index] = f'{label} ({qualifier})'
+
+    for index, label in enumerate(labels.copy()):
+        if labels.count(label) > 1:
+            labels[index] = f'{label} ({model_display_name(str(variants[index].get("model_key") or "model"))})'
+    return labels
+
+
+def score_point_difference(value: Any, base_value: Any) -> float | None:
+    """Compute the difference between the displayed score and base score."""
+    score = displayed_score(value)
+    base_score = displayed_score(base_value)
+    if score is None or base_score is None:
+        return None
+
+    return score - base_score
 
 
 def benchmark_specs_for_language(language: str) -> list[dict[str, Any]]:
@@ -1136,41 +2283,150 @@ def benchmark_specs_for_language(language: str) -> list[dict[str, Any]]:
 
 
 def benchmark_table(
-    rows: list[dict[str, Any]], language: str
+    rows: list[dict[str, Any]],
+    language: str,
+    sample_counts: dict[str, int],
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Build a benchmark-by-model markdown table.
 
     Args:
         rows: Summary rows.
         language: Language code to include, or all.
+        sample_counts: Evaluated item counts keyed by metric name.
 
     Returns:
         Table rows and column names.
     """
     variants = unique_variant_rows(rows)
-    model_labels = [model_column_label(row) for row in variants]
+    model_labels = benchmark_model_labels(variants)
     table_rows = []
-    scores_by_model: dict[str, list[float]] = {label: [] for label in model_labels}
+    specs = benchmark_specs_for_language(language)
+    translation_specs = [
+        spec
+        for spec in specs
+        if str(spec['label']).startswith('FLORES+')
+        and any('chrf' in str(metric).lower() for metric in spec['metrics'])
+    ]
+    language_specs = {
+        code: [
+            spec
+            for spec in specs
+            if code in spec.get('languages', ())
+            and not str(spec['label']).startswith('FLORES+')
+        ]
+        for code in ('gn', 'es', 'en')
+    }
+    language_specs['gn'].extend(translation_specs)
+    bases = {
+        str(row.get('model_key')): row
+        for row in variants
+        if row.get('variant') == 'base'
+    }
 
-    for spec in benchmark_specs_for_language(language):
-        table_row = {'benchmark': spec['label']}
-        has_score = False
+    for code, category_specs in language_specs.items():
+        category_specs = [
+            spec
+            for spec in category_specs
+            if any(benchmark_score(row, spec) is not None for row in variants)
+        ]
+        if not category_specs:
+            continue
+        section_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[code]
+        table_rows.append(
+            {'benchmark': f'**{section_name}**', '_section': True}
+        )
+        category_scores: dict[str, list[float]] = {
+            label: [] for label in model_labels
+        }
+        for spec in category_specs:
+            table_row = {'benchmark': spec['label']}
+            has_score = False
+            differences = {}
+            standard_errors = {}
+            for variant_row, model_label in zip(variants, model_labels):
+                score = benchmark_score(variant_row, spec)
+                table_row[model_label] = score
+                standard_errors[model_label] = benchmark_standard_error(
+                    variant_row, spec
+                )
+                if score is not None:
+                    category_scores[model_label].append(score)
+                    has_score = True
+                base_row = bases.get(str(variant_row.get('model_key')))
+                base_score = benchmark_score(base_row, spec) if base_row else None
+                differences[model_label] = (
+                    None
+                    if variant_row.get('variant') == 'base'
+                    else score_point_difference(score, base_score)
+                )
+
+            if has_score:
+                table_row['_differences'] = differences
+                table_row['_standard_errors'] = standard_errors
+                table_rows.append(table_row)
+
+        average_row = {'benchmark': 'Average'}
+        average_scores = {
+            label: sum(scores) / len(scores) if scores else None
+            for label, scores in category_scores.items()
+        }
+        average_row.update(average_scores)
+        average_differences = {}
         for variant_row, model_label in zip(variants, model_labels):
-            score = benchmark_score(variant_row, spec)
-            table_row[model_label] = score
-            if score is not None:
-                scores_by_model[model_label].append(score)
-                has_score = True
+            base_row = bases.get(str(variant_row.get('model_key')))
+            # Use each model's base average, then compare rounded display values.
+            if base_row is None or not category_scores.get(model_label):
+                base_average = None
+            else:
+                base_values = [
+                    score
+                    for spec in category_specs
+                    if (score := benchmark_score(base_row, spec)) is not None
+                ]
+                base_average = (
+                    sum(base_values) / len(base_values) if base_values else None
+                )
+            average_differences[model_label] = (
+                None
+                if variant_row.get('variant') == 'base'
+                else score_point_difference(average_scores[model_label], base_average)
+            )
+        average_row['_differences'] = average_differences
+        average_row['_standard_errors'] = {
+            model_label: average_standard_error(
+                variant_row, category_specs
+            )
+            for variant_row, model_label in zip(variants, model_labels)
+        }
+        table_rows.append(average_row)
 
-        if has_score:
-            table_rows.append(table_row)
+    columns = ['benchmark']
+    for variant, model_label in zip(variants, model_labels):
+        columns.append(model_label)
+        if variant.get('variant') != 'base':
+            columns.append(f'Gain {model_label}')
+    return table_rows, columns
 
-    average_row = {'benchmark': 'Average'}
-    for model_label, scores in scores_by_model.items():
-        average_row[model_label] = sum(scores) / len(scores) if scores else None
 
-    table_rows.append(average_row)
-    return table_rows, ['benchmark'] + model_labels
+def benchmark_sample_count(
+    variants: list[dict[str, Any]],
+    spec: dict[str, Any],
+    sample_counts: dict[str, int],
+) -> int | None:
+    """Return the recorded item count for the metric used by a benchmark."""
+    counts = []
+    for variant in variants:
+        metric = next(
+            (
+                name
+                for name in spec['metrics']
+                if is_number(variant.get(name))
+            ),
+            None,
+        )
+        if metric is not None and metric in sample_counts:
+            counts.append(sample_counts[metric])
+    return max(counts) if counts else None
 
 
 def language_average_score(row: dict[str, Any], language: str) -> float | None:
@@ -1186,12 +2442,20 @@ def language_average_score(row: dict[str, Any], language: str) -> float | None:
     scores = [
         score
         for spec in benchmark_specs_for_language(language)
+        if include_in_language_average(spec)
         if (score := benchmark_score(row, spec)) is not None
     ]
     if not scores:
         return None
 
     return sum(scores) / len(scores)
+
+
+def language_average_standard_error(
+    row: dict[str, Any], language: str
+) -> float | None:
+    """Return propagated stderr for the equal-weight language benchmark mean."""
+    return average_standard_error(row, benchmark_specs_for_language(language))
 
 
 def format_gain(value: Any, is_base: bool) -> str:
@@ -1212,6 +2476,40 @@ def format_gain(value: Any, is_base: bool) -> str:
     return f'{float(value):+.2f}'
 
 
+def write_dataset_configuration_notes(
+    handle: Any, heading: str = 'Dataset configurations'
+) -> None:
+    """Append the variant reference key to a report markdown file."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    manifest_dir = os.path.join(project_root, 'data', 'manifests')
+    handle.write(f'\n## {heading}\n')
+    for key, description in DATASET_CONFIGURATION_NOTES:
+        # Manifest names use the corpus key (for example C1_kuatia), not the
+        # presentation label. Resolve by the C-number to support all labels.
+        candidates = [
+            os.path.join(manifest_dir, name)
+            for name in os.listdir(manifest_dir)
+            if name.startswith(f'{key}_') and name.endswith('.manifest.json')
+        ] if os.path.isdir(manifest_dir) else []
+        token_count = None
+        if candidates:
+            try:
+                with open(candidates[0], encoding='utf-8') as manifest_file:
+                    manifest = json.load(manifest_file)
+                count = manifest.get('splits', {}).get('train', {}).get('tokens')
+                if is_number(count):
+                    token_count = int(count)
+            except (OSError, ValueError, TypeError):
+                pass
+        token_text = f' ({token_count:,} tokens)' if token_count is not None else ''
+        handle.write(f'* {key}: {description}{token_text}\n')
+    handle.write(
+        '\n>[!Note]\n'
+        '> Token totals are the number of tokens in each configuration’s training '
+        'split, as recorded in its data manifest.\n'
+    )
+
+
 def language_average_table(
     rows: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], list[str]]:
@@ -1229,13 +2527,18 @@ def language_average_table(
         for row in variants
         if row.get('variant') == 'base'
     }
+    variant_labels = benchmark_model_labels(variants)
     table_rows = []
 
-    for row in variants:
+    for row, variant_label in zip(variants, variant_labels):
         model_key = str(row.get('model_key'))
         base_row = base_by_model.get(model_key)
         is_base = row.get('variant') == 'base'
-        table_row = {'model': model_column_label(row)}
+        table_row = {
+            'model_key': model_key,
+            'variant': variant_label,
+            'training_method': row.get('training_method'),
+        }
 
         for language, prefix in (
             ('gn', 'guarani'),
@@ -1254,19 +2557,23 @@ def language_average_table(
                 else None
             )
             table_row[f'{prefix}_average'] = score
-            table_row[f'{prefix}_gain_vs_base'] = gain
+            # Keep the stderr available to callers without adding report columns.
+            table_row[f'{prefix}_average_stderr'] = (
+                language_average_standard_error(row, language)
+            )
+            table_row[f'{prefix}_gain_base'] = gain
             table_row[f'{prefix}_is_base'] = is_base
 
         table_rows.append(table_row)
 
     return table_rows, [
-        'model',
+        'variant',
         'guarani_average',
-        'guarani_gain_vs_base',
+        'guarani_gain_base',
         'english_average',
-        'english_gain_vs_base',
+        'english_gain_base',
         'spanish_average',
-        'spanish_gain_vs_base',
+        'spanish_gain_base',
     ]
 
 
@@ -1284,51 +2591,406 @@ def write_language_average_markdown(
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
-        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        model_keys = sorted(
+            {str(row.get('model_key')) for row in rows if row.get('model_key')}
+        )
+        if model_keys:
+            heading = benchmark_report_heading(tuple(model_keys), rows)
+            handle.write(f'# {heading}\n\n')
+        ci_available = {
+            column: any(
+                is_number(row.get(column))
+                and is_number(row.get(f'{column}_stderr'))
+                for row in rows
+            )
+            for column in columns
+            if column.endswith('_average')
+        }
+        display_columns = []
+        for column in columns:
+            label = column.removesuffix('_base').replace('_', ' ').title()
+            if ci_available.get(column, False):
+                label += ' (-95% CI, +95% CI)'
+            display_columns.append(label)
+        handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        column_maxima = {
+            column: max(
+                (row.get(column) for row in rows if is_number(row.get(column))),
+                default=None,
+            )
+            for column in columns
+            if column != 'variant'
+        }
         for row in rows:
             values = []
             for column in columns:
-                if column == 'model':
+                if column == 'variant':
                     value = str(row.get(column, '')).replace('|', '\\|')
-                elif column.endswith('_gain_vs_base'):
-                    prefix = column.removesuffix('_gain_vs_base')
+                elif column.endswith('_gain_base'):
+                    prefix = column.removesuffix('_gain_base')
                     value = format_gain(row.get(column), bool(row.get(f'{prefix}_is_base')))
                 else:
                     value = format_benchmark_score(row.get(column))
+                    stderr = row.get(f'{column}_stderr')
+                    if is_number(row.get(column)) and is_number(stderr):
+                        score = float(row[column])
+                        margin = 1.96 * float(stderr)
+                        value += f' ({score - margin:.2f}, {score + margin:.2f})'
 
+                if (
+                    column != 'variant'
+                    and is_number(row.get(column))
+                    and row[column] == column_maxima[column]
+                ):
+                    value = f'**{value}**'
                 values.append(value)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
 
+        if any(ci_available.values()):
+            handle.write(
+                '\n>[!Note]\n'
+                '> 95% confidence intervals are approximate normal intervals computed '
+                'as the average score ± 1.96 times its propagated standard error. '
+                'Average standard errors assume independent benchmark estimates. '
+                'An interval is omitted when any included benchmark lacks a finite '
+                'standard error in the evaluation output. '
+                'FLORES+ chrF++ directions contribute to both their source and target '
+                'language averages; FLORES+ BLEU is excluded.\n'
+            )
+        write_dataset_configuration_notes(handle, 'Variant reference')
+
 
 def write_benchmark_markdown(
-    path: str, rows: list[dict[str, Any]], columns: list[str]
+    path: str,
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    model_keys: tuple[str, ...],
+    variants: list[dict[str, Any]],
 ) -> None:
-    """Write a rounded benchmark-by-model markdown table.
+    """Write the grouped, rounded benchmark-by-model markdown table.
 
     Args:
         path: Destination markdown path.
         rows: Benchmark table rows.
         columns: Output columns.
+        model_keys: Model keys included in the report.
+        variants: Unique model variants included in the report.
 
     Returns:
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
-        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        if model_keys:
+            heading = benchmark_report_heading(model_keys, variants)
+            handle.write(f'# {heading}\n\n')
+        display_columns = [
+            f'{column} (-95% CI, +95% CI)'
+            if column != 'benchmark' and not column.startswith('Gain ')
+            else column
+            for column in columns
+        ]
+        handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
-            values = []
-            for column in columns:
-                if column == 'benchmark':
-                    value = str(row.get(column, '')).replace('|', '\\|')
-                else:
-                    value = format_benchmark_score(row.get(column))
+            label = str(row.get('benchmark', '')).replace('|', '\\|')
+            if row.get('_section'):
+                values = [label] + [''] * (len(columns) - 1)
+                handle.write('| ' + ' | '.join(values) + ' |\n')
+                if label in {'**Spanish**', '**English**'}:
+                    handle.write('| ' + ' | '.join(display_columns) + ' |\n')
+                    handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+                continue
 
-                values.append(value)
+            score_columns = [
+                column for column in columns[1:] if not column.startswith('Gain ')
+            ]
+            scores = [displayed_score(row.get(column)) for column in score_columns]
+            maximum = max((score for score in scores if score is not None), default=None)
+            differences = row.get('_differences', {})
+            standard_errors = row.get('_standard_errors', {})
+            values = [label]
+            for column in columns[1:]:
+                if column.startswith('Gain '):
+                    score_column = column.removeprefix('Gain ')
+                    difference = differences.get(score_column)
+                    if difference is None:
+                        values.append('')
+                    else:
+                        values.append(f'{difference:+.2f}')
+                    continue
+
+                score = displayed_score(row.get(column))
+                if score is None:
+                    values.append('')
+                    continue
+                rendered = format_benchmark_score(score)
+                stderr = standard_errors.get(column)
+                if is_number(stderr):
+                    margin = 1.96 * float(stderr)
+                    rendered += f' ({score - margin:.2f}, {score + margin:.2f})'
+                if score == maximum:
+                    rendered = f'**{rendered}**'
+                values.append(rendered)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
+
+        handle.write(
+            '\n>[!Note]\n'
+            '> 95% confidence intervals are approximate normal intervals computed '
+            'as the score or average ± 1.96 times its standard error. Average '
+            'standard errors assume independent benchmark estimates. An interval '
+            'is omitted when the evaluation output lacks a finite standard error. '
+            'Gain columns show signed score-point differences from the corresponding '
+            'base model; average gains use displayed rounded scores. FLORES+ BLEU '
+            'is excluded; FLORES+ chrF++ is reported by translation direction.\n'
+        )
+        write_dataset_configuration_notes(handle, 'Variant reference')
+
+
+def technical_sheet_benchmark_name(task_name: str) -> str:
+    """Build a readable benchmark label from an lm-eval task name."""
+    lowered = task_name.lower()
+    if 'flores' in lowered:
+        directions = (
+            ('eng_to_grn', 'English → Guarani'),
+            ('en_to_gn', 'English → Guarani'),
+            ('grn_to_eng', 'Guarani → English'),
+            ('gn_to_en', 'Guarani → English'),
+            ('grn_to_spa', 'Guarani → Spanish'),
+            ('gn_to_es', 'Guarani → Spanish'),
+            ('spa_to_grn', 'Spanish → Guarani'),
+            ('es_to_gn', 'Spanish → Guarani'),
+        )
+        direction = next((label for token, label in directions if token in lowered), None)
+        return f'FLORES+ translation ({direction})' if direction else 'FLORES+ translation'
+    if 'global_piqa' in lowered:
+        return 'Global PIQA'
+    if 'truthfulqa' in lowered:
+        return 'TruthfulQA MC1'
+    if lowered.startswith('bbh'):
+        subtask = lowered.removeprefix('bbh_cot_fewshot_').removeprefix('bbh_')
+        return 'BBH' if not subtask else f'BBH: {subtask.replace("_", " ").title()}'
+    if 'coreguapa' in lowered:
+        return 'CoreGuapa Perplexity'
+    return benchmark_name_for_metric(f'{task_name}_acc')
+
+
+def technical_sheet_language(task_name: str, config: dict[str, Any]) -> str:
+    """Infer benchmark language or translation direction from task metadata."""
+    lowered = task_name.lower()
+    directions = (
+        ('eng_to_grn', 'English → Guarani'),
+        ('en_to_gn', 'English → Guarani'),
+        ('grn_to_eng', 'Guarani → English'),
+        ('gn_to_en', 'Guarani → English'),
+        ('grn_to_spa', 'Guarani → Spanish'),
+        ('gn_to_es', 'Guarani → Spanish'),
+        ('spa_to_grn', 'Spanish → Guarani'),
+        ('es_to_gn', 'Spanish → Guarani'),
+    )
+    direction = next((label for token, label in directions if token in lowered), None)
+    if direction:
+        return direction
+
+    dataset_name = str(config.get('dataset_name') or '').lower()
+    if (
+        lowered.startswith('guarani_')
+        or '_gn' in lowered
+        or 'grn_latn' in dataset_name
+        or 'gug_latn' in dataset_name
+        or dataset_name == 'gn'
+    ):
+        return 'Guarani (GN)'
+    if (
+        lowered.startswith('spanish_')
+        or '_es' in lowered
+        or 'spa_latn' in lowered
+        or 'spai' in lowered
+        or dataset_name in {'es', 'spa', 'spa_latn'}
+    ):
+        return 'Spanish (ES)'
+    if 'eng_latn' in lowered or dataset_name in {'en', 'eng', 'eng_latn'}:
+        return 'English (EN)'
+    return 'English (EN)'
+
+
+def technical_sheet_metrics(task_metrics: dict[str, Any]) -> str:
+    """Return the metric names with numeric results for one LM-Eval task."""
+    metrics = []
+    for result_name, value in task_metrics.items():
+        metric = str(result_name).split(',', 1)[0]
+        if (
+            metric in {'name', 'alias', 'sample_len'}
+            or metric.endswith('_stderr')
+            or not is_number(value)
+        ):
+            continue
+        if metric == 'chrf_plus_plus':
+            metric = 'chrF++'
+        if metric not in metrics:
+            metrics.append(metric)
+    return ', '.join(metrics) if metrics else 'not recorded'
+
+
+def technical_sheet_rows(
+    evaluation_root: str,
+    model_keys: tuple[str, ...],
+    profile_names: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """Collect benchmark split, few-shot, and sample-count metadata from results."""
+    records: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for result_path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
+        path_metadata = metadata_from_path(result_path, evaluation_root)
+        metadata = data.get('metadata', {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        model_key = str(metadata.get('model_key') or path_metadata['model_key'])
+        variant = str(metadata.get('variant') or path_metadata['variant'])
+        parsed_variant = parse_variant(variant)
+        configs = data.get('configs', {})
+        results = data.get('results', {})
+        shots = data.get('n-shot', {})
+        samples = data.get('n-samples', {})
+        if not all(isinstance(value, dict) for value in (configs, results, shots, samples)):
+            continue
+
+        for task_name, task_metrics in results.items():
+            config = configs.get(task_name)
+            if not isinstance(config, dict) or not isinstance(task_metrics, dict):
+                continue
+            count_info = samples.get(task_name, {})
+            count = (
+                count_info.get('effective')
+                if isinstance(count_info, dict)
+                else task_metrics.get('sample_len')
+            )
+            if not is_number(count):
+                count = task_metrics.get('sample_len')
+            num_fewshot = shots.get(task_name, config.get('num_fewshot'))
+            score_split = config.get('test_split') or config.get('validation_split')
+            record = {
+                'model_key': model_key,
+                'variant': variant,
+                'training_method': parsed_variant['training_method'],
+                'corpus': parsed_variant['corpus'],
+                'lora_rank': parsed_variant['lora_rank'],
+                'profile': path_metadata['profile'],
+                'suite': path_metadata['suite'],
+                'task_name': str(task_name),
+                'benchmark': technical_sheet_benchmark_name(str(task_name)),
+                'language': technical_sheet_language(str(task_name), config),
+                'metric': technical_sheet_metrics(task_metrics),
+                'instances': count,
+                'num_fewshot': num_fewshot,
+                'score_split': score_split or 'not recorded',
+            }
+            key = tuple(record[field] for field in (
+                'model_key', 'variant', 'profile', 'suite', 'task_name',
+                'instances', 'num_fewshot', 'score_split',
+            ))
+            records[key] = record
+
+    return sorted(
+        records.values(),
+        key=lambda row: (
+            str(row['model_key']), str(row['variant']), str(row['profile']),
+            str(row['suite']), str(row['task_name']),
+        ),
+    )
+
+
+def training_method_label(value: Any) -> str:
+    """Return a readable training method name."""
+    return {'base': 'Base', 'full': 'Full CPT', 'lora': 'LoRA'}.get(
+        str(value).lower(), str(value or 'Unknown').replace('_', ' ').title()
+    )
+
+
+def write_technical_sheet(
+    path: str,
+    variants: list[dict[str, Any]],
+    benchmark_rows: list[dict[str, Any]],
+) -> None:
+    """Write model/training and benchmark configuration details."""
+    variant_labels = benchmark_model_labels(variants)
+    with open(path, 'w', encoding='utf-8') as handle:
+        handle.write('# Evaluation Information Sheet\n\n')
+        handle.write('## Model variants\n\n')
+        handle.write('| Model | Variant | Training Method | Training Data | LoRA Rank |\n')
+        handle.write('| --- | --- | --- | --- | --- |\n')
+        for row, label in zip(variants, variant_labels):
+            corpus = str(row.get('corpus') or '')
+            corpus_key = corpus.split('_', 1)[0] if corpus else ''
+            corpus_description = dict(DATASET_CONFIGURATION_NOTES).get(corpus_key, corpus)
+            rank = row.get('lora_rank')
+            handle.write(
+                '| '
+                + ' | '.join(
+                    [
+                        model_display_name(str(row.get('model_key') or '')),
+                        label,
+                        training_method_label(row.get('training_method')),
+                        corpus_description or '',
+                        str(rank) if rank else '',
+                    ]
+                )
+                + ' |\n'
+            )
+
+        handle.write('\n## Benchmarks\n\n')
+        columns = ('Benchmark', 'Language', 'Metric', 'Instances', 'Shots', 'Score Split')
+        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        language_order = {
+            'Guarani (GN)': 0,
+            'Spanish (ES)': 1,
+            'English (EN)': 2,
+            'Guarani → Spanish': 3,
+            'Spanish → Guarani': 4,
+            'English → Guarani': 5,
+            'Guarani → English': 6,
+        }
+        unique_rows = {}
+        for row in benchmark_rows:
+            key = (
+                row.get('benchmark'),
+                row.get('language'),
+                row.get('metric'),
+                row.get('instances'),
+                row.get('num_fewshot'), row.get('score_split'),
+            )
+            unique_rows.setdefault(key, row)
+        sorted_rows = sorted(
+            unique_rows.values(),
+            key=lambda row: (
+                str(row.get('benchmark') or '').casefold(),
+                language_order.get(str(row.get('language')), 99),
+                str(row.get('language') or '').casefold(),
+            ),
+        )
+        for row in sorted_rows:
+            values = [
+                str(row.get('benchmark') or ''),
+                str(row.get('language') or ''),
+                str(row.get('metric') or 'not recorded'),
+                f"{int(row['instances']):,}"
+                if is_number(row.get('instances'))
+                else 'not recorded',
+                str(row.get('num_fewshot')) if is_number(row.get('num_fewshot')) else 'not recorded',
+                str(row.get('score_split') or 'not recorded'),
+            ]
+            handle.write('| ' + ' | '.join(value.replace('|', '\\|') for value in values) + ' |\n')
+
+        handle.write(
+            '\n>[!Note]\n'
+            '> Instances are the effective examples evaluated by LM-Eval; shots are '
+            'the configured few-shot examples. Score split is the dataset split used '
+            'to calculate the benchmark metrics.\n'
+        )
 
 
 def sorted_variant_labels(rows: list[dict[str, Any]]) -> list[str]:
@@ -1361,10 +3023,21 @@ def perplexity_metric_label(eval_corpus: Any, metric_label: str) -> str:
     Returns:
         Perplexity table row label.
     """
-    if eval_corpus is None:
-        return metric_label
+    prefix = '' if str(eval_corpus).lower() == 'coreguapa' else f'{eval_corpus} '
+    return re.sub(r'\bcoreguapa\b\s*', '', f'{prefix}{metric_label}', flags=re.IGNORECASE).strip()
 
-    return f'{eval_corpus} {metric_label}'
+
+def perplexity_variant_label(row: dict[str, Any]) -> str:
+    """Return a concise variant label for perplexity comparison columns."""
+    variant = str(row.get('variant') or '')
+    if variant.lower() == 'base':
+        return 'base'
+    match = re.search(r'(?:^|_)C\d+(?:_|$)', variant)
+    if match:
+        return match.group(0).strip('_')
+    corpus = str(row.get('corpus') or '')
+    match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
+    return match.group(0).strip('_') if match else variant.removeprefix('full_')
 
 
 def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -1376,7 +3049,15 @@ def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], 
     Returns:
         Table rows and column names.
     """
-    model_labels = sorted_variant_labels(rows)
+    model_labels = []
+    label_by_model_column = {}
+    for row in unique_variant_rows(rows):
+        original_label = model_column_label(row)
+        display_label = perplexity_variant_label(row)
+        if display_label in model_labels:
+            display_label = f'{display_label} ({model_display_name(str(row.get("model_key") or "model"))})'
+        model_labels.append(display_label)
+        label_by_model_column[original_label] = display_label
     eval_corpora = sorted(
         {
             row.get('eval_corpus')
@@ -1393,7 +3074,11 @@ def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], 
             for row in rows
             if row.get('eval_corpus') == eval_corpus
         ]
-        rows_by_model = {model_column_label(row): row for row in corpus_rows}
+        rows_by_model = {
+            label_by_model_column[model_column_label(row)]: row
+            for row in corpus_rows
+            if model_column_label(row) in label_by_model_column
+        }
         for metric, metric_label in PERPLEXITY_METRICS:
             table_row = {
                 'perplexity_metric': perplexity_metric_label(eval_corpus, metric_label)
@@ -1411,7 +3096,10 @@ def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], 
 
 
 def write_perplexity_markdown(
-    path: str, rows: list[dict[str, Any]], columns: list[str]
+    path: str,
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    variants: list[dict[str, Any]] | None = None,
 ) -> None:
     """Write a rounded perplexity-by-model markdown table.
 
@@ -1424,19 +3112,46 @@ def write_perplexity_markdown(
         None.
     """
     with open(path, 'w', encoding='utf-8') as handle:
-        handle.write('| ' + ' | '.join(columns) + ' |\n')
+        report_variants = variants or unique_variant_rows(rows)
+        model_keys = tuple(
+            sorted(
+                {
+                    str(row.get('model_key'))
+                    for row in report_variants
+                    if row.get('model_key')
+                }
+            )
+        )
+        if model_keys:
+            handle.write(
+                f'# {benchmark_report_heading(model_keys, report_variants)}\n\n'
+            )
+        display_columns = [
+            'Perplexity metric' if column == 'perplexity_metric' else column
+            for column in columns
+        ]
+        handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
+        score_columns = [column for column in columns if column != 'perplexity_metric']
         for row in rows:
+            present_values = [
+                float(row[column]) for column in score_columns
+                if is_number(row.get(column))
+            ]
+            minimum = min(present_values, default=None)
             values = []
             for column in columns:
                 if column == 'perplexity_metric':
                     value = str(row.get(column, '')).replace('|', '\\|')
                 else:
                     value = format_benchmark_score(row.get(column))
+                    if is_number(row.get(column)) and row[column] == minimum:
+                        value = f'**{value}**'
 
                 values.append(value)
 
             handle.write('| ' + ' | '.join(values) + ' |\n')
+        write_dataset_configuration_notes(handle, 'Variant reference')
 
 
 def output_name_suffix(model_keys: tuple[str, ...]) -> str:
@@ -1467,6 +3182,19 @@ def default_output_name(model_keys: tuple[str, ...], extension: str) -> str:
     return f'{SUMMARY_FILE_PREFIX}_{output_name_suffix(model_keys)}.{extension}'
 
 
+def default_extended_output_name(model_keys: tuple[str, ...], extension: str) -> str:
+    """Build a default filename for the extended evaluation summary."""
+    return (
+        f'{SUMMARY_FILE_PREFIX}_extended_{output_name_suffix(model_keys)}.'
+        f'{extension}'
+    )
+
+
+def default_pretty_output_name(model_keys: tuple[str, ...]) -> str:
+    """Build a default filename for benchmark scores and percentages."""
+    return f'evaluation_percentage_by_benchmark_{output_name_suffix(model_keys)}.csv'
+
+
 def default_benchmark_table_name(language: str) -> str:
     """Build a default benchmark table filename.
 
@@ -1488,7 +3216,7 @@ def default_language_average_table_name() -> str:
     Returns:
         Default language-average markdown filename.
     """
-    return f'{LANGUAGE_AVERAGE_TABLE_FILE_PREFIX}.md'
+    return AVERAGE_SCORE_BY_LANGUAGE_FILE_NAME
 
 
 def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
@@ -1503,16 +3231,16 @@ def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
     return f'{PERPLEXITY_TABLE_FILE_PREFIX}.md'
 
 
-def has_multiple_models(rows: list[dict[str, Any]]) -> bool:
-    """Return whether rows contain more than one model key.
+def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
+    """Return whether rows contain more than one model or variant.
 
     Args:
         rows: Summary rows.
 
     Returns:
-        True when at least two model keys are present.
+        True when at least two distinct model variant columns are present.
     """
-    return len({row.get('model_key') for row in rows}) > 1
+    return len({model_column_label(row) for row in rows}) > 1
 
 
 def analyze_results(
@@ -1529,15 +3257,17 @@ def analyze_results(
         One summary row per model variant and evaluated corpus.
     """
     partial_rows = []
-    for path in discover_result_paths(evaluation_root, model_keys, profile_names):
-        partial_rows.extend(extract_result_records(path, evaluation_root))
+    for path, data in selected_result_artifacts(
+        evaluation_root, model_keys, profile_names
+    ):
+        partial_rows.extend(extract_result_records(path, evaluation_root, data))
 
     return merge_rows(partial_rows)
 
 
 @click.command(
     context_settings={'show_default': True},
-    help='Summarize evaluation results into CSV and markdown tables.',
+    help='Generate benchmark, language-average, and perplexity reports.',
 )
 @click.option(
     '--model',
@@ -1562,17 +3292,7 @@ def analyze_results(
     '--output-dir',
     default=DEFAULT_RESULTS_DIR,
     type=click.Path(file_okay=False),
-    help='Directory where analysis tables are written.',
-)
-@click.option(
-    '--csv-name',
-    default=None,
-    help='CSV output filename.',
-)
-@click.option(
-    '--markdown-name',
-    default=None,
-    help='Markdown output filename.',
+    help='Parent directory for model-specific analysis report directories.',
 )
 @click.option(
     '--benchmark-markdown-name',
@@ -1592,16 +3312,15 @@ def analyze_results(
 )
 @click.option(
     '--language-average-markdown-name',
+    '--average-score-by-language-markdown-name',
     default=None,
-    help='Language-average benchmark markdown output filename.',
+    help='Average-score-by-language markdown output filename.',
 )
 def main(
     model_keys: tuple[str, ...],
     evaluation_root: str,
     profile_names: tuple[str, ...],
     output_dir: str,
-    csv_name: str | None,
-    markdown_name: str | None,
     benchmark_markdown_name: str | None,
     benchmark_language: str,
     perplexity_markdown_name: str | None,
@@ -1613,9 +3332,7 @@ def main(
         model_keys: Model keys to analyze.
         evaluation_root: Evaluation output root directory.
         profile_names: Evaluation profiles to analyze.
-        output_dir: Analysis output directory.
-        csv_name: Optional CSV output filename.
-        markdown_name: Optional markdown output filename.
+        output_dir: Parent directory for model-specific analysis reports.
         benchmark_markdown_name: Optional benchmark markdown output filename.
         benchmark_language: Benchmark language to include.
         perplexity_markdown_name: Optional perplexity markdown output filename.
@@ -1630,23 +3347,31 @@ def main(
             f'No evaluation results found for models: {", ".join(model_keys)}'
         )
 
-    metrics = metric_columns(rows)
-    improvement_columns = add_improvement_columns(rows, metrics)
-    columns = list(IDENTITY_COLUMNS) + metrics + improvement_columns
+    all_metrics = metric_columns(rows)
+    metrics = main_summary_metric_columns(all_metrics)
+    add_improvement_columns(rows, all_metrics)
+    output_dir = os.path.join(output_dir, output_name_suffix(model_keys))
     os.makedirs(output_dir, exist_ok=True)
-    resolved_csv_name = csv_name or default_output_name(model_keys, 'csv')
-    resolved_markdown_name = markdown_name or default_output_name(model_keys, 'md')
     resolved_benchmark_markdown_name = (
         benchmark_markdown_name or default_benchmark_table_name(benchmark_language)
     )
-    csv_path = os.path.join(output_dir, resolved_csv_name)
-    markdown_path = os.path.join(output_dir, resolved_markdown_name)
+    pretty_csv_path = os.path.join(
+        output_dir, default_pretty_output_name(model_keys)
+    )
     benchmark_markdown_path = os.path.join(output_dir, resolved_benchmark_markdown_name)
-    write_csv(csv_path, rows, columns)
-    write_markdown(markdown_path, rows, columns)
-    benchmark_rows, benchmark_columns = benchmark_table(rows, benchmark_language)
+    sample_counts = collect_metric_sample_counts(
+        evaluation_root, model_keys, profile_names
+    )
+    pretty_report_csv(pretty_csv_path, rows, metrics, sample_counts)
+    benchmark_rows, benchmark_columns = benchmark_table(
+        rows, benchmark_language, sample_counts
+    )
     write_benchmark_markdown(
-        benchmark_markdown_path, benchmark_rows, benchmark_columns
+        benchmark_markdown_path,
+        benchmark_rows,
+        benchmark_columns,
+        model_keys,
+        unique_variant_rows(rows),
     )
     resolved_language_average_markdown_name = (
         language_average_markdown_name or default_language_average_table_name()
@@ -1660,11 +3385,17 @@ def main(
         language_average_rows,
         language_average_columns,
     )
-    print(csv_path)
-    print(markdown_path)
+    technical_sheet_path = os.path.join(output_dir, TECHNICAL_SHEET_FILE_NAME)
+    write_technical_sheet(
+        technical_sheet_path,
+        unique_variant_rows(rows),
+        technical_sheet_rows(evaluation_root, model_keys, profile_names),
+    )
+    print(pretty_csv_path)
     print(benchmark_markdown_path)
     print(language_average_markdown_path)
-    if has_multiple_models(rows):
+    print(technical_sheet_path)
+    if has_multiple_model_variants(rows):
         resolved_perplexity_markdown_name = (
             perplexity_markdown_name or default_perplexity_table_name(model_keys)
         )
@@ -1673,11 +3404,14 @@ def main(
         )
         perplexity_rows, perplexity_columns = perplexity_table(rows)
         write_perplexity_markdown(
-            perplexity_markdown_path, perplexity_rows, perplexity_columns
+            perplexity_markdown_path,
+            perplexity_rows,
+            perplexity_columns,
+            unique_variant_rows(rows),
         )
         print(perplexity_markdown_path)
     else:
-        print('[skip] perplexity comparison table requires multiple models')
+        print('[skip] perplexity comparison table requires multiple model variants')
 
     print(f'[done] wrote {len(rows)} row(s)')
 

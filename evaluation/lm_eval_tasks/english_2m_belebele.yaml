@@ -1,5 +1,5 @@
 task: english_2m_belebele
-dataset_path: facebook/2M-Belebele
+dataset_path: facebook/belebele
 dataset_name: eng_Latn
 test_split: test
 fewshot_split: test
@@ -16,9 +16,6 @@ doc_to_choice:
 doc_to_target: gold
 metric_list:
   - metric: acc
-    aggregation: mean
-    higher_is_better: true
-  - metric: acc_norm
     aggregation: mean
     higher_is_better: true
 metadata:

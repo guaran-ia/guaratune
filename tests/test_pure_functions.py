@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from src import analyze_eval_results, eval_config, generate_eval_configs, generate_train_configs
+from src import analyze_eval_results, eval_benchmark, eval_config, eval_profile, generate_eval_configs, generate_train_configs
 from src.train_config import parse_env_assignment
 
 
@@ -129,17 +130,17 @@ def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path
 
     result_path = output_path / "results.json"
     persisted = json.loads(result_path.read_text(encoding="utf-8"))
-    assert persisted["guarania_evaluation"] == {
-        "status": "incomplete",
-        "executed_tasks": [],
-        "skipped_tasks": [
-            {
-                "task": "guarani_coreguapa_perplexity",
-                "reason": "missing_local_evaluation_data",
-                "paths": ["data/evaluation/coreguapa_identified_all.jsonl"],
-            }
-        ],
-    }
+    evaluation = persisted["guarania_evaluation"]
+    assert evaluation["status"] == "incomplete"
+    assert evaluation["executed_tasks"] == []
+    assert evaluation["skipped_tasks"] == [
+        {
+            "task": "guarani_coreguapa_perplexity",
+            "reason": "missing_local_evaluation_data",
+            "paths": ["data/evaluation/coreguapa_identified_all.jsonl"],
+        }
+    ]
+    assert evaluation["task_runs"]["guarani_coreguapa_perplexity"]["status"] == "skipped"
 
     rows = analyze_eval_results.analyze_results(
         str(evaluation_root), ("gemma4_12b",), ("experiments",)
@@ -157,6 +158,220 @@ def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path
             "skipped_tasks": "guarani_coreguapa_perplexity",
         }
     ]
+
+
+def test_write_results_merges_partial_runs_and_replaces_rerun_task(tmp_path: Path) -> None:
+    output_path = tmp_path / "experiments" / "gemma4_4b" / "base" / "english_benchmarks"
+    eval_config.write_results(
+        str(output_path),
+        {
+            "results": {"arc_easy": {"acc,none": 0.5}},
+            "groups": {},
+            "configs": {"arc_easy": {"num_fewshot": 0}},
+            "n-shot": {"arc_easy": 0},
+            "n-samples": {"arc_easy": {"effective": 100}},
+            "samples": {"arc_easy": [{"sample": 1}]},
+        },
+        executed_tasks=["arc_easy"],
+        skipped_tasks=[],
+    )
+    first_timestamp = json.loads(
+        (output_path / "results.json").read_text(encoding="utf-8")
+    )["guarania_evaluation"]["task_runs"]["arc_easy"]["completed_at"]
+
+    eval_config.write_results(
+        str(output_path),
+        {
+            "results": {"copa": {"acc,none": 0.7}},
+            "groups": {},
+            "configs": {"copa": {"num_fewshot": 0}},
+            "n-shot": {"copa": 0},
+            "n-samples": {"copa": {"effective": 50}},
+            "samples": {"copa": [{"sample": 2}]},
+        },
+        executed_tasks=["copa"],
+        skipped_tasks=[],
+    )
+    eval_config.write_results(
+        str(output_path),
+        {
+            "results": {"arc_easy": {"acc,none": 0.6}},
+            "groups": {},
+            "configs": {"arc_easy": {"num_fewshot": 0}},
+            "n-shot": {"arc_easy": 0},
+            "n-samples": {"arc_easy": {"effective": 100}},
+        },
+        executed_tasks=["arc_easy"],
+        skipped_tasks=[],
+    )
+
+    persisted = json.loads((output_path / "results.json").read_text(encoding="utf-8"))
+    samples = json.loads((output_path / "samples.json").read_text(encoding="utf-8"))
+    assert persisted["results"] == {
+        "arc_easy": {"acc,none": 0.6},
+        "copa": {"acc,none": 0.7},
+    }
+    assert persisted["configs"].keys() == {"arc_easy", "copa"}
+    assert persisted["n-samples"]["copa"]["effective"] == 50
+    assert persisted["guarania_evaluation"]["task_runs"]["arc_easy"]["completed_at"] >= first_timestamp
+    assert samples == {"copa": [{"sample": 2}]}
+
+
+def test_skipped_task_preserves_prior_success_and_updates_attempt_status(tmp_path: Path) -> None:
+    output_path = tmp_path / "experiments" / "gemma4_4b" / "base" / "english_benchmarks"
+    eval_config.write_results(
+        str(output_path),
+        {"results": {"copa": {"acc,none": 0.7}}, "groups": {}},
+        executed_tasks=["copa"],
+        skipped_tasks=[],
+    )
+    eval_config.write_results(
+        str(output_path),
+        {"results": {}, "groups": {}},
+        executed_tasks=[],
+        skipped_tasks=[{"task": "copa", "reason": "missing_local_evaluation_data"}],
+    )
+
+    persisted = json.loads((output_path / "results.json").read_text(encoding="utf-8"))
+    task_run = persisted["guarania_evaluation"]["task_runs"]["copa"]
+    assert persisted["results"]["copa"]["acc,none"] == 0.7
+    assert task_run["status"] == "skipped"
+    assert task_run["completed_at"]
+    assert persisted["guarania_evaluation"]["status"] == "incomplete"
+
+
+def test_analysis_selects_latest_task_across_canonical_and_legacy_paths(
+    tmp_path: Path,
+) -> None:
+    evaluation_root = tmp_path / "evaluation"
+    canonical_path = (
+        evaluation_root
+        / "experiments"
+        / "gemma4_4b"
+        / "full_C1_kuatia"
+        / "english_benchmarks"
+        / "results.json"
+    )
+    legacy_path = (
+        canonical_path.parent
+        / "single_benchmark"
+        / "english_copa_acc"
+        / "results.json"
+    )
+
+    def write_result(path: Path, completed_at: str, score: float, shots: int) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "date": completed_at,
+                    "results": {
+                        "english_copa": {
+                            "acc,none": score,
+                            "acc_stderr,none": 0.01,
+                        }
+                    },
+                    "groups": {},
+                    "configs": {
+                        "english_copa": {
+                            "task": "english_copa",
+                            "test_split": "validation",
+                            "num_fewshot": shots,
+                        }
+                    },
+                    "n-shot": {"english_copa": shots},
+                    "n-samples": {"english_copa": {"effective": int(score * 1000)}},
+                    "guarania_evaluation": {
+                        "task_runs": {
+                            "english_copa": {"completed_at": completed_at}
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    write_result(canonical_path, "2026-10-01T00:00:00+00:00", 0.5, 0)
+    write_result(legacy_path, "2026-10-02T00:00:00+00:00", 0.7, 2)
+
+    rows = analyze_eval_results.analyze_results(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    assert len(rows) == 1
+    assert rows[0]["english_copa_acc"] == 0.7
+    counts = analyze_eval_results.collect_metric_sample_counts(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    assert counts["english_copa_acc"] == 700
+    technical_rows = analyze_eval_results.technical_sheet_rows(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    assert len(technical_rows) == 1
+    assert technical_rows[0]["num_fewshot"] == 2
+    assert technical_rows[0]["instances"] == 700
+
+    write_result(canonical_path, "2026-10-03T00:00:00+00:00", 0.8, 1)
+    rows = analyze_eval_results.analyze_results(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    assert rows[0]["english_copa_acc"] == 0.8
+
+
+def test_analysis_prefers_canonical_result_on_timestamp_tie(tmp_path: Path) -> None:
+    evaluation_root = tmp_path / "evaluation"
+    canonical_path = (
+        evaluation_root
+        / "experiments"
+        / "gemma4_4b"
+        / "base"
+        / "english_benchmarks"
+        / "results.json"
+    )
+    legacy_path = canonical_path.parent / "single_benchmark" / "english_copa" / "results.json"
+    for path, value in ((canonical_path, 0.8), (legacy_path, 0.4)):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "date": "2026-10-01T00:00:00+00:00",
+                    "results": {"english_copa": {"acc,none": value}},
+                    "groups": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    rows = analyze_eval_results.analyze_results(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    assert rows[0]["english_copa_acc"] == 0.8
+
+
+def test_single_benchmark_configs_use_the_canonical_suite_path() -> None:
+    matrix = generate_eval_configs.load_yaml(
+        "configs/evaluation/gemma4-12_eval_matrix.yaml"
+    )
+    task_name, suite_name = eval_benchmark.find_benchmark_task(
+        matrix, "mmlu", "gn", "smoke"
+    )
+    metrics = eval_benchmark.configured_metrics(matrix, task_name, suite_name)
+    configs = eval_benchmark.build_run_configs(
+        matrix,
+        "smoke",
+        task_name,
+        suite_name,
+        metrics,
+        cpt_method=None,
+        lora_rank=None,
+        dataset_configuration=None,
+    )
+
+    assert {config["metadata"]["variant"] for config in configs} == {
+        "base",
+        "lora_r64_C1_kuatia",
+    }
+    assert all("single_benchmark" not in config["output_path"] for config in configs)
+    assert all(config["output_path"].endswith("/global_mmlu_lite") for config in configs)
 
 
 def test_merge_rows_rejects_conflicting_metrics() -> None:
@@ -194,3 +409,466 @@ def test_merge_rows_combines_non_overlapping_metrics() -> None:
     assert analyze_eval_results.merge_rows(
         [row, row | {"benchmark_f1": 0.6}]
     ) == [row | {"benchmark_f1": 0.6}]
+
+
+def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
+    base = {
+        "model_key": "gemma4_4b",
+        "variant": "base",
+        "training_method": "base",
+        "global_mmlu_lite_acc": 0.3875,
+        "global_mmlu_lite_acc_stderr": 0.0125,
+        "guarani_2m_belebele_acc": 0.43,
+        "guarani_multiwikiqa_f1": 0.2021,
+        "spanish_global_mmlu_lite_acc": 0.6325,
+        "english_global_mmlu_lite_acc": 0.70,
+        "guarani_flores200_eng_to_grn_bleu": 0.67,
+        "guarani_flores200_eng_to_grn_chrf_plus_plus": 3.4,
+    }
+    variant = base | {
+        "variant": "full_C1_kuatia",
+        "training_method": "full",
+        "corpus": "C1_kuatia",
+        "global_mmlu_lite_acc": 0.325,
+        "global_mmlu_lite_acc_stderr": 0.005,
+        "guarani_2m_belebele_acc": 0.4667,
+        "guarani_multiwikiqa_f1": 0.2874,
+        "spanish_global_mmlu_lite_acc": 0.5625,
+        "english_global_mmlu_lite_acc": 0.665,
+        "guarani_flores200_eng_to_grn_bleu": 0.89,
+        "guarani_flores200_eng_to_grn_chrf_plus_plus": 4.0,
+    }
+
+    sample_counts = {
+        "global_mmlu_lite_acc": 2,
+        "guarani_2m_belebele_acc": 2,
+        "guarani_multiwikiqa_f1": 2,
+        "spanish_global_mmlu_lite_acc": 2,
+        "english_global_mmlu_lite_acc": 2,
+        "guarani_flores200_eng_to_grn_bleu": 2,
+    }
+    rows, columns = analyze_eval_results.benchmark_table(
+        [base, variant], "all", sample_counts
+    )
+    output_path = tmp_path / "evaluation_score_by_benchmark.md"
+    analyze_eval_results.write_benchmark_markdown(
+        str(output_path), rows, columns, ("gemma4_4b",), [base, variant]
+    )
+    report = output_path.read_text(encoding="utf-8")
+
+    assert report.startswith("# Gemma4 4B (Full CPT)\n\n")
+    assert report.index("| **Guarani** |") < report.index("| Average |")
+    assert report.index("| Average |") < report.index("| **Spanish** |")
+    assert report.index("| **Spanish** |") < report.index("| **English** |")
+    assert report.index("| **English** |") < report.index("## Variant reference")
+    assert report.index("| MultiWikiQA GN (F1) |") < report.index("| FLORES+ EN->GN (chrF++) |")
+    assert report.index("| FLORES+ EN->GN (chrF++) |") < report.index("| Average | 26.34 | **27.98** | +1.64 |")
+    assert "| **Translation** |" not in report
+    assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | 32.50 (31.52, 33.48) | -6.25 |" in report
+    assert "| Belebele GN (acc) | 43.00 | **46.67** | +3.67 |" in report
+    assert "| Average | 26.34 | **27.98** | +1.64 |" in report
+    assert "| benchmark | base (-95% CI, +95% CI) | C1 (-95% CI, +95% CI) | Gain C1 |" in report
+    assert "FLORES+ EN->GN (chrF++)" in report
+    assert "FLORES+ EN->GN (BLEU)" not in report
+    assert "Average of en benchmarks" not in report
+    assert "## Variant reference\n* C1: Kuatia" in report
+    assert ">[!Note]" in report
+    assert "Token totals are the number of tokens" in report
+    assert "| Instances |" not in report
+    assert "Gain columns show signed score-point differences" in report
+    mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc)")
+    assert mmlu_row["_standard_errors"] == {"base": 1.25, "C1": 0.5}
+    assert "standard_errors" not in columns
+    assert "_standard_errors" not in report
+
+    average_rows, average_columns = analyze_eval_results.language_average_table(
+        [base, variant]
+    )
+    assert [row['variant'] for row in average_rows] == ['base', 'C1']
+    average_path = tmp_path / "evaluation_average_score_by_language.md"
+    analyze_eval_results.write_language_average_markdown(
+        str(average_path), average_rows, average_columns
+    )
+    average_report = average_path.read_text(encoding="utf-8")
+    assert average_report.startswith("# Gemma4 4B (Full CPT)\n\n")
+    assert "| Variant | Guarani Average | Guarani Gain | English Average | English Gain | Spanish Average | Spanish Gain |" in average_report
+    assert "95% confidence intervals" not in average_report
+    assert "| C1 |" in average_report
+    assert "full_C1_kuatia" not in average_report
+    assert "## Variant reference\n* C1: Kuatia" in average_report
+    assert "Token totals are the number of tokens" in average_report
+    assert ">[!Note]" in average_report
+    assert "* C8: Kuatia without synthetic + 10% Spanish FineWeb-Edu + 10% FineWeb-Edu" in average_report
+
+    filtered_rows, _ = analyze_eval_results.benchmark_table(
+        [base, variant], "es", sample_counts
+    )
+    filtered_labels = [row["benchmark"] for row in filtered_rows]
+    assert "**Spanish**" in filtered_labels
+    assert "**Guarani**" not in filtered_labels
+    assert "Global MMLU Lite ES (acc)" in filtered_labels
+    assert "FLORES+ EN->GN (BLEU)" not in filtered_labels
+
+    assert analyze_eval_results.benchmark_report_heading(
+        ("gemma4_4b", "llama3_8b"),
+        [base, variant, {"training_method": "lora"}],
+    ) == "Gemma4 4B, Llama3 8B (Full CPT, LoRA)"
+
+
+def test_task_specs_apply_matrix_overrides_per_task() -> None:
+    specs = eval_config.task_specs_for_evaluation(
+        ["arc_easy", "arc_challenge", "unconfigured_task"],
+        {
+            "arc_easy": {"num_fewshot": 0, "test_split": "validation"},
+            "arc_challenge": {
+                "num_fewshot": 25,
+                "fewshot_split": "train",
+                "test_split": "validation",
+            },
+        },
+    )
+    assert specs == [
+        {"task": "arc_easy", "num_fewshot": 0, "test_split": "validation"},
+        {
+            "task": "arc_challenge",
+            "num_fewshot": 25,
+            "fewshot_split": "train",
+            "test_split": "validation",
+        },
+        "unconfigured_task",
+    ]
+
+
+def test_split_overrides_bypass_lm_eval_request_cache() -> None:
+    task = SimpleNamespace()
+    calls = []
+
+    def build_all_requests(**kwargs: object) -> None:
+        calls.append(kwargs)
+
+    task.build_all_requests = build_all_requests
+    eval_config._disable_request_cache_for_split_overrides(task)
+    task.build_all_requests(cache_requests=True, rewrite_requests_cache=True)
+
+    assert calls == [{'cache_requests': False, 'rewrite_requests_cache': False}]
+
+
+def test_resolved_task_specs_apply_overrides_to_loaded_task_objects() -> None:
+    class FakeTask:
+        def __init__(self) -> None:
+            self.config = {}
+            self.fewshot_cfg = SimpleNamespace(split=None)
+
+        def set_config(self, key: str, value: object) -> None:
+            self.config[key] = value
+
+    task = FakeTask()
+    plain_task = FakeTask()
+    loaded_tasks = {"local_task": task, "plain_task": plain_task}
+
+    class FakeTaskManager:
+        def load(self, name: str) -> dict[str, dict[str, FakeTask]]:
+            return {"tasks": {name: loaded_tasks[name]}}
+
+    resolved = eval_config.resolve_task_specs_for_evaluation(
+        ["local_task", "plain_task"],
+        {
+            "local_task": {
+                "num_fewshot": 5,
+                "fewshot_split": "train",
+                "test_split": "dev",
+            }
+        },
+        FakeTaskManager(),
+    )
+    assert resolved == [task, plain_task]
+    assert task.config == {
+        "num_fewshot": 5,
+        "fewshot_split": "train",
+        "test_split": "dev",
+    }
+    assert task.fewshot_cfg.split == "train"
+
+
+def test_evaluation_matrix_generates_per_task_fewshot_overrides() -> None:
+    matrix = generate_eval_configs.load_yaml(
+        "configs/evaluation/gemma4-4_eval_matrix.yaml"
+    )
+    config = generate_eval_configs.evaluation_config(
+        matrix, "smoke", "english_benchmarks", "base", None, None
+    )
+    assert config.get("num_fewshot") is None
+    assert config["task_overrides"]["arc_easy"]["num_fewshot"] == 0
+    assert config["task_overrides"]["arc_challenge"] == {
+        "metrics": ["acc_norm"],
+        "num_fewshot": 25,
+        "fewshot_split": "train",
+        "test_split": "validation",
+    }
+
+
+def test_eval_task_overrides_reject_invalid_fewshot_values() -> None:
+    with pytest.raises(ValueError, match="non-negative integer"):
+        eval_config.task_specs_for_evaluation(
+            ["arc_easy"], {"arc_easy": {"num_fewshot": -1}}
+        )
+
+
+def test_eval_profile_refreshes_configs_from_current_matrix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    written = []
+    monkeypatch.setattr(
+        generate_eval_configs,
+        "write_yaml",
+        lambda path, data, overwrite: written.append((path, data, overwrite)),
+    )
+    count = eval_profile.refresh_profile_configs("smoke", "gemma4_4b")
+    assert count > 0
+    assert count == len(written)
+    assert all(overwrite for _, _, overwrite in written)
+    assert any(
+        data.get("task_overrides", {}).get("english_global_mmlu_lite", {}).get(
+            "num_fewshot"
+        ) == 5
+        for _, data, _ in written
+    )
+
+
+def test_benchmark_stderr_uses_the_selected_fallback_metric() -> None:
+    spec = {
+        "metrics": ("primary_acc_norm", "fallback_acc"),
+        "scale": 100.0,
+        "label": "Example GN",
+    }
+    row = {
+        "fallback_acc": 0.4,
+        "fallback_acc_stderr": 0.03,
+        "primary_acc_norm_stderr": 0.01,
+    }
+    assert analyze_eval_results.benchmark_standard_error(row, spec) == 3.0
+    assert analyze_eval_results.benchmark_standard_error(
+        {"fallback_acc": 0.4, "fallback_acc_stderr": "N/A"}, spec
+    ) is None
+
+
+def test_language_average_standard_error_propagates_available_metrics() -> None:
+    row = {
+        "global_mmlu_lite_acc": 0.5,
+        "global_mmlu_lite_acc_stderr": 0.01,
+        "guarani_mgsm_direct_exact_match": 0.6,
+        "guarani_mgsm_direct_exact_match_stderr": 0.02,
+    }
+    assert analyze_eval_results.language_average_standard_error(row, "gn") == pytest.approx(
+        (1**2 + 2**2) ** 0.5 / 2
+    )
+    assert analyze_eval_results.language_average_standard_error(
+        row | {"guarani_mgsm_direct_exact_match_stderr": "N/A"}, "gn"
+    ) is None
+    average_rows, columns = analyze_eval_results.language_average_table([row])
+    assert average_rows[0]["guarani_average_stderr"] == pytest.approx(
+        (1**2 + 2**2) ** 0.5 / 2
+    )
+    assert "guarani_average_stderr" not in columns
+
+
+def test_language_average_includes_flores_chrf_but_not_bleu_and_formats_ci(
+    tmp_path: Path,
+) -> None:
+    row = {
+        "model_key": "gemma4_4b",
+        "variant": "base",
+        "training_method": "base",
+        "global_mmlu_lite_acc": 0.5,
+        "global_mmlu_lite_acc_stderr": 0.01,
+        "guarani_flores200_eng_to_grn_chrf_plus_plus": 50.0,
+        "guarani_flores200_eng_to_grn_chrf_plus_plus_stderr": 0.02,
+        "guarani_flores200_eng_to_grn_bleu": 70.0,
+        "guarani_flores200_eng_to_grn_bleu_stderr": 5.0,
+    }
+    assert analyze_eval_results.language_average_score(row, "gn") == 50.0
+    average_rows, columns = analyze_eval_results.language_average_table([row])
+    output_path = tmp_path / "average.md"
+    analyze_eval_results.write_language_average_markdown(
+        str(output_path), average_rows, columns
+    )
+    report = output_path.read_text(encoding="utf-8")
+    assert "| base | **50.00 (49.02, 50.98)** | **--** | **50.00 (49.96, 50.04)** | **--** |  | -- |" in report
+    assert analyze_eval_results.default_language_average_table_name() == (
+        "evaluation_average_score_by_language.md"
+    )
+
+
+def test_technical_sheet_lists_task_configuration_metadata(tmp_path: Path) -> None:
+    evaluation_root = tmp_path / "evaluation"
+    result_dir = evaluation_root / "experiments" / "gemma4_4b" / "full_C1_kuatia" / "guarani_benchmarks"
+    result_dir.mkdir(parents=True)
+    result = {
+        "metadata": {
+            "model_key": "gemma4_4b",
+            "variant": "full_C1_kuatia",
+            "profile": "experiments",
+        },
+        "results": {"guarani_wnli": {"acc,none": 0.7, "sample_len": 49}},
+        "configs": {
+            "guarani_wnli": {
+                "task": "guarani_wnli",
+                "dataset_name": None,
+                "num_fewshot": 5,
+                "test_split": "dev",
+            }
+        },
+        "n-shot": {"guarani_wnli": 5},
+        "n-samples": {"guarani_wnli": {"original": 49, "effective": 49}},
+    }
+    (result_dir / "results.json").write_text(json.dumps(result), encoding="utf-8")
+    benchmark_rows = analyze_eval_results.technical_sheet_rows(
+        str(evaluation_root), ("gemma4_4b",), ("experiments",)
+    )
+    variant_rows = analyze_eval_results.unique_variant_rows(
+        [
+            {
+                "model_key": "gemma4_4b",
+                "variant": "full_C1_kuatia",
+                "training_method": "full",
+                "corpus": "C1_kuatia",
+            }
+        ]
+    )
+    output_path = tmp_path / "technical_sheet.md"
+    analyze_eval_results.write_technical_sheet(
+        str(output_path), variant_rows, benchmark_rows
+    )
+    report = output_path.read_text(encoding="utf-8")
+    assert "Full CPT" in report
+    assert "WNLI" in report
+    assert "Guarani (GN)" in report
+    assert "| 49 | 5 | dev |" in report
+
+
+def test_perplexity_report_uses_short_variant_headers_and_reference(tmp_path: Path) -> None:
+    variants = [
+        {
+            "model_key": "gemma4_4b",
+            "variant": "base",
+            "training_method": "base",
+            "eval_corpus": "coreguapa",
+            "word_perplexity": 100.0,
+            "byte_perplexity": 5.0,
+            "bits_per_byte": 2.3,
+        },
+        {
+            "model_key": "gemma4_4b",
+            "variant": "full_C1_kuatia",
+            "training_method": "full",
+            "corpus": "C1_kuatia",
+            "eval_corpus": "coreguapa",
+            "word_perplexity": 10.0,
+            "byte_perplexity": 2.0,
+            "bits_per_byte": 1.1,
+        },
+    ]
+    table_rows, columns = analyze_eval_results.perplexity_table(variants)
+    output_path = tmp_path / "evaluation_perplexity.md"
+    analyze_eval_results.write_perplexity_markdown(
+        str(output_path), table_rows, columns, variants
+    )
+    report = output_path.read_text(encoding="utf-8")
+    assert report.startswith("# Gemma4 4B (Full CPT)\n\n")
+    assert "| Perplexity metric | base | C1 |" in report
+    assert "| word perplexity | 100.00 | **10.00** |" in report
+    assert "coreguapa" not in report.lower()
+    assert "## Variant reference" in report
+    assert ">[!Note]" in report
+    assert "Token totals are the number of tokens" in report
+
+
+def test_percentage_by_benchmark_csv_includes_variant_confidence_intervals(
+    tmp_path: Path,
+) -> None:
+    metric = "global_mmlu_lite_acc_norm"
+    base = {
+        "model_key": "gemma4_4b",
+        "variant": "base",
+        "training_method": "base",
+        metric: 0.5,
+        f"{metric}_stderr": 0.01,
+    }
+    c1 = base | {
+        "variant": "full_C1_kuatia",
+        "training_method": "full",
+        "corpus": "C1_kuatia",
+        metric: 0.6,
+        f"{metric}_stderr": 0.02,
+        f"{metric}_gain_base": 20.0,
+    }
+    output_path = tmp_path / analyze_eval_results.default_pretty_output_name(
+        ("gemma4_4b",)
+    )
+    analyze_eval_results.pretty_report_csv(
+        str(output_path),
+        [base, c1],
+        [metric, f"{metric}_gain_base"],
+        {metric: 400},
+    )
+    report = output_path.read_text(encoding="utf-8")
+    assert output_path.name == "evaluation_percentage_by_benchmark_gemma4_4b.csv"
+    assert "Instances" not in report
+    assert "Metric,base,CI base,C1,CI C1" in report
+    assert '0.500,"[0.480, 0.520]",0.600,"[0.561, 0.639]"' in report
+    assert "Gain Global MMLU Lite Normalized Accuracy,--,,20.00%," in report
+
+
+def test_new_guarani_tasks_use_distinct_fewshot_and_scored_splits() -> None:
+    mmlu = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/guarani_global_mmlu_lite.yaml"
+    )
+    mgsm = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/guarani_mgsm_direct.yaml"
+    )
+    wnli = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/guarani_wnli.yaml"
+    )
+    assert set(mmlu["dataset_kwargs"]["data_files"]) == {"dev", "test"}
+    assert set(mgsm["dataset_kwargs"]["data_files"]) == {"train", "test"}
+    assert set(wnli["dataset_kwargs"]["data_files"]) == {"train", "dev"}
+
+    for model in ("gemma4-2", "gemma4-4", "gemma4-12"):
+        matrix = generate_eval_configs.load_yaml(
+            f"configs/evaluation/{model}_eval_matrix.yaml"
+        )
+        suite = matrix["suites"]["guarani_benchmarks"]
+        assert suite["tasks"] == ["guarani_mgsm_direct", "guarani_wnli"]
+        assert suite["task_overrides"]["guarani_mgsm_direct"] == {
+            "metrics": ["exact_match"],
+            "num_fewshot": 5,
+            "fewshot_split": "train",
+            "test_split": "test",
+        }
+        assert suite["task_overrides"]["guarani_wnli"] == {
+            "metrics": ["acc"],
+            "num_fewshot": 5,
+            "fewshot_split": "train",
+            "test_split": "dev",
+        }
+        assert "guarani_benchmarks" in matrix["profiles"]["experiments"]["suites"]
+        assert matrix["suites"]["global_mmlu_lite"]["task_overrides"][
+            "guarani_global_mmlu_lite"
+        ]["fewshot_split"] == "dev"
+
+
+def test_spanish_wnli_uses_csv_files_instead_of_dataset_script() -> None:
+    task = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/wnli_es.yaml"
+    )
+    assert task["dataset_path"] == "csv"
+    assert set(task["dataset_kwargs"]["data_files"]) == {
+        "train",
+        "validation",
+        "test",
+    }
+    assert task["dataset_kwargs"]["data_files"]["validation"].endswith(
+        "wnli-dev-es.csv"
+    )
+    assert task["output_type"] == "multiple_choice"
+    assert task["metric_list"][0]["metric"] == "acc"
