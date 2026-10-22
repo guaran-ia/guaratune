@@ -460,10 +460,13 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert report.index("| **Guarani** |") < report.index("| Average |")
     assert report.index("| Average |") < report.index("| **Spanish** |")
     assert report.index("| **Spanish** |") < report.index("| **English** |")
-    assert report.index("| **English** |") < report.index("| **Translation** |")
+    assert report.index("| **English** |") < report.index("## Variant reference")
+    assert report.index("| MultiWikiQA GN (F1) |") < report.index("| FLORES+ EN->GN (chrF++) |")
+    assert report.index("| FLORES+ EN->GN (chrF++) |") < report.index("| Average | 26.34 | **27.98** | +1.64 |")
+    assert "| **Translation** |" not in report
     assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | 32.50 (31.52, 33.48) | -6.25 |" in report
     assert "| Belebele GN (acc) | 43.00 | **46.67** | +3.67 |" in report
-    assert "| Average | 33.99 | **35.97** | +1.98 |" in report
+    assert "| Average | 26.34 | **27.98** | +1.64 |" in report
     assert "| benchmark | base (-95% CI, +95% CI) | C1 (-95% CI, +95% CI) | Gain C1 |" in report
     assert "FLORES+ EN->GN (chrF++)" in report
     assert "FLORES+ EN->GN (BLEU)" not in report
@@ -488,7 +491,8 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     )
     average_report = average_path.read_text(encoding="utf-8")
     assert average_report.startswith("# Gemma4 4B (Full CPT)\n\n")
-    assert "| Variant | Guarani Average (-95% CI, +95% CI) | Guarani Gain | English Average (-95% CI, +95% CI) | English Gain | Spanish Average (-95% CI, +95% CI) | Spanish Gain |" in average_report
+    assert "| Variant | Guarani Average | Guarani Gain | English Average | English Gain | Spanish Average | Spanish Gain |" in average_report
+    assert "95% confidence intervals" not in average_report
     assert "| C1 |" in average_report
     assert "full_C1_kuatia" not in average_report
     assert "## Variant reference\n* C1: Kuatia" in average_report

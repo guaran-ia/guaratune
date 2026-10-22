@@ -2324,6 +2324,11 @@ def benchmark_table(
     }
 
     for code, category_specs in language_specs.items():
+        category_specs = [
+            spec
+            for spec in category_specs
+            if any(benchmark_score(row, spec) is not None for row in variants)
+        ]
         if not category_specs:
             continue
         section_name = {'gn': 'Guarani', 'es': 'Spanish', 'en': 'English'}[code]
