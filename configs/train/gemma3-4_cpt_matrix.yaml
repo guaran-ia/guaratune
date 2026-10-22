@@ -1,0 +1,67 @@
+generated_config_dir: configs/train/generated
+runs_root: outputs/train/gemma3_4b
+
+reporting:
+  report_to: wandb
+  wandb_project: guarania-models-cpt
+  wandb_run_group: gemma3_4b
+  wandb_mode: online
+  wandb_tags: gemma3,cpt,guarani,text-only
+
+model:
+  key: gemma3_4b
+  model_name_or_path: google/gemma-3-4b-pt
+  model_revision: main
+  trust_remote_code: true
+  cutoff_len: 2048
+
+defaults:
+  common:
+    stage: pt
+    do_train: true
+    dataset_dir: data
+    preprocessing_num_workers: 16
+    dataloader_num_workers: 4
+    packing: true
+    flash_attn: sdpa
+    disable_gradient_checkpointing: false
+    plot_loss: true
+    overwrite_output_dir: false
+    save_only_model: false
+    report_to: wandb
+    logging_steps: 10
+    save_steps: 500
+    save_total_limit: 3
+    per_device_train_batch_size: 1
+    optim: adamw_torch
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    learning_rate: 2.0e-5
+    lr_scheduler_type: cosine_with_min_lr
+    lr_scheduler_kwargs:
+      min_lr: 2.0e-6
+    warmup_steps: 0.03
+    max_grad_norm: 1.0
+    num_train_epochs: 4.0
+    bf16: true
+    ddp_timeout: 180000000
+    resume_from_checkpoint: null
+    do_eval: true
+    eval_strategy: epoch
+    eval_steps: 500
+    per_device_eval_batch_size: 1
+    eval_accumulation_steps: 1
+
+  full:
+    finetuning_type: full
+    pure_bf16: true
+    gradient_accumulation_steps: 32
+    weight_decay: 0.01
+
+profiles:
+  experiments:
+    methods:
+      - full
+    corpora:
+      - C1_kuatia
+      - C2_kuatia_no_synthetic
