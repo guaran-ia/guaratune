@@ -2145,8 +2145,6 @@ def average_standard_error(
     """
     standard_errors = []
     for spec in specs:
-        if not include_in_language_average(spec, language):
-            continue
         metric = selected_benchmark_metric(row, spec)
         if metric is None:
             continue
@@ -2478,7 +2476,12 @@ def language_average_standard_error(
     row: dict[str, Any], language: str
 ) -> float | None:
     """Return propagated stderr for the equal-weight language benchmark mean."""
-    return average_standard_error(row, benchmark_specs_for_language(language))
+    specs = [
+        spec
+        for spec in benchmark_specs_for_language(language)
+        if include_in_language_average(spec, language)
+    ]
+    return average_standard_error(row, specs)
 
 
 def format_gain(value: Any, is_base: bool) -> str:
