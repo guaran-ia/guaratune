@@ -1725,11 +1725,14 @@ def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
         match = re.search(r'(?:^|_)C\d+(?:_|$)', variant)
         if match is None:
             match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
-        labels.append(
-            match.group(0).strip('_')
-            if match
-            else variant.removeprefix('full_') or corpus or 'unknown'
-        )
+        label = match.group(0).strip('_') if match else variant.removeprefix('full_') or corpus or 'unknown'
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            rank = row.get('lora_rank')
+            label += f' (LoRA r{rank})' if rank is not None else ' (LoRA)'
+        elif method == 'full':
+            label += ' (full)'
+        labels.append(label)
     original_labels = labels.copy()
 
     for index, label in enumerate(labels):
@@ -2230,7 +2233,14 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
             continue
         corpus = str(row.get('corpus') or '')
         variant = str(row.get('variant') or 'unknown')
-        labels.append(corpus.split('_', 1)[0] if corpus else variant)
+        label = corpus.split('_', 1)[0] if corpus else variant
+        method = str(row.get('training_method') or '').lower()
+        if method == 'lora':
+            rank = row.get('lora_rank')
+            label += f' (LoRA r{rank})' if rank is not None else ' (LoRA)'
+        elif method == 'full':
+            label += ' (Full CPT)'
+        labels.append(label)
 
     for index, (label, row) in enumerate(zip(labels.copy(), variants)):
         if labels.count(label) <= 1:
@@ -3244,7 +3254,8 @@ def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
 
 
 def analyze_results(
-    evaluation_root: str, model_keys: tuple[str, ...], profile_names: tuple[str, ...]
+    evaluation_root: str, model_keys: tuple[str, ...], profile_names: tuple[str, ...],
+    cpt_method: str = 'full_lora',
 ) -> list[dict[str, Any]]:
     """Analyze evaluation results for requested models.
 
@@ -3262,7 +3273,9 @@ def analyze_results(
     ):
         partial_rows.extend(extract_result_records(path, evaluation_root, data))
 
-    return merge_rows(partial_rows)
+    rows = merge_rows(partial_rows)
+    methods = {'full', 'lora'} if cpt_method == 'full_lora' else {cpt_method}
+    return [row for row in rows if row.get('training_method') == 'base' or row.get('training_method') in methods]
 
 
 @click.command(
@@ -3287,6 +3300,13 @@ def analyze_results(
     'profile_names',
     multiple=True,
     help='Evaluation profile to include. Repeat to include multiple profiles. Defaults to all profiles.',
+)
+@click.option(
+    '--cpt-method',
+    type=click.Choice(['full', 'lora', 'full_lora'], case_sensitive=False),
+    default='full_lora',
+    show_default=True,
+    help='CPT method(s) to include in reports.',
 )
 @click.option(
     '--output-dir',
@@ -3320,6 +3340,7 @@ def main(
     model_keys: tuple[str, ...],
     evaluation_root: str,
     profile_names: tuple[str, ...],
+    cpt_method: str,
     output_dir: str,
     benchmark_markdown_name: str | None,
     benchmark_language: str,
@@ -3341,7 +3362,7 @@ def main(
     Returns:
         None.
     """
-    rows = analyze_results(evaluation_root, model_keys, profile_names)
+    rows = analyze_results(evaluation_root, model_keys, profile_names, cpt_method.lower())
     if not rows:
         raise click.ClickException(
             f'No evaluation results found for models: {", ".join(model_keys)}'
