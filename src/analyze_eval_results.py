@@ -3241,6 +3241,14 @@ def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
     return f'{PERPLEXITY_TABLE_FILE_PREFIX}.md'
 
 
+def add_method_filename_suffix(filename: str, cpt_method: str) -> str:
+    """Add a single-method suffix before a report filename's extension."""
+    if cpt_method not in {'full', 'lora'}:
+        return filename
+    stem, extension = os.path.splitext(filename)
+    return f'{stem}_{cpt_method}{extension}'
+
+
 def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
     """Return whether rows contain more than one model or variant.
 
@@ -3376,8 +3384,14 @@ def main(
     resolved_benchmark_markdown_name = (
         benchmark_markdown_name or default_benchmark_table_name(benchmark_language)
     )
+    resolved_benchmark_markdown_name = add_method_filename_suffix(
+        resolved_benchmark_markdown_name, cpt_method.lower()
+    )
+    pretty_filename = add_method_filename_suffix(
+        default_pretty_output_name(model_keys), cpt_method.lower()
+    )
     pretty_csv_path = os.path.join(
-        output_dir, default_pretty_output_name(model_keys)
+        output_dir, pretty_filename
     )
     benchmark_markdown_path = os.path.join(output_dir, resolved_benchmark_markdown_name)
     sample_counts = collect_metric_sample_counts(
@@ -3397,6 +3411,9 @@ def main(
     resolved_language_average_markdown_name = (
         language_average_markdown_name or default_language_average_table_name()
     )
+    resolved_language_average_markdown_name = add_method_filename_suffix(
+        resolved_language_average_markdown_name, cpt_method.lower()
+    )
     language_average_markdown_path = os.path.join(
         output_dir, resolved_language_average_markdown_name
     )
@@ -3406,7 +3423,10 @@ def main(
         language_average_rows,
         language_average_columns,
     )
-    technical_sheet_path = os.path.join(output_dir, TECHNICAL_SHEET_FILE_NAME)
+    technical_sheet_path = os.path.join(
+        output_dir,
+        add_method_filename_suffix(TECHNICAL_SHEET_FILE_NAME, cpt_method.lower()),
+    )
     write_technical_sheet(
         technical_sheet_path,
         unique_variant_rows(rows),
@@ -3419,6 +3439,9 @@ def main(
     if has_multiple_model_variants(rows):
         resolved_perplexity_markdown_name = (
             perplexity_markdown_name or default_perplexity_table_name(model_keys)
+        )
+        resolved_perplexity_markdown_name = add_method_filename_suffix(
+            resolved_perplexity_markdown_name, cpt_method.lower()
         )
         perplexity_markdown_path = os.path.join(
             output_dir, resolved_perplexity_markdown_name
