@@ -2145,7 +2145,7 @@ def average_standard_error(
     """
     standard_errors = []
     for spec in specs:
-        if not include_in_language_average(spec):
+        if not include_in_language_average(spec, language):
             continue
         metric = selected_benchmark_metric(row, spec)
         if metric is None:
@@ -2160,11 +2160,13 @@ def average_standard_error(
     return math.sqrt(sum(stderr**2 for stderr in standard_errors)) / len(standard_errors)
 
 
-def include_in_language_average(spec: dict[str, Any]) -> bool:
-    """Keep primary benchmarks and FLORES+ chrF++, excluding FLORES+ BLEU."""
+def include_in_language_average(spec: dict[str, Any], language: str) -> bool:
+    """Exclude translation scores from English/Spanish; retain GN chrF++."""
     if not str(spec['label']).startswith('FLORES+'):
         return True
-    return any('chrf' in str(metric).lower() for metric in spec['metrics'])
+    return language == 'gn' and any(
+        'chrf' in str(metric).lower() for metric in spec['metrics']
+    )
 
 
 def format_benchmark_score(value: Any) -> str:
@@ -2376,10 +2378,21 @@ def benchmark_table(
                 table_rows.append(table_row)
 
         average_row = {'benchmark': 'Average'}
-        average_scores = {
-            label: sum(scores) / len(scores) if scores else None
-            for label, scores in category_scores.items()
-        }
+        # Keep this average consistent with the language-average report, which
+        # excludes FLORES+ BLEU and includes chrF++ only for translation.
+        average_specs = [
+            spec
+            for spec in category_specs
+            if include_in_language_average(spec, code)
+        ]
+        average_scores = {}
+        for variant_row, label in zip(variants, model_labels):
+            values = [
+                score
+                for spec in average_specs
+                if (score := benchmark_score(variant_row, spec)) is not None
+            ]
+            average_scores[label] = sum(values) / len(values) if values else None
         average_row.update(average_scores)
         average_differences = {}
         for variant_row, model_label in zip(variants, model_labels):
@@ -2390,7 +2403,7 @@ def benchmark_table(
             else:
                 base_values = [
                     score
-                    for spec in category_specs
+                    for spec in average_specs
                     if (score := benchmark_score(base_row, spec)) is not None
                 ]
                 base_average = (
@@ -2404,7 +2417,7 @@ def benchmark_table(
         average_row['_differences'] = average_differences
         average_row['_standard_errors'] = {
             model_label: average_standard_error(
-                variant_row, category_specs
+                variant_row, average_specs
             )
             for variant_row, model_label in zip(variants, model_labels)
         }
@@ -2452,7 +2465,7 @@ def language_average_score(row: dict[str, Any], language: str) -> float | None:
     scores = [
         score
         for spec in benchmark_specs_for_language(language)
-        if include_in_language_average(spec)
+        if include_in_language_average(spec, language)
         if (score := benchmark_score(row, spec)) is not None
     ]
     if not scores:
