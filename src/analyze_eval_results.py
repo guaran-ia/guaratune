@@ -1725,11 +1725,8 @@ def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
         match = re.search(r'(?:^|_)C\d+(?:_|$)', variant)
         if match is None:
             match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
-        labels.append(
-            match.group(0).strip('_')
-            if match
-            else variant.removeprefix('full_') or corpus or 'unknown'
-        )
+        label = match.group(0).strip('_') if match else variant.removeprefix('full_') or corpus or 'unknown'
+        labels.append(label)
     original_labels = labels.copy()
 
     for index, label in enumerate(labels):
@@ -2142,8 +2139,6 @@ def average_standard_error(
     """
     standard_errors = []
     for spec in specs:
-        if not include_in_language_average(spec):
-            continue
         metric = selected_benchmark_metric(row, spec)
         if metric is None:
             continue
@@ -2157,11 +2152,13 @@ def average_standard_error(
     return math.sqrt(sum(stderr**2 for stderr in standard_errors)) / len(standard_errors)
 
 
-def include_in_language_average(spec: dict[str, Any]) -> bool:
-    """Keep primary benchmarks and FLORES+ chrF++, excluding FLORES+ BLEU."""
+def include_in_language_average(spec: dict[str, Any], language: str) -> bool:
+    """Exclude translation scores from English/Spanish; retain GN chrF++."""
     if not str(spec['label']).startswith('FLORES+'):
         return True
-    return any('chrf' in str(metric).lower() for metric in spec['metrics'])
+    return language == 'gn' and any(
+        'chrf' in str(metric).lower() for metric in spec['metrics']
+    )
 
 
 def format_benchmark_score(value: Any) -> str:
@@ -2230,7 +2227,8 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
             continue
         corpus = str(row.get('corpus') or '')
         variant = str(row.get('variant') or 'unknown')
-        labels.append(corpus.split('_', 1)[0] if corpus else variant)
+        label = corpus.split('_', 1)[0] if corpus else variant
+        labels.append(label)
 
     for index, (label, row) in enumerate(zip(labels.copy(), variants)):
         if labels.count(label) <= 1:
@@ -2366,10 +2364,21 @@ def benchmark_table(
                 table_rows.append(table_row)
 
         average_row = {'benchmark': 'Average'}
-        average_scores = {
-            label: sum(scores) / len(scores) if scores else None
-            for label, scores in category_scores.items()
-        }
+        # Keep this average consistent with the language-average report, which
+        # excludes FLORES+ BLEU and includes chrF++ only for translation.
+        average_specs = [
+            spec
+            for spec in category_specs
+            if include_in_language_average(spec, code)
+        ]
+        average_scores = {}
+        for variant_row, label in zip(variants, model_labels):
+            values = [
+                score
+                for spec in average_specs
+                if (score := benchmark_score(variant_row, spec)) is not None
+            ]
+            average_scores[label] = sum(values) / len(values) if values else None
         average_row.update(average_scores)
         average_differences = {}
         for variant_row, model_label in zip(variants, model_labels):
@@ -2380,7 +2389,7 @@ def benchmark_table(
             else:
                 base_values = [
                     score
-                    for spec in category_specs
+                    for spec in average_specs
                     if (score := benchmark_score(base_row, spec)) is not None
                 ]
                 base_average = (
@@ -2394,7 +2403,7 @@ def benchmark_table(
         average_row['_differences'] = average_differences
         average_row['_standard_errors'] = {
             model_label: average_standard_error(
-                variant_row, category_specs
+                variant_row, average_specs
             )
             for variant_row, model_label in zip(variants, model_labels)
         }
@@ -2442,7 +2451,7 @@ def language_average_score(row: dict[str, Any], language: str) -> float | None:
     scores = [
         score
         for spec in benchmark_specs_for_language(language)
-        if include_in_language_average(spec)
+        if include_in_language_average(spec, language)
         if (score := benchmark_score(row, spec)) is not None
     ]
     if not scores:
@@ -2455,7 +2464,12 @@ def language_average_standard_error(
     row: dict[str, Any], language: str
 ) -> float | None:
     """Return propagated stderr for the equal-weight language benchmark mean."""
-    return average_standard_error(row, benchmark_specs_for_language(language))
+    specs = [
+        spec
+        for spec in benchmark_specs_for_language(language)
+        if include_in_language_average(spec, language)
+    ]
+    return average_standard_error(row, specs)
 
 
 def format_gain(value: Any, is_base: bool) -> str:
@@ -3231,6 +3245,14 @@ def default_perplexity_table_name(model_keys: tuple[str, ...]) -> str:
     return f'{PERPLEXITY_TABLE_FILE_PREFIX}.md'
 
 
+def add_method_filename_suffix(filename: str, cpt_method: str) -> str:
+    """Add a single-method suffix before a report filename's extension."""
+    if cpt_method not in {'full', 'lora'}:
+        return filename
+    stem, extension = os.path.splitext(filename)
+    return f'{stem}_{cpt_method}{extension}'
+
+
 def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
     """Return whether rows contain more than one model or variant.
 
@@ -3244,7 +3266,8 @@ def has_multiple_model_variants(rows: list[dict[str, Any]]) -> bool:
 
 
 def analyze_results(
-    evaluation_root: str, model_keys: tuple[str, ...], profile_names: tuple[str, ...]
+    evaluation_root: str, model_keys: tuple[str, ...], profile_names: tuple[str, ...],
+    cpt_method: str = 'full_lora',
 ) -> list[dict[str, Any]]:
     """Analyze evaluation results for requested models.
 
@@ -3262,7 +3285,9 @@ def analyze_results(
     ):
         partial_rows.extend(extract_result_records(path, evaluation_root, data))
 
-    return merge_rows(partial_rows)
+    rows = merge_rows(partial_rows)
+    methods = {'full', 'lora'} if cpt_method == 'full_lora' else {cpt_method}
+    return [row for row in rows if row.get('training_method') == 'base' or row.get('training_method') in methods]
 
 
 @click.command(
@@ -3287,6 +3312,13 @@ def analyze_results(
     'profile_names',
     multiple=True,
     help='Evaluation profile to include. Repeat to include multiple profiles. Defaults to all profiles.',
+)
+@click.option(
+    '--cpt-method',
+    type=click.Choice(['full', 'lora', 'full_lora'], case_sensitive=False),
+    default='full_lora',
+    show_default=True,
+    help='CPT method(s) to include in reports.',
 )
 @click.option(
     '--output-dir',
@@ -3320,6 +3352,7 @@ def main(
     model_keys: tuple[str, ...],
     evaluation_root: str,
     profile_names: tuple[str, ...],
+    cpt_method: str,
     output_dir: str,
     benchmark_markdown_name: str | None,
     benchmark_language: str,
@@ -3341,7 +3374,7 @@ def main(
     Returns:
         None.
     """
-    rows = analyze_results(evaluation_root, model_keys, profile_names)
+    rows = analyze_results(evaluation_root, model_keys, profile_names, cpt_method.lower())
     if not rows:
         raise click.ClickException(
             f'No evaluation results found for models: {", ".join(model_keys)}'
@@ -3355,8 +3388,14 @@ def main(
     resolved_benchmark_markdown_name = (
         benchmark_markdown_name or default_benchmark_table_name(benchmark_language)
     )
+    resolved_benchmark_markdown_name = add_method_filename_suffix(
+        resolved_benchmark_markdown_name, cpt_method.lower()
+    )
+    pretty_filename = add_method_filename_suffix(
+        default_pretty_output_name(model_keys), cpt_method.lower()
+    )
     pretty_csv_path = os.path.join(
-        output_dir, default_pretty_output_name(model_keys)
+        output_dir, pretty_filename
     )
     benchmark_markdown_path = os.path.join(output_dir, resolved_benchmark_markdown_name)
     sample_counts = collect_metric_sample_counts(
@@ -3376,6 +3415,9 @@ def main(
     resolved_language_average_markdown_name = (
         language_average_markdown_name or default_language_average_table_name()
     )
+    resolved_language_average_markdown_name = add_method_filename_suffix(
+        resolved_language_average_markdown_name, cpt_method.lower()
+    )
     language_average_markdown_path = os.path.join(
         output_dir, resolved_language_average_markdown_name
     )
@@ -3385,7 +3427,10 @@ def main(
         language_average_rows,
         language_average_columns,
     )
-    technical_sheet_path = os.path.join(output_dir, TECHNICAL_SHEET_FILE_NAME)
+    technical_sheet_path = os.path.join(
+        output_dir,
+        add_method_filename_suffix(TECHNICAL_SHEET_FILE_NAME, cpt_method.lower()),
+    )
     write_technical_sheet(
         technical_sheet_path,
         unique_variant_rows(rows),
@@ -3398,6 +3443,9 @@ def main(
     if has_multiple_model_variants(rows):
         resolved_perplexity_markdown_name = (
             perplexity_markdown_name or default_perplexity_table_name(model_keys)
+        )
+        resolved_perplexity_markdown_name = add_method_filename_suffix(
+            resolved_perplexity_markdown_name, cpt_method.lower()
         )
         perplexity_markdown_path = os.path.join(
             output_dir, resolved_perplexity_markdown_name

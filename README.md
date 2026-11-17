@@ -585,6 +585,7 @@ the matching base model.
 | `--model` | Required | Model key to analyze. Repeat the option to analyze multiple models. |
 | `--evaluation-root` | `outputs/evaluation` | Root directory containing evaluation outputs. |
 | `--profile` | All profiles | Evaluation profile to include. Repeat the option to include multiple profiles. |
+| `--cpt-method` | `full_lora` | CPT methods to include: `full`, `lora`, or `full_lora`. Base model rows remain available for comparison. |
 | `--output-dir` | `results` | Parent directory for model-specific analysis report directories. |
 | `--benchmark-markdown-name` | Auto-generated | Benchmark-by-model markdown output filename. |
 | `--benchmark-language` | `all` | Benchmark language to include in the comparison table. Supported values: `all`, `en`, `es`, `gn`. |
