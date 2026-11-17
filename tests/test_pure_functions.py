@@ -693,7 +693,7 @@ def test_language_average_includes_flores_chrf_but_not_bleu_and_formats_ci(
         str(output_path), average_rows, columns
     )
     report = output_path.read_text(encoding="utf-8")
-    assert "| base | **50.00 (49.02, 50.98)** | **--** | **50.00 (49.96, 50.04)** | **--** |  | -- |" in report
+    assert "| base | **50.00 (49.02, 50.98)** | **--** |  | -- |  | -- |" in report
     assert analyze_eval_results.default_language_average_table_name() == (
         "evaluation_average_score_by_language.md"
     )

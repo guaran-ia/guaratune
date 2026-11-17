@@ -1726,12 +1726,6 @@ def pretty_variant_labels(variants: list[dict[str, Any]]) -> list[str]:
         if match is None:
             match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
         label = match.group(0).strip('_') if match else variant.removeprefix('full_') or corpus or 'unknown'
-        method = str(row.get('training_method') or '').lower()
-        if method == 'lora':
-            rank = row.get('lora_rank')
-            label += f' (LoRA r{rank})' if rank is not None else ' (LoRA)'
-        elif method == 'full':
-            label += ' (full)'
         labels.append(label)
     original_labels = labels.copy()
 
@@ -2234,12 +2228,6 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
         corpus = str(row.get('corpus') or '')
         variant = str(row.get('variant') or 'unknown')
         label = corpus.split('_', 1)[0] if corpus else variant
-        method = str(row.get('training_method') or '').lower()
-        if method == 'lora':
-            rank = row.get('lora_rank')
-            label += f' (LoRA r{rank})' if rank is not None else ' (LoRA)'
-        elif method == 'full':
-            label += ' (Full CPT)'
         labels.append(label)
 
     for index, (label, row) in enumerate(zip(labels.copy(), variants)):
