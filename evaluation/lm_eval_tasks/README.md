@@ -50,6 +50,11 @@ For a plain perplexity task over a post-training evaluation JSONL file with a
 `text` column, use `loglikelihood_rolling`. The active Guarani perplexity task 
 is `guarani_coreguapa_perplexity` and reads `data/evaluation/coreguapa_identified_all.jsonl`.
 
+The Guarani MGSM, Global MMLU Lite, and WNLI tasks prefer their local files under
+`data/evaluation/`. If any required file for one of these tasks is missing, the
+runner loads that task's complete dataset from its corresponding Guaran-IA
+Hugging Face repository.
+
 ```yaml
 task: new_perplexity_task
 dataset_path: json

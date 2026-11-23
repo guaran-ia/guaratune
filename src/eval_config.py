@@ -17,6 +17,15 @@ from src.train_config import DEFAULT_SECRET_ENV_FILE, load_env_file, normalize_h
 from typing import Any
 
 
+# Local JSONL versions are used when present; otherwise these tasks load the
+# equivalent Guarani dataset directly through the Hugging Face datasets loader.
+HUGGING_FACE_EVALUATION_FALLBACKS = {
+    'guarani_mgsm_direct': 'guaran-ia/gn-mgsm',
+    'guarani_global_mmlu_lite': 'guaran-ia/gn-global-mmlu-lite',
+    'guarani_wnli': 'guaran-ia/gn-wnli',
+}
+
+
 if importlib.util.find_spec('lm_eval') is not None:
     lm_eval = importlib.import_module('lm_eval')
     TaskManager = importlib.import_module('lm_eval.tasks').TaskManager
@@ -164,6 +173,14 @@ def available_tasks(config: dict[str, Any]) -> tuple[list[str], list[dict[str, A
         task_name = str(task)
         missing = missing_local_json_files(task_name, config.get('include_path'))
         if missing:
+            if task_name in HUGGING_FACE_EVALUATION_FALLBACKS:
+                print(
+                    f'[fallback] {task_name}: local evaluation data is missing; '
+                    f'loading {HUGGING_FACE_EVALUATION_FALLBACKS[task_name]} from Hugging Face',
+                    flush=True,
+                )
+                available.append(task_name)
+                continue
             missing_text = ', '.join(missing)
             print(
                 f'[skip] {task_name}: missing local evaluation data: {missing_text}',
@@ -535,7 +552,8 @@ def task_specs_for_evaluation(
 
 
 def resolve_task_specs_for_evaluation(
-    tasks: list[str], task_overrides: Any, task_manager: Any
+    tasks: list[str], task_overrides: Any, task_manager: Any,
+    include_path: Any = None,
 ) -> list[Any]:
     """Load named tasks and apply matrix overrides to their task objects."""
     task_specs = task_specs_for_evaluation(tasks, task_overrides)
@@ -549,6 +567,16 @@ def resolve_task_specs_for_evaluation(
             overrides = spec
 
         task = task_manager.load(task_name)['tasks'][task_name]
+        missing = missing_local_json_files(task_name, include_path)
+        remote_dataset = HUGGING_FACE_EVALUATION_FALLBACKS.get(task_name)
+        if missing and remote_dataset:
+            task.set_config('dataset_path', remote_dataset)
+            task.set_config('dataset_name', None)
+            task.set_config('dataset_kwargs', {})
+            # ConfigurableTask snapshots these values on construction and uses
+            # the attributes when it eventually calls datasets.load_dataset.
+            task.DATASET_PATH = remote_dataset
+            task.DATASET_NAME = None
         if 'num_fewshot' in overrides:
             task.set_config('num_fewshot', overrides['num_fewshot'])
         if 'test_split' in overrides:
@@ -777,7 +805,8 @@ def do_run_evaluation(config: dict[str, Any]) -> None:
     seed = config.get('seed')
     tasks, skipped_tasks = available_tasks(config)
     task_specs = resolve_task_specs_for_evaluation(
-        tasks, config.get('task_overrides'), task_manager
+        tasks, config.get('task_overrides'), task_manager,
+        include_path=config.get('include_path'),
     )
     if not tasks:
         print('[skip] no evaluation tasks configured', flush=True)

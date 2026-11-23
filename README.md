@@ -433,8 +433,11 @@ assesses, and the metric used in the evaluation.
 | TruthfulQA-MC1 | [EN](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/en/validation), [ES](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/es/validation) | Truthfulness and factuality | Multiple-choice QA | Accuracy |
 
 >[!Note]
->A Guarani version of Global MMLU Lite, MGSM, and WLNI were 
->created by language experts and are available at `data/evaluation`. 
+>Guarani Global MMLU Lite, MGSM, and WNLI use local files under `data/evaluation`
+>when available. If those files are absent, evaluation loads the matching
+>[Global MMLU Lite](https://huggingface.co/datasets/guaran-ia/gn-global-mmlu-lite),
+>[MGSM](https://huggingface.co/datasets/guaran-ia/gn-mgsm), and
+>[WNLI](https://huggingface.co/datasets/guaran-ia/gn-wnli) repositories.
 
 Complementing the evaluations conducted with the mentioned benchkmarks, the framework
 assesses model performance through perplexity on [COREGUAPA](https://corpus.spl.gov.py), a high-quality 

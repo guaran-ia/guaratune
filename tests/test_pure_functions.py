@@ -75,6 +75,76 @@ def test_eval_config_skips_missing_local_json_task(tmp_path: Path, monkeypatch: 
     ]
 
 
+@pytest.mark.parametrize(
+    ("task_name", "dataset_id", "data_files"),
+    [
+        (
+            "guarani_mgsm_direct",
+            "guaran-ia/gn-mgsm",
+            {"train": "mgsm-train.jsonl", "test": "mgsm-test.jsonl"},
+        ),
+        (
+            "guarani_global_mmlu_lite",
+            "guaran-ia/gn-global-mmlu-lite",
+            {"dev": "mmlu-dev.jsonl", "test": "mmlu-test.jsonl"},
+        ),
+        (
+            "guarani_wnli",
+            "guaran-ia/gn-wnli",
+            {"train": "wnli-train.jsonl", "dev": "wnli-dev.jsonl"},
+        ),
+    ],
+)
+def test_eval_config_uses_hugging_face_fallback_for_missing_guarani_data(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    task_name: str,
+    dataset_id: str,
+    data_files: dict[str, str],
+) -> None:
+    include_path = tmp_path / "tasks"
+    include_path.mkdir()
+    data_file_lines = "\n".join(
+        f"    {split}: {path}" for split, path in data_files.items()
+    )
+    (include_path / f"{task_name}.yaml").write_text(
+        f"task: {task_name}\ndataset_path: json\ndataset_kwargs:\n"
+        f"  data_files:\n{data_file_lines}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    available, skipped = eval_config.available_tasks(
+        {"include_path": str(include_path), "tasks": [task_name]}
+    )
+    assert available == [task_name]
+    assert skipped == []
+
+    class FakeTask:
+        def __init__(self) -> None:
+            self.config = {}
+            self.fewshot_cfg = SimpleNamespace(split=None)
+
+        def set_config(self, key: str, value: object) -> None:
+            self.config[key] = value
+
+    task = FakeTask()
+
+    class FakeTaskManager:
+        def load(self, name: str) -> dict[str, dict[str, FakeTask]]:
+            return {"tasks": {name: task}}
+
+    resolved = eval_config.resolve_task_specs_for_evaluation(
+        [task_name], None, FakeTaskManager(), include_path=include_path
+    )
+    assert resolved == [task]
+    assert task.config["dataset_path"] == dataset_id
+    assert task.config["dataset_name"] is None
+    assert task.config["dataset_kwargs"] == {}
+    assert task.DATASET_PATH == dataset_id
+    assert task.DATASET_NAME is None
+
+
 def test_parse_env_assignment() -> None:
     assert parse_env_assignment("") is None
     assert parse_env_assignment("# comment") is None
