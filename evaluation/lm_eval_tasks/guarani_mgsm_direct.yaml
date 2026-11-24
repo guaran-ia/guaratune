@@ -3,22 +3,27 @@ dataset_path: json
 dataset_name: null
 dataset_kwargs:
   data_files:
-    train: data/evaluation/mgsm/mgsm-gn-train.jsonl
-    test: data/evaluation/mgsm/mgsm-gn-test.jsonl
+    train: data/evaluation/mgsm/mgsm_train_english2gug_microsoft_translated.jsonl
+    test: data/evaluation/mgsm/mgsm_test_english2gug_microsoft_translated.jsonl
 test_split: test
 training_split: train
 output_type: generate_until
 target_delimiter: ""
-doc_to_text: "{{question.strip()}}\nMbohovái:"
-doc_to_target: "{{answer_number|string}}"
+doc_to_text: '{% if answer is not none %}{{question+"\nMbohovái:"}}{% else %}{{"Porandu: "+question+"\nMbohovái:"}}{% endif %}'
+doc_to_target: '{% if answer is not none %}{{answer[19:]}}{% else %}{{answer_number|string}}{% endif %}'
 generation_kwargs:
   until:
-    - "\n"
-    - "\n\n"
+    - 'Porandu:'
+    - </s>
+    - <|im_end|>
   do_sample: false
   temperature: 0.0
   max_gen_toks: 128
 filter_list:
+  - name: remove_whitespace
+    filter:
+      - function: remove_whitespace
+      - function: take_first
   - name: flexible-extract
     filter:
       - function: regex
