@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from src.eval_config import HUGGING_FACE_EVALUATION_FALLBACKS
+
 
 PRIVATE_LOCAL_DATA_FILES = {
     "data/evaluation/coreguapa_identified_all.jsonl",
@@ -83,7 +85,7 @@ def test_matrices_have_required_top_level_sections() -> None:
             assert key in matrix, f"{path} is missing {key}"
 
 
-def test_local_json_tasks_reference_available_or_private_files() -> None:
+def test_local_json_tasks_reference_files_or_have_remote_fallback() -> None:
     missing: set[str] = set()
     for path in Path("evaluation/lm_eval_tasks").glob("*.yaml"):
         task_config = load_yaml(path)
@@ -91,10 +93,12 @@ def test_local_json_tasks_reference_available_or_private_files() -> None:
         if task_config.get("dataset_path") != "json":
             continue
 
+        task_name = str(task_config.get("task", path.stem))
+        has_remote_fallback = task_name in HUGGING_FACE_EVALUATION_FALLBACKS
         dataset_kwargs = task_config.get("dataset_kwargs", {})
         assert isinstance(dataset_kwargs, dict)
         for data_file in iter_data_files(dataset_kwargs.get("data_files")):
-            if not Path(data_file).exists():
+            if not Path(data_file).exists() and not has_remote_fallback:
                 missing.add(data_file)
 
     assert missing <= PRIVATE_LOCAL_DATA_FILES
