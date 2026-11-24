@@ -115,6 +115,7 @@ suites:
     tasks:
       - guarani_mgsm_direct
       - guarani_wnli
+      - guarani_piqa
     task_overrides:
       guarani_mgsm_direct:
         metrics: [exact_match]
@@ -126,6 +127,9 @@ suites:
         num_fewshot: 5
         fewshot_split: train
         test_split: dev
+      guarani_piqa:
+        metrics: [acc_norm]
+        num_fewshot: 0
     log_samples: true
 
   english_benchmarks:

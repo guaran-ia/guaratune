@@ -80,6 +80,12 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
+        'label': 'PIQA GN (acc_norm)',
+        'languages': ('gn',),
+        'metrics': ('guarani_piqa_acc_norm',),
+        'scale': 100.0,
+    },
+    {
         'label': 'Global MMLU Lite EN (acc)',
         'languages': ('en',),
         'metrics': ('english_global_mmlu_lite_acc',),

@@ -908,7 +908,11 @@ def test_new_guarani_tasks_use_distinct_fewshot_and_scored_splits() -> None:
             f"configs/evaluation/{model}_eval_matrix.yaml"
         )
         suite = matrix["suites"]["guarani_benchmarks"]
-        assert suite["tasks"] == ["guarani_mgsm_direct", "guarani_wnli"]
+        assert suite["tasks"] == [
+            "guarani_mgsm_direct",
+            "guarani_wnli",
+            "guarani_piqa",
+        ]
         assert suite["task_overrides"]["guarani_mgsm_direct"] == {
             "metrics": ["exact_match"],
             "num_fewshot": 5,
@@ -925,6 +929,37 @@ def test_new_guarani_tasks_use_distinct_fewshot_and_scored_splits() -> None:
         assert matrix["suites"]["global_mmlu_lite"]["task_overrides"][
             "guarani_global_mmlu_lite"
         ]["fewshot_split"] == "dev"
+
+
+def test_guarani_piqa_is_zero_shot_and_available_as_a_benchmark() -> None:
+    task = eval_config.load_lm_eval_task_yaml(
+        "evaluation/lm_eval_tasks/guarani_piqa.yaml"
+    )
+    assert task["dataset_path"] == "guaran-ia/gn-piqa"
+    assert task["num_fewshot"] == 0
+    assert task["test_split"] == "test"
+    assert task["doc_to_choice"] == "{{[sol1, sol2]}}"
+    assert task["doc_to_target"] == "label"
+    assert [metric["metric"] for metric in task["metric_list"]] == ["acc_norm"]
+
+    for model in ("gemma3-4", "gemma4-2", "gemma4-4", "gemma4-12"):
+        matrix = generate_eval_configs.load_yaml(
+            f"configs/evaluation/{model}_eval_matrix.yaml"
+        )
+        task_name, suite_name = eval_benchmark.find_benchmark_task(
+            matrix, "piqa", "gn", "experiments"
+        )
+        assert (task_name, suite_name) == ("guarani_piqa", "guarani_benchmarks")
+        assert matrix["suites"][suite_name]["task_overrides"][task_name] == {
+            "metrics": ["acc_norm"],
+            "num_fewshot": 0,
+        }
+
+    assert any(
+        score_spec["label"] == "PIQA GN (acc_norm)"
+        and "guarani_piqa_acc_norm" in score_spec["metrics"]
+        for score_spec in analyze_eval_results.BENCHMARK_SCORE_SPECS
+    )
 
 
 def test_spanish_wnli_uses_csv_files_instead_of_dataset_script() -> None:

@@ -145,6 +145,7 @@ def test_third_party_notices_cover_directly_configured_artifacts() -> None:
         "Helsinki-NLP/fineweb-edu-translated",
         "HuggingFaceFW/fineweb-edu",
         "CohereLabs/Global-MMLU-Lite",
+        "guaran-ia/gn-piqa",
         "facebook/2M-Belebele",
         "facebook/flores",
         "alexandrainst/multi-wiki-qa",

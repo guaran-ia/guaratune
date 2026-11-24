@@ -1,0 +1,17 @@
+task: guarani_piqa
+dataset_path: guaran-ia/gn-piqa
+dataset_name: null
+num_fewshot: 0
+test_split: test
+output_type: multiple_choice
+doc_to_text: "{{goal.strip()}}\nMbohovái:"
+doc_to_target: label
+doc_to_choice: "{{[sol1, sol2]}}"
+should_decontaminate: true
+doc_to_decontamination_query: goal
+metric_list:
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 1.0

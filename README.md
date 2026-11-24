@@ -420,15 +420,15 @@ assesses, and the metric used in the evaluation.
 | Belele | [GN](https://huggingface.co/datasets/facebook/belebele/viewer/grn_Latn), [EN](https://huggingface.co/datasets/facebook/belebele/viewer/eng_Latn), [ES](https://huggingface.co/datasets/facebook/belebele/viewer/spa_Latn) | Reading comprenhension | Multiple-choice QA | Accuracy |
 | MultiWiki-QA | [GN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/gn), [EN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/en), [ES](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/es) | Reading comprenhension | Generation | F1, Exact match |
 | Flores+ | [GN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/gug_Latn/dev), [EN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/eng_Latn/dev), [ES](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/spa_Latn/dev) | Translation | Generation | BLEU, chrf++ |
-| Global MMLU Lite | [GN](data/evaluation/global-mmlu-lite), [EN](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/en/test), [ES](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/es/test) | General knowledge | Multiple-choice QA | Accuracy |
-| MGSM | [GN](data/evaluation/mgsm), [EN](https://huggingface.co/datasets/juletxara/mgsm/viewer/en/test), [ES](https://huggingface.co/datasets/juletxara/mgsm/viewer/es/test) | Specialized reasoning (mathematics) | Generation| Exact match |
+| Global MMLU Lite | [GN](https://huggingface.co/datasets/guaran-ia/gn-global-mmlu-lite), [EN](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/en/test), [ES](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/es/test) | General knowledge | Multiple-choice QA | Accuracy |
+| MGSM | [GN](https://huggingface.co/datasets/guaran-ia/gn-mgsm), [EN](https://huggingface.co/datasets/juletxara/mgsm/viewer/en/test), [ES](https://huggingface.co/datasets/juletxara/mgsm/viewer/es/test) | Specialized reasoning (mathematics) | Generation| Exact match |
+| WNLI | [GN](https://huggingface.co/datasets/guaran-ia/gn-wnli), [EN](https://huggingface.co/datasets/nyu-mll/glue/viewer/wnli/test), [ES](https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/blob/main/wnli-test-shuffled-es.csv) | Common sense & inference | Multiple-choice QA | Accuracy |
+| PIQA | [GN](https://huggingface.co/datasets/guaran-ia/gn-piqa), [EN](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/eng_latn), [ES](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/spa_latn_spai) | Common sense & inference | Multiple-choice QA | Normalized accuracy | 
 | ARC Easy | [EN](https://huggingface.co/datasets/allenai/ai2_arc/viewer/ARC-Easy/validation), [ES](https://huggingface.co/datasets/BSC-LT/arc_es/viewer/ARC_Easy_es) | Specialized reasoning (science) | Multiple-choice QA | Normalized accuracy |
 | ARC Challenge | [EN](https://huggingface.co/datasets/allenai/ai2_arc/viewer/ARC-Challenge/validation), [ES](https://huggingface.co/datasets/BSC-LT/arc_es/viewer/ARC_Challenge_es) | Specialized reasoning (science) | Multiple-choice QA | Normalized accuracy |
 | GPQA (main) | [EN](https://huggingface.co/datasets/Idavidrein/gpqa/viewer/gpqa_main), [ES](https://huggingface.co/datasets/ellamind/gpqa-multilingual/viewer/spa) | Specialized reasoning (biology, physics, chemistry) | Multiple-choice QA | Accuracy |
-| WNLI | [GN](data/evaluation/wnli), [EN](https://huggingface.co/datasets/nyu-mll/glue/viewer/wnli/test), [ES](https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/blob/main/wnli-test-shuffled-es.csv) | Common sense & inference | Multiple-choice QA | Accuracy |
 | XStoryCloze | [EN](https://huggingface.co/datasets/juletxara/xstory_cloze/viewer/en/eval), [ES](https://huggingface.co/datasets/juletxara/xstory_cloze/viewer/es/eval) | Common sense & inference | Multiple-choice QA | Accuracy |
-| HellaSwag | [EN](https://huggingface.co/datasets/Rowan/hellaswag/viewer/default/validation), [ES](https://huggingface.co/datasets/alvarobartt/hellaswag-okapi-eval-es) | Common sense & inference | Multiple-choice QA | Normalized accuracy |
-| PIQA | [EN](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/eng_latn), [ES](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/spa_latn_spai) | Common sense & inference | Multiple-choice QA | Normalized accuracy | 
+| HellaSwag | [EN](https://huggingface.co/datasets/Rowan/hellaswag/viewer/default/validation), [ES](https://huggingface.co/datasets/alvarobartt/hellaswag-okapi-eval-es) | Common sense & inference | Multiple-choice QA | Normalized accuracy | 
 | COPA | [EN](https://huggingface.co/datasets/aps/super_glue/viewer/copa/validation), [ES](https://huggingface.co/datasets/BSC-LT/COPA-es) | Causal reasoning | Multiple-choice QA | Accuracy |
 | TruthfulQA-MC1 | [EN](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/en/validation), [ES](https://huggingface.co/datasets/HiTZ/truthfulqa-multi/viewer/es/validation) | Truthfulness and factuality | Multiple-choice QA | Accuracy |
 
@@ -436,8 +436,7 @@ assesses, and the metric used in the evaluation.
 >Guarani Global MMLU Lite, MGSM, and WNLI use local files under `data/evaluation`
 >when available. If those files are absent, evaluation loads the matching
 >[Global MMLU Lite](https://huggingface.co/datasets/guaran-ia/gn-global-mmlu-lite),
->[MGSM](https://huggingface.co/datasets/guaran-ia/gn-mgsm), and
->[WNLI](https://huggingface.co/datasets/guaran-ia/gn-wnli) repositories.
+>[MGSM](https://huggingface.co/datasets/guaran-ia/gn-mgsm), [PIQA](https://huggingface.co/datasets/guaran-ia/gn-piqa), and [WNLI](https://huggingface.co/datasets/guaran-ia/gn-wnli) repositories.
 
 Complementing the evaluations conducted with the mentioned benchkmarks, the framework
 assesses model performance through perplexity on [COREGUAPA](https://corpus.spl.gov.py), a high-quality 
