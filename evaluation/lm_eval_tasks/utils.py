@@ -22,6 +22,13 @@ ANSWER_TO_INDEX = {
     'D': 3,
 }
 INCLUDE_ANSWER_LETTERS = 'ABCD'
+INCLUDE_SYSTEM_INSTRUCTION = (
+    'You will be given a multiple-choice question from the country named in '
+    'the question. Before responding, analyze the question and answer options. '
+    'You can do any reasoning; however, you MUST put your answer inside the '
+    'answer tag: <answer>A/B/C/D</answer>. Do not include any other text on '
+    'that line.'
+)
 INCLUDE_ANSWER_TAG_RE = re.compile(
     r'<answer>\s*([A-D])\s*</answer>', re.IGNORECASE
 )
@@ -99,10 +106,11 @@ def process_include_docs(dataset: datasets.Dataset) -> datasets.Dataset:
 
 
 def doc_to_include_text(doc: dict[str, Any]) -> str:
-    """Format one INCLUDE-2.0 item with the country and A-D choices."""
+    """Format one INCLUDE-2.0 item and its answer-format instructions."""
     labels = INCLUDE_ANSWER_LETTERS
     choices = doc['choices']
     return (
+        f'{INCLUDE_SYSTEM_INSTRUCTION}\n\n'
         f"Question from {str(doc['country']).strip()}: "
         f"{str(doc['question']).strip()}\n"
         + '\n'.join(

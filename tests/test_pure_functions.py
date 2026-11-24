@@ -986,7 +986,9 @@ def test_include_2_0_tasks_use_paper_protocol_and_zero_shot() -> None:
     processed = utils.process_include_docs(FakeDataset([source_row]))
     assert processed.rows[0]["answer_letter"] == "A"
     assert processed.rows[0]["choices"] == source_row["choices"]
-    assert "Question from Paraguay" in utils.doc_to_include_text(processed.rows[0])
+    include_prompt = utils.doc_to_include_text(processed.rows[0])
+    assert "Question from Paraguay" in include_prompt
+    assert "<answer>A/B/C/D</answer>" in include_prompt
 
     legacy_row = {
         "country": "Paraguay",
@@ -1034,13 +1036,11 @@ def test_include_2_0_tasks_use_paper_protocol_and_zero_shot() -> None:
         suite = matrix["suites"]["include_2_0"]
         assert suite["tasks"] == ["guarani_include_2_0", "spanish_include_2_0"]
         assert "include_2_0" in matrix["profiles"]["experiments"]["suites"]
-        assert suite["apply_chat_template"] is True
-        assert "<answer>A/B/C/D</answer>" in suite["system_instruction"]
         config = generate_eval_configs.evaluation_config(
             matrix, "experiments", "include_2_0", "base", None, None
         )
-        assert config["apply_chat_template"] is True
-        assert config["system_instruction"] == suite["system_instruction"]
+        assert not config.get("apply_chat_template", False)
+        assert not config.get("system_instruction")
         assert config["task_overrides"]["guarani_include_2_0"]["num_fewshot"] == 0
         assert config["task_overrides"]["spanish_include_2_0"]["num_fewshot"] == 0
 

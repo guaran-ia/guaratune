@@ -58,8 +58,8 @@ Hugging Face repository.
 INCLUDE 2.0 has zero-shot Guarani and Spanish tasks backed by the `guarani` and
 `spanish` configs in `epfl-nlp/include-2.0`. They use the paper's country-aware
 four-choice prompt and report strict and tolerant exact-match scores. The
-`include_2_0` suite applies the chat template and paper-style system instruction
-only to these tasks.
+`include_2_0` prompt includes the paper-style answer-format instruction inline,
+so it also works with tokenizers that do not define a chat template.
 
 ```yaml
 task: new_perplexity_task
