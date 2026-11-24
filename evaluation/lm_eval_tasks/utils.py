@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import datasets
 import hashlib
 import re
-import sacrebleu
 import string
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import datasets
 
 
 MULTIWIKIQA_PUNCTUATION = string.punctuation + '¿¡“”‘’«»…'
@@ -380,6 +381,8 @@ def _process_flores_plus_direction(
     dataset: Any, source_config: str, target_config: str
 ) -> Any:
     """Join aligned FLORES+ language configs by row id for one translation direction."""
+    import datasets
+
     if len(dataset) == 0:
         return dataset
 
@@ -663,6 +666,8 @@ def aggregate_chrf_plus_plus(items: list[tuple[str, str]]) -> float:
     Returns:
         sacrebleu corpus chrF++ score.
     """
+    import sacrebleu
+
     references = [reference for reference, _ in items]
     predictions = [prediction for _, prediction in items]
     return sacrebleu.corpus_chrf(predictions, [references], word_order=2).score
