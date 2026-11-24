@@ -4,11 +4,11 @@ dataset_name: null
 num_fewshot: 0
 test_split: test
 output_type: multiple_choice
-doc_to_text: "{{goal.strip()}}\nMbohovái:"
+doc_to_text: "{{prompt.strip()}}\nMbohovái:"
 doc_to_target: label
-doc_to_choice: "{{[sol1, sol2]}}"
+doc_to_choice: "{{[solution0, solution1]}}"
 should_decontaminate: true
-doc_to_decontamination_query: goal
+doc_to_decontamination_query: prompt
 metric_list:
   - metric: acc_norm
     aggregation: mean
