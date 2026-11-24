@@ -55,6 +55,12 @@ The Guarani MGSM, Global MMLU Lite, and WNLI tasks prefer their local files unde
 runner loads that task's complete dataset from its corresponding Guaran-IA
 Hugging Face repository.
 
+INCLUDE 2.0 has zero-shot Guarani and Spanish tasks backed by the `guarani` and
+`spanish` configs in `epfl-nlp/include-2.0`. They use the paper's country-aware
+four-choice prompt and report strict and tolerant exact-match scores. The
+`include_2_0` suite applies the chat template and paper-style system instruction
+only to these tasks.
+
 ```yaml
 task: new_perplexity_task
 dataset_path: json

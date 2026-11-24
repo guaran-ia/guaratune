@@ -962,6 +962,108 @@ def test_guarani_piqa_is_zero_shot_and_available_as_a_benchmark() -> None:
     )
 
 
+def test_include_2_0_tasks_use_paper_protocol_and_zero_shot() -> None:
+    from evaluation.lm_eval_tasks import utils
+
+    class FakeDataset:
+        column_names = ["country", "question", "options", "answer"]
+
+        def __init__(self, rows: list[dict[str, object]]) -> None:
+            self.rows = rows
+
+        def map(self, function: object) -> "FakeDataset":
+            self.rows = [function(row) for row in self.rows]
+            return self
+
+    source_row = {
+        "country": "Paraguay",
+        "question": "Mba'épa Paraguay retã táva guasu?",
+        "options": ["Asunción", "Encarnación", "Ciudad del Este", "Villarrica"],
+        "answer": 0,
+    }
+    processed = utils.process_include_docs(FakeDataset([source_row]))
+    assert processed.rows[0]["answer_letter"] == "A"
+    assert processed.rows[0]["choices"] == source_row["options"]
+    assert "Question from Paraguay" in utils.doc_to_include_text(processed.rows[0])
+
+    assert utils.process_include_results(
+        {"answer_letter": "B"}, ["Reasoning\n<answer>B</answer>"]
+    ) == {"em_hard": 1.0, "em_soft": 1.0}
+    assert utils.process_include_results(
+        {"answer_letter": "B"}, ["<answer>B. Madrid</answer>"]
+    ) == {"em_hard": 0.0, "em_soft": 1.0}
+    assert utils.process_include_results(
+        {"answer_letter": "C"}, ["The answer is C."]
+    ) == {"em_hard": 0.0, "em_soft": 1.0}
+    assert utils.process_include_results(
+        {"answer_letter": "D"}, ["I cannot determine the answer."]
+    ) == {"em_hard": 0.0, "em_soft": 0.0}
+
+    for task_name, config_name in (
+        ("guarani_include_2_0", "guarani"),
+        ("spanish_include_2_0", "spanish"),
+    ):
+        task = eval_config.load_lm_eval_task_yaml(
+            f"evaluation/lm_eval_tasks/{task_name}.yaml"
+        )
+        assert task["dataset_path"] == "epfl-nlp/include-2.0"
+        assert task["dataset_name"] == config_name
+        assert task["test_split"] == "test"
+        assert task["num_fewshot"] == 0
+        assert [item["metric"] for item in task["metric_list"]] == [
+            "em_hard",
+            "em_soft",
+        ]
+
+    for model in ("gemma3-4", "gemma4-2", "gemma4-4", "gemma4-12"):
+        matrix = generate_eval_configs.load_yaml(
+            f"configs/evaluation/{model}_eval_matrix.yaml"
+        )
+        suite = matrix["suites"]["include_2_0"]
+        assert suite["tasks"] == ["guarani_include_2_0", "spanish_include_2_0"]
+        assert "include_2_0" in matrix["profiles"]["experiments"]["suites"]
+        assert suite["apply_chat_template"] is True
+        assert "<answer>A/B/C/D</answer>" in suite["system_instruction"]
+        config = generate_eval_configs.evaluation_config(
+            matrix, "experiments", "include_2_0", "base", None, None
+        )
+        assert config["apply_chat_template"] is True
+        assert config["system_instruction"] == suite["system_instruction"]
+        assert config["task_overrides"]["guarani_include_2_0"]["num_fewshot"] == 0
+        assert config["task_overrides"]["spanish_include_2_0"]["num_fewshot"] == 0
+
+        for language, task_name in (
+            ("gn", "guarani_include_2_0"),
+            ("es", "spanish_include_2_0"),
+        ):
+            assert eval_benchmark.find_benchmark_task(
+                matrix, "include", language, "experiments"
+            ) == (task_name, "include_2_0")
+
+    assert {
+        score_spec["label"]
+        for score_spec in analyze_eval_results.BENCHMARK_SCORE_SPECS
+        if "INCLUDE 2.0" in score_spec["label"]
+    } == {"INCLUDE 2.0 GN (em_soft)", "INCLUDE 2.0 ES (em_soft)"}
+    report_rows, _ = analyze_eval_results.benchmark_table(
+        [
+            {
+                "model_key": "gemma4_4b",
+                "variant": "base",
+                "training_method": "base",
+                "guarani_include_2_0_em_soft": 0.71,
+                "spanish_include_2_0_em_soft": 0.82,
+            }
+        ],
+        "all",
+        {},
+    )
+    assert {row["benchmark"] for row in report_rows} >= {
+        "INCLUDE 2.0 GN (em_soft)",
+        "INCLUDE 2.0 ES (em_soft)",
+    }
+
+
 def test_spanish_wnli_uses_csv_files_instead_of_dataset_script() -> None:
     task = eval_config.load_lm_eval_task_yaml(
         "evaluation/lm_eval_tasks/wnli_es.yaml"

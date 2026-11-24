@@ -132,6 +132,25 @@ suites:
         num_fewshot: 0
     log_samples: true
 
+  include_2_0:
+    tasks:
+      - guarani_include_2_0
+      - spanish_include_2_0
+    task_overrides:
+      guarani_include_2_0:
+        metrics: [em_hard, em_soft]
+        num_fewshot: 0
+      spanish_include_2_0:
+        metrics: [em_hard, em_soft]
+        num_fewshot: 0
+    apply_chat_template: true
+    system_instruction: >-
+      You will be given a multiple-choice question from the country named in the
+      question. Before responding, analyze the question and answer options. You
+      can do any reasoning; however, you MUST put your answer inside the answer
+      tag: <answer>A/B/C/D</answer>. Do not include any other text on that line.
+    log_samples: true
+
   english_benchmarks:
     tasks:
       - arc_easy
@@ -276,6 +295,7 @@ profiles:
       - flores_plus
       - multiwikiqa
       - guarani_benchmarks
+      - include_2_0
       - english_benchmarks
       - spanish_benchmarks
       - perplexity

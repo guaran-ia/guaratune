@@ -86,6 +86,12 @@ BENCHMARK_SCORE_SPECS = (
         'scale': 100.0,
     },
     {
+        'label': 'INCLUDE 2.0 GN (em_soft)',
+        'languages': ('gn',),
+        'metrics': ('guarani_include_2_0_em_soft',),
+        'scale': 100.0,
+    },
+    {
         'label': 'Global MMLU Lite EN (acc)',
         'languages': ('en',),
         'metrics': ('english_global_mmlu_lite_acc',),
@@ -95,6 +101,12 @@ BENCHMARK_SCORE_SPECS = (
         'label': 'Global MMLU Lite ES (acc)',
         'languages': ('es',),
         'metrics': ('spanish_global_mmlu_lite_acc',),
+        'scale': 100.0,
+    },
+    {
+        'label': 'INCLUDE 2.0 ES (em_soft)',
+        'languages': ('es',),
+        'metrics': ('spanish_include_2_0_em_soft',),
         'scale': 100.0,
     },
     {

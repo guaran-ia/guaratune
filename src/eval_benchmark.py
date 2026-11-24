@@ -27,6 +27,8 @@ BENCHMARK_ALIASES = {
     "arceasy": "arc_easy",
     "arcchallenge": "arc_challenge",
     "piqa": "piqa",
+    "include": "include_2_0",
+    "include20": "include_2_0",
     "hellaswag": "hellaswag",
     "xstorycloze": "xstorycloze",
     "gpqa": "gpqa",

@@ -421,6 +421,7 @@ assesses, and the metric used in the evaluation.
 | MultiWiki-QA | [GN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/gn), [EN](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/en), [ES](https://huggingface.co/datasets/alexandrainst/multi-wiki-qa/viewer/es) | Reading comprenhension | Generation | F1, Exact match |
 | Flores+ | [GN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/gug_Latn/dev), [EN](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/eng_Latn/dev), [ES](https://huggingface.co/datasets/openlanguagedata/flores_plus/viewer/spa_Latn/dev) | Translation | Generation | BLEU, chrf++ |
 | Global MMLU Lite | [GN](https://huggingface.co/datasets/guaran-ia/gn-global-mmlu-lite), [EN](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/en/test), [ES](https://huggingface.co/datasets/CohereLabs/Global-MMLU-Lite/viewer/es/test) | General knowledge | Multiple-choice QA | Accuracy |
+| INCLUDE 2.0 | [GN](https://huggingface.co/datasets/epfl-nlp/include-2.0/viewer/guarani), [ES](https://huggingface.co/datasets/epfl-nlp/include-2.0/viewer/spanish) | Regional and global factual knowledge | Multiple-choice QA | Exact match (strict and tolerant) |
 | MGSM | [GN](https://huggingface.co/datasets/guaran-ia/gn-mgsm), [EN](https://huggingface.co/datasets/juletxara/mgsm/viewer/en/test), [ES](https://huggingface.co/datasets/juletxara/mgsm/viewer/es/test) | Specialized reasoning (mathematics) | Generation| Exact match |
 | WNLI | [GN](https://huggingface.co/datasets/guaran-ia/gn-wnli), [EN](https://huggingface.co/datasets/nyu-mll/glue/viewer/wnli/test), [ES](https://huggingface.co/datasets/PlanTL-GOB-ES/wnli-es/blob/main/wnli-test-shuffled-es.csv) | Common sense & inference | Multiple-choice QA | Accuracy |
 | PIQA | [GN](https://huggingface.co/datasets/guaran-ia/gn-piqa), [EN](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/eng_latn), [ES](https://huggingface.co/datasets/mrlbenchmarks/global-piqa-nonparallel/viewer/spa_latn_spai) | Common sense & inference | Multiple-choice QA | Normalized accuracy | 
@@ -530,7 +531,7 @@ python -m src.eval_benchmark --model <model_key> --benchmark flores --source_lan
 | Argument | Default | Description |
 | --- | --- | --- |
 | `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
-| `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
+| `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `include`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
 | `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
 | `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated.|
 | `--lora-rank` | `None` | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |

@@ -20,6 +20,13 @@ ANSWER_TO_INDEX = {
     'C': 2,
     'D': 3,
 }
+INCLUDE_ANSWER_LETTERS = 'ABCD'
+INCLUDE_ANSWER_TAG_RE = re.compile(
+    r'<answer>\s*([A-D])\s*</answer>', re.IGNORECASE
+)
+INCLUDE_ANSWER_TAG_CONTENT_RE = re.compile(
+    r'<answer>(.*?)</answer>', re.IGNORECASE | re.DOTALL
+)
 
 
 def clean_option(value: Any) -> str:
@@ -51,6 +58,91 @@ def answer_index(value: Any) -> int:
         raise ValueError(f'Unsupported answer label: {answer}')
 
     return ANSWER_TO_INDEX[answer]
+
+
+def process_include_docs(dataset: datasets.Dataset) -> datasets.Dataset:
+    """Normalize INCLUDE-2.0 rows to four choices and an A-D answer target."""
+    def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
+        choices = doc.get('options')
+        if not isinstance(choices, (list, tuple)) or len(choices) != 4:
+            raise ValueError('INCLUDE-2.0 rows must contain exactly four options.')
+        try:
+            answer = int(doc['answer'])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError('INCLUDE-2.0 answer must be an index from 0 to 3.') from exc
+        if answer not in range(4):
+            raise ValueError(f'Unsupported INCLUDE-2.0 answer index: {answer}')
+
+        country = str(doc.get('country', '')).strip()
+        if not country:
+            raise ValueError('INCLUDE-2.0 rows must include their country.')
+        return {
+            **doc,
+            'country': country,
+            'choices': [clean_option(option) for option in choices],
+            'answer_letter': INCLUDE_ANSWER_LETTERS[answer],
+        }
+
+    return dataset.map(process_doc)
+
+
+def doc_to_include_text(doc: dict[str, Any]) -> str:
+    """Format one INCLUDE-2.0 item with the country and A-D choices."""
+    labels = INCLUDE_ANSWER_LETTERS
+    choices = doc['choices']
+    return (
+        f"Question from {str(doc['country']).strip()}: "
+        f"{str(doc['question']).strip()}\n"
+        + '\n'.join(
+            f'{label}. {clean_option(choice)}'
+            for label, choice in zip(labels, choices)
+        )
+        + '\nAnswer:'
+    )
+
+
+def include_answer_hard(response: str) -> str:
+    """Return only a well-formed answer tag containing a single A-D letter."""
+    match = INCLUDE_ANSWER_TAG_RE.search(response)
+    return match.group(1).upper() if match else ''
+
+
+def include_answer_soft(response: str) -> str:
+    """Extract an INCLUDE answer with the paper's tolerant fallback patterns."""
+    tagged_content = INCLUDE_ANSWER_TAG_CONTENT_RE.search(response)
+    if tagged_content:
+        match = re.search(r'\b([A-D])\b', tagged_content.group(1), re.IGNORECASE)
+        if match:
+            return match.group(1).upper()
+
+    answer_phrase = re.search(
+        r'\b(?:the\s+)?answer\s*(?:is|:)\s*([A-D])\b',
+        response,
+        re.IGNORECASE,
+    )
+    if answer_phrase:
+        return answer_phrase.group(1).upper()
+
+    leading_letter = re.match(r'^\s*([A-D])(?:[.)]\s*.*)?\s*$', response, re.I | re.S)
+    if leading_letter:
+        return leading_letter.group(1).upper()
+
+    bare_letter = re.fullmatch(r'\s*([A-D])\s*', response, re.IGNORECASE)
+    return bare_letter.group(1).upper() if bare_letter else ''
+
+
+def process_include_results(
+    doc: dict[str, Any], results: list[str]
+) -> dict[str, float]:
+    """Score strict answer-tag extraction and the tolerant fallback parser."""
+    response = str(results[0]) if results else ''
+    target = str(doc['answer_letter']).strip().upper()
+    if target not in INCLUDE_ANSWER_LETTERS:
+        raise ValueError(f'Unsupported INCLUDE-2.0 target: {target!r}')
+    return {
+        'em_hard': float(include_answer_hard(response) == target),
+        'em_soft': float(include_answer_soft(response) == target),
+    }
 
 
 def process_copa_docs(dataset: datasets.Dataset) -> datasets.Dataset:
