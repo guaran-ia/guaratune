@@ -64,15 +64,26 @@ def answer_index(value: Any) -> int:
 def process_include_docs(dataset: datasets.Dataset) -> datasets.Dataset:
     """Normalize INCLUDE-2.0 rows to four choices and an A-D answer target."""
     def process_doc(doc: dict[str, Any]) -> dict[str, Any]:
-        choices = doc.get('options')
+        # The published Hub dataset uses ``choices`` and an A-D answer label.
+        # Keep accepting the earlier ``options`` plus numeric-answer layout so
+        # locally cached/prepared copies remain usable.
+        choices = doc.get('choices', doc.get('options'))
         if not isinstance(choices, (list, tuple)) or len(choices) != 4:
             raise ValueError('INCLUDE-2.0 rows must contain exactly four options.')
-        try:
-            answer = int(doc['answer'])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError('INCLUDE-2.0 answer must be an index from 0 to 3.') from exc
-        if answer not in range(4):
-            raise ValueError(f'Unsupported INCLUDE-2.0 answer index: {answer}')
+
+        raw_answer = doc.get('answer')
+        answer_label = str(raw_answer).strip().upper()
+        if answer_label in ANSWER_TO_INDEX:
+            answer = ANSWER_TO_INDEX[answer_label]
+        else:
+            try:
+                answer = int(raw_answer)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    'INCLUDE-2.0 answer must be an A-D label or an index from 0 to 3.'
+                ) from exc
+            if answer not in range(4):
+                raise ValueError(f'Unsupported INCLUDE-2.0 answer index: {answer}')
 
         country = str(doc.get('country', '')).strip()
         if not country:

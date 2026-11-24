@@ -938,8 +938,10 @@ def test_guarani_piqa_is_zero_shot_and_available_as_a_benchmark() -> None:
     assert task["dataset_path"] == "guaran-ia/gn-piqa"
     assert task["num_fewshot"] == 0
     assert task["test_split"] == "test"
-    assert task["doc_to_choice"] == "{{[sol1, sol2]}}"
+    assert task["doc_to_text"] == "{{prompt.strip()}}\nMbohovái:"
+    assert task["doc_to_choice"] == "{{[solution0, solution1]}}"
     assert task["doc_to_target"] == "label"
+    assert task["doc_to_decontamination_query"] == "prompt"
     assert [metric["metric"] for metric in task["metric_list"]] == ["acc_norm"]
 
     for model in ("gemma3-4", "gemma4-2", "gemma4-4", "gemma4-12"):
@@ -966,7 +968,7 @@ def test_include_2_0_tasks_use_paper_protocol_and_zero_shot() -> None:
     from evaluation.lm_eval_tasks import utils
 
     class FakeDataset:
-        column_names = ["country", "question", "options", "answer"]
+        column_names = ["country", "question", "choices", "answer"]
 
         def __init__(self, rows: list[dict[str, object]]) -> None:
             self.rows = rows
@@ -978,13 +980,23 @@ def test_include_2_0_tasks_use_paper_protocol_and_zero_shot() -> None:
     source_row = {
         "country": "Paraguay",
         "question": "Mba'épa Paraguay retã táva guasu?",
-        "options": ["Asunción", "Encarnación", "Ciudad del Este", "Villarrica"],
-        "answer": 0,
+        "choices": ["Asunción", "Encarnación", "Ciudad del Este", "Villarrica"],
+        "answer": "A",
     }
     processed = utils.process_include_docs(FakeDataset([source_row]))
     assert processed.rows[0]["answer_letter"] == "A"
-    assert processed.rows[0]["choices"] == source_row["options"]
+    assert processed.rows[0]["choices"] == source_row["choices"]
     assert "Question from Paraguay" in utils.doc_to_include_text(processed.rows[0])
+
+    legacy_row = {
+        "country": "Paraguay",
+        "question": "Pregunta",
+        "options": source_row["choices"],
+        "answer": 3,
+    }
+    assert utils.process_include_docs(FakeDataset([legacy_row])).rows[0][
+        "answer_letter"
+    ] == "D"
 
     assert utils.process_include_results(
         {"answer_letter": "B"}, ["Reasoning\n<answer>B</answer>"]
