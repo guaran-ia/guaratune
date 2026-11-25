@@ -520,6 +520,12 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 python -m src.eval_benchmark --model <model_key> --benchmark <benchmark_name>
 ```
 
+Repeat `--model` to run the same benchmark for several models in one invocation:
+
+```bash
+python -m src.eval_benchmark --model gemma3_4b --model gemma4_2b --model gemma4_12b --benchmark mgsm
+```
+
 For the `Flores+` benchkmark both the source and target languages should be specified
 
 ```bash
@@ -530,7 +536,7 @@ python -m src.eval_benchmark --model <model_key> --benchmark flores --source_lan
 
 | Argument | Default | Description |
 | --- | --- | --- |
-| `--model` | `None` | Model key to be evaluated, for example `gemma4_4b`. |
+| `--model` | Required; repeatable | Model key to evaluate, for example `gemma4_4b`. Repeat to evaluate multiple models. |
 | `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `include`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
 | `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
 | `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated.|

@@ -256,42 +256,7 @@ def run_configs(configs: list[dict[str, Any]]) -> None:
                 eval_config.run_evaluation(config_path)
 
 
-@click.command(context_settings={"show_default": True})
-@click.option("--benchmark", required=True, help="Benchmark name, for example mgsm or arc_easy.")
-@click.option(
-    "--language",
-    help="Benchmark language: English, Spanish, or Guarani. If omitted, run all configured languages.",
-)
-@click.option("--source_language", "source_language", help="FLORES+ source language.")
-@click.option("--target_language", "target_language", help="FLORES+ target language.")
-@click.option("--metric", help="Metric ID. Defaults to the metric(s) configured in the matrix.")
-@click.option("--model", "model_key", required=True, help="Model key, for example gemma4_4b.")
-@click.option(
-    "--cpt-method",
-    "--cpt_method",
-    "cpt_method",
-    type=click.Choice(["base", "full", "lora"], case_sensitive=False),
-    help="Training method to evaluate. If omitted, include all available methods and base.",
-)
-@click.option(
-    "--lora-rank",
-    "--lora_rank",
-    type=int,
-    help="LoRA rank; required with --cpt-method lora. If omitted, include all ranks.",
-)
-@click.option(
-    "--dataset-configuration",
-    "--dataset_configuration",
-    "--dataset-config",
-    "dataset_configuration",
-    type=click.Choice([f"c{number}" for number in range(1, 9)], case_sensitive=False),
-    help=(
-        "Training dataset configuration. If omitted, include all available datasets. "
-        "Ignored when --cpt-method base is selected."
-    ),
-)
-@click.option("--profile", default=DEFAULT_PROFILE, help="Evaluation profile to run.")
-def main(
+def _run_benchmark(
     benchmark: str,
     language: str | None,
     source_language: str | None,
@@ -303,7 +268,7 @@ def main(
     dataset_configuration: str | None,
     profile: str,
 ) -> None:
-    """Run one benchmark across variants selected by the optional filters."""
+    """Run one benchmark for a single model."""
     try:
         cpt_method = cpt_method.lower() if cpt_method else None
         dataset_configuration = dataset_configuration.upper() if dataset_configuration else None
@@ -413,6 +378,75 @@ def main(
         run_configs(configs)
     except Exception as exc:
         raise click.ClickException(str(exc)) from exc
+
+
+@click.command(context_settings={"show_default": True})
+@click.option("--benchmark", required=True, help="Benchmark name, for example mgsm or arc_easy.")
+@click.option(
+    "--language",
+    help="Benchmark language: English, Spanish, or Guarani. If omitted, run all configured languages.",
+)
+@click.option("--source_language", "source_language", help="FLORES+ source language.")
+@click.option("--target_language", "target_language", help="FLORES+ target language.")
+@click.option("--metric", help="Metric ID. Defaults to the metric(s) configured in the matrix.")
+@click.option(
+    "--model",
+    "model_keys",
+    multiple=True,
+    required=True,
+    help="Model key; repeat to evaluate multiple models.",
+)
+@click.option(
+    "--cpt-method",
+    "--cpt_method",
+    "cpt_method",
+    type=click.Choice(["base", "full", "lora"], case_sensitive=False),
+    help="Training method to evaluate. If omitted, include all available methods and base.",
+)
+@click.option(
+    "--lora-rank",
+    "--lora_rank",
+    type=int,
+    help="LoRA rank; required with --cpt-method lora. If omitted, include all ranks.",
+)
+@click.option(
+    "--dataset-configuration",
+    "--dataset_configuration",
+    "--dataset-config",
+    "dataset_configuration",
+    type=click.Choice([f"c{number}" for number in range(1, 9)], case_sensitive=False),
+    help=(
+        "Training dataset configuration. If omitted, include all available datasets. "
+        "Ignored when --cpt-method base is selected."
+    ),
+)
+@click.option("--profile", default=DEFAULT_PROFILE, help="Evaluation profile to run.")
+def main(
+    benchmark: str,
+    language: str | None,
+    source_language: str | None,
+    target_language: str | None,
+    metric: str | None,
+    model_keys: tuple[str, ...],
+    cpt_method: str | None,
+    lora_rank: int | None,
+    dataset_configuration: str | None,
+    profile: str,
+) -> None:
+    """Run one benchmark for each selected model."""
+    for model_key in model_keys:
+        _run_benchmark(
+            benchmark,
+            language,
+            source_language,
+            target_language,
+            metric,
+            model_key,
+            cpt_method,
+            lora_rank,
+            dataset_configuration,
+            profile,
+        )
 
 
 if __name__ == "__main__":
