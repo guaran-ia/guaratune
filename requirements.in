@@ -8,7 +8,7 @@ pyarrow==25.0.0
 PyYAML==6.0.3
 sacrebleu==2.6.0
 sentencepiece==0.2.2
-transformers==5.8.0
+transformers==5.20.0
 trl==0.24.0
 
 # Upstream frameworks are immutable commit pins.

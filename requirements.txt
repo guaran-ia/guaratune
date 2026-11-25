@@ -412,7 +412,7 @@ tqdm==4.69.0
     #   nltk
     #   peft
     #   transformers
-transformers==5.8.0
+transformers==5.20.0
     # via
     #   -r requirements.in
     #   llamafactory
