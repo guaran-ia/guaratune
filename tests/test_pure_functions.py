@@ -225,6 +225,29 @@ def test_benchmark_labels_keep_lora_rank_for_same_corpus() -> None:
     ]
 
 
+def test_merge_rows_sorts_lora_ranks_numerically() -> None:
+    rows = [
+        {
+            "model_key": "gemma4_4b",
+            "variant": f"lora_r{rank}_C7_kuatia_es10_en10",
+            "training_method": "lora",
+            "corpus": "C7_kuatia_es10_en10",
+            "lora_rank": rank,
+        }
+        for rank in (512, 64, 256, 128)
+    ]
+
+    merged = analyze_eval_results.merge_rows(rows)
+
+    assert [row["lora_rank"] for row in merged] == [64, 128, 256, 512]
+    assert analyze_eval_results.benchmark_model_labels(merged) == [
+        "C7 (LoRA r64)",
+        "C7 (LoRA r128)",
+        "C7 (LoRA r256)",
+        "C7 (LoRA r512)",
+    ]
+
+
 def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path) -> None:
     evaluation_root = tmp_path / "evaluation"
     output_path = evaluation_root / "experiments" / "gemma4_12b" / "base" / "perplexity"

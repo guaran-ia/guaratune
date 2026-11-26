@@ -961,6 +961,15 @@ def merge_profile_values(*values: Any) -> str:
     return ','.join(sorted(profiles))
 
 
+def lora_rank_sort_key(row: dict[str, Any]) -> int:
+    """Return a numeric LoRA-rank sort key, placing non-LoRA variants first."""
+    rank = row.get('lora_rank')
+    try:
+        return int(rank) if rank is not None else -1
+    except (TypeError, ValueError):
+        return -1
+
+
 def collapse_global_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Copy global metrics onto corpus rows and remove redundant global rows.
 
@@ -1064,7 +1073,7 @@ def merge_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key=lambda item: (
             str(item.get('model_key') or ''),
             str(item.get('training_method') or ''),
-            str(item.get('lora_rank') or ''),
+            lora_rank_sort_key(item),
             str(item.get('corpus') or ''),
             str(item.get('eval_corpus') or ''),
             str(item.get('variant') or ''),
@@ -1526,7 +1535,7 @@ def report_markdown(
             row.get('variant') != 'base',
             str(row.get('training_method') or ''),
             str(row.get('corpus') or ''),
-            str(row.get('lora_rank') or ''),
+            lora_rank_sort_key(row),
         )
     )
     model_names = sorted(
@@ -1691,7 +1700,7 @@ def report_csv(
             row.get('variant') != 'base',
             str(row.get('training_method') or ''),
             str(row.get('corpus') or ''),
-            str(row.get('lora_rank') or ''),
+            lora_rank_sort_key(row),
         )
     )
     metric_names = sorted(
@@ -1893,7 +1902,7 @@ def pretty_report_csv(
             row.get('variant') != 'base',
             str(row.get('training_method') or ''),
             str(row.get('corpus') or ''),
-            str(row.get('lora_rank') or ''),
+            lora_rank_sort_key(row),
         )
     )
     labels = pretty_variant_labels(variants)
