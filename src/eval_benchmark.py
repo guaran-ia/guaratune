@@ -84,6 +84,17 @@ def matrix_paths() -> list[str]:
     )
 
 
+def registered_model_keys() -> list[str]:
+    """Return model keys registered in evaluation matrices."""
+    model_keys = []
+    for path in matrix_paths():
+        matrix = generate_eval_configs.load_yaml(path)
+        model_key = matrix.get("model", {}).get("key")
+        if model_key:
+            model_keys.append(str(model_key))
+    return model_keys
+
+
 def load_model_matrix(model_key: str) -> dict[str, Any]:
     """Load the matrix belonging to a model key."""
     for path in matrix_paths():
@@ -393,8 +404,7 @@ def _run_benchmark(
     "--model",
     "model_keys",
     multiple=True,
-    required=True,
-    help="Model key; repeat to evaluate multiple models.",
+    help="Model key; repeat to select several. Defaults to all registered models.",
 )
 @click.option(
     "--cpt-method",
@@ -433,8 +443,13 @@ def main(
     dataset_configuration: str | None,
     profile: str,
 ) -> None:
-    """Run one benchmark for each selected model."""
-    for model_key in model_keys:
+    """Run one benchmark for each selected or registered model."""
+    selected_models = model_keys or tuple(registered_model_keys())
+    if not selected_models:
+        raise click.ClickException(
+            f"No evaluation model matrices were found in {MATRIX_DIR}."
+        )
+    for model_key in selected_models:
         _run_benchmark(
             benchmark,
             language,
