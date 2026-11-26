@@ -588,7 +588,7 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | 32.50 (31.52, 33.48) | -6.25 |" in report
     assert "| Belebele GN (acc) | 43.00 | **46.67** | +3.67 |" in report
     assert "| Average | 26.34 | **27.98** | +1.64 |" in report
-    assert "| benchmark | base | C1 | Gain C1 |" in report
+    assert "| benchmark | base | C1 (Full CPT) | Gain C1 (Full CPT) |" in report
     assert "(-95% CI, +95% CI)" not in report
     assert "FLORES+ EN->GN (chrF++)" in report
     assert "FLORES+ EN->GN (BLEU)" not in report
@@ -600,14 +600,14 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "Gain columns show signed score-point differences" in report
     assert "Values in parentheses are the lower and upper bounds of an approximate 95% confidence interval" in report
     mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc)")
-    assert mmlu_row["_standard_errors"] == {"base": 1.25, "C1": 0.5}
+    assert mmlu_row["_standard_errors"] == {"base": 1.25, "C1 (Full CPT)": 0.5}
     assert "standard_errors" not in columns
     assert "_standard_errors" not in report
 
     average_rows, average_columns = analyze_eval_results.language_average_table(
         [base, variant]
     )
-    assert [row['variant'] for row in average_rows] == ['base', 'C1']
+    assert [row['variant'] for row in average_rows] == ['base', 'C1 (Full CPT)']
     average_path = tmp_path / "evaluation_average_score_by_language.md"
     analyze_eval_results.write_language_average_markdown(
         str(average_path), average_rows, average_columns
@@ -616,7 +616,7 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert average_report.startswith("# Gemma4 4B (Full CPT)\n\n")
     assert "| Variant | Guarani Average | Guarani Gain | English Average | English Gain | Spanish Average | Spanish Gain |" in average_report
     assert "95% confidence intervals" not in average_report
-    assert "| C1 |" in average_report
+    assert "| C1 (Full CPT) |" in average_report
     assert "full_C1_kuatia" not in average_report
     assert "## Variant reference\n* C1: Kuatia" in average_report
     assert "Token totals are the number of tokens" in average_report
@@ -935,7 +935,7 @@ def test_perplexity_report_uses_short_variant_headers_and_reference(tmp_path: Pa
     )
     report = output_path.read_text(encoding="utf-8")
     assert report.startswith("# Gemma4 4B (Full CPT)\n\n")
-    assert "| Perplexity metric | base | C1 |" in report
+    assert "| Perplexity metric | base | C1 (Full CPT) |" in report
     assert "| word perplexity | 100.00 | **10.00** |" in report
     assert "coreguapa" not in report.lower()
     assert "## Variant reference" in report

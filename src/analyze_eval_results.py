@@ -2237,7 +2237,7 @@ def benchmark_report_heading(
 
 
 def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
-    """Return corpus labels, retaining every LoRA rank in the label."""
+    """Return corpus labels qualified by training method and LoRA rank."""
     labels = []
     for row in variants:
         if row.get('variant') == 'base':
@@ -2256,12 +2256,8 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
             rank = row.get('lora_rank')
             qualifier = f'LoRA r{rank}' if rank else 'LoRA'
         elif method == 'full':
-            if labels.count(label) <= 1:
-                continue
             qualifier = 'Full CPT'
         else:
-            if labels.count(label) <= 1:
-                continue
             qualifier = method.title() if method else str(row.get('variant'))
         labels[index] = f'{label} ({qualifier})'
 
@@ -3057,16 +3053,8 @@ def perplexity_metric_label(eval_corpus: Any, metric_label: str) -> str:
 
 
 def perplexity_variant_label(row: dict[str, Any]) -> str:
-    """Return a concise variant label for perplexity comparison columns."""
-    variant = str(row.get('variant') or '')
-    if variant.lower() == 'base':
-        return 'base'
-    match = re.search(r'(?:^|_)C\d+(?:_|$)', variant)
-    if match:
-        return match.group(0).strip('_')
-    corpus = str(row.get('corpus') or '')
-    match = re.search(r'(?:^|_)C\d+(?:_|$)', corpus)
-    return match.group(0).strip('_') if match else variant.removeprefix('full_')
+    """Return the method-qualified variant label for a perplexity column."""
+    return benchmark_model_labels([row])[0]
 
 
 def perplexity_table(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
