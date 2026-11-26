@@ -42,8 +42,9 @@ Gemma 4 variants.
 
 | Model                        | Parameters | Requiered GPU Memory |
 | ---------------------------- | ---------- | ------------------ | 
-| google/gemma-4-E2B           | 2B         | ~55 GB (bf16)      |
-| google/gemma-4-E4B           | 4B         | ~80 GB (bf16)      |
+| google/gemma-3-4B            | 4B         | ~55 GB (bf16)      |
+| google/gemma-4-E2B           | 5B (active 2B)         | ~55 GB (bf16)      |
+| google/gemma-4-E4B           | 8B (active 4B)         | ~80 GB (bf16)      |
 | google/gemma-4-12B           | 12B        | ~93 GB (bf16)*     |
 
 * Text-only CPT, freezing audio and vision.
@@ -150,28 +151,28 @@ scripts/run_pipeline.sh --model <model_key>
 
 ### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--model MODEL_KEY` | Required | Model key declared in `configs/train/*_cpt_matrix.yaml` (e.g., gemma4_4b). |
-| `--profile PROFILE` | `experiments` | Training and evaluation profile to generate and run. |
-| `--data DATA_CONFIG` | All data configurations | Data configuration to run, for example `C1` or `C1_kuatia`. Repeat to run multiple data configurations. |
-| `--corpus DATA_CONFIG` | All data configurations | Alias for `--data`. |
-| `--config DATA_CONFIG` | All data configurations | Alias for `--data`. |
-| `--data-config-file PATH` | `configs/data/gemma4_cpt.yaml` | Data preparation config file used to resolve corpora and prepare missing data artifacts. |
-| `--method METHOD` | All CPT methods | CPT method to run. Supported forms include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, and quoted forms such as `"lora 64"`. Repeat to run multiple methods. |
-| `--eval-matrix PATH` | Auto-detected by model key | Evaluation matrix file. When omitted, the script finds the matrix in `configs/evaluation/*_eval_matrix.yaml` whose `model.key` matches `--model`. |
-| `--eval-suite SUITE` | All evaluation suites | Evaluation suite to run, for example `perplexity` or `global_mmlu_lite`. Repeat to run multiple suites. |
-| `--no-eval-base` | `False` | Exclude base-model evaluations from the selected evaluation configs. |
-| `--skip-evaluation` | `False` | Skip evaluation config generation and execution. |
-| `--skip-analysis` | `False` | Skip evaluation result analysis. |
-| `--benchmark-language LANG` | `all` | Benchmark language for the comparison table produced by `src.analyze_eval_results`. Supported values are defined by that script. |
-| `--env-file PATH` | `.env` | Local secret env file forwarded to training through `src.train_config`. |
-| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
-| `--cleanup-optimizers BOOL` | `true` | Pass optimizer cleanup setting to `src.train_config`. |
-| `--force-data-prep` | `False` | Run data preparation even if required artifacts already exist. |
-| `--no-overwrite` | `False` | Do not overwrite generated training or evaluation configs during preparation. |
-| `--dry-run` | `False` | Print selected training configs without launching training, evaluation, or analysis. |
-| `-h`, `--help` | `False` | Show script help and exit. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--model MODEL_KEY` | --- | Yes | Model key declared in `configs/train/*_cpt_matrix.yaml` (e.g., gemma4_4b). |
+| `--profile PROFILE` | `experiments` | No | Training and evaluation profile to generate and run. |
+| `--data DATA_CONFIG` | All data configurations | No | Data configuration to run, for example `C1` or `C1_kuatia`. Repeat to run multiple data configurations. |
+| `--corpus DATA_CONFIG` | All data configurations | No | Alias for `--data`. |
+| `--config DATA_CONFIG` | All data configurations | No | Alias for `--data`. |
+| `--data-config-file PATH` | `configs/data/gemma4_cpt.yaml` | No | Data preparation config file used to resolve corpora and prepare missing data artifacts. |
+| `--method METHOD` | All CPT methods | No | CPT method to run. Supported forms include `full`, `lora`, `lora64`, `lora_r64`, `lora:64`, and quoted forms such as `"lora 64"`. Repeat to run multiple methods. |
+| `--eval-matrix PATH` | Auto-detected by model key | No | Evaluation matrix file. When omitted, the script finds the matrix in `configs/evaluation/*_eval_matrix.yaml` whose `model.key` matches `--model`. |
+| `--eval-suite SUITE` | All evaluation suites | No | Evaluation suite to run, for example `perplexity` or `global_mmlu_lite`. Repeat to run multiple suites. |
+| `--no-eval-base` | `False` | No | Exclude base-model evaluations from the selected evaluation configs. |
+| `--skip-evaluation` | `False` | No | Skip evaluation config generation and execution. |
+| `--skip-analysis` | `False` | No | Skip evaluation result analysis. |
+| `--benchmark-language LANG` | `all` | No | Benchmark language for the comparison table produced by `src.analyze_eval_results`. Supported values are defined by that script. |
+| `--env-file PATH` | `.env` | No | Local secret env file forwarded to training through `src.train_config`. |
+| `--cleanup-checkpoints BOOL` | `true` | No | Remove checkpoint directories after each successful training run; retain the final root model. |
+| `--cleanup-optimizers BOOL` | `true` | No | Pass optimizer cleanup setting to `src.train_config`. |
+| `--force-data-prep` | `False` | No | Run data preparation even if required artifacts already exist. |
+| `--no-overwrite` | `False` | No | Do not overwrite generated training or evaluation configs during preparation. |
+| `--dry-run` | `False` | No | Print selected training configs without launching training, evaluation, or analysis. |
+| `-h`, `--help` | `False` | No | Show script help and exit. |
 
 ### Examples
 
@@ -260,11 +261,11 @@ JSONL file.
 
 #### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--output-dir` | `None` | Override the output directory defined in the data config. |
-| `--overwrite` | `False` | Replace existing generated data artifacts. |
-| `--preflight-only` | `False` | Print source and corpus metadata and exit without writing artifacts. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--output-dir` | `None` | No | Override the output directory defined in the data config. |
+| `--overwrite` | `False` | No | Replace existing generated data artifacts. |
+| `--preflight-only` | `False` | No | Print source and corpus metadata and exit without writing artifacts. |
 
 #### Add new datasets
 
@@ -303,11 +304,11 @@ The smoke profile contains one short LoRA run on `C1_kuatia`, while the experime
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--model` | Required | Model key (e.g., gemma4_4b) whose training matrix is stored in `configs/train`. |
-| `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
-| `--overwrite` | `False` | Replace existing generated YAML files and W&B environment file. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--model` | --- | Yes | Model key (e.g., gemma4_4b) whose training matrix is stored in `configs/train`. |
+| `--profile` | All profiles | No | Profile to generate. Repeat the argument to generate multiple profiles. |
+| `--overwrite` | `False` | No | Replace existing generated YAML files and W&B environment file. |
 
 >[!Note]
 >New training configurations can be added by following the instructions presented 
@@ -353,14 +354,14 @@ python -m src.train_profile experiments --model <model_key> --exclude '<model_ke
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `profile` | `experiments` | Generated training profile to run. |
-| `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_4b`. |
-| `--env-file` | `.env` | Local secret environment file forwarded to each training run. |
-| `--exclude` | None | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
-| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
-| `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after each training run to save disk space. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `profile` | `experiments` | No | Generated training profile to run. |
+| `--model` | `None` | No | Model key to run inside the generated profile, for example `gemma4_4b`. |
+| `--env-file` | `.env` | No | Local secret environment file forwarded to each training run. |
+| `--exclude` | None | No | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| `--cleanup-checkpoints BOOL` | `true` | No | Remove checkpoint directories after each successful training run; retain the final root model. |
+| `--cleanup-optimizers` | `True` | No | Remove `optimizer.pt` files after each training run to save disk space. |
 
 >[!Note]
 >Training wrappers remove `checkpoint-N` directories by default only after the
@@ -388,12 +389,12 @@ python -m src.train_config 'configs/train/generated/experiments/<model_key>/<mod
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `config_patterns` | Required | One or more generated LLaMA Factory training config paths or glob patterns. |
-| `--env-file` | `.env` | Local secret environment file containing values such as `HF_TOKEN` and `WANDB_API_KEY`. |
-| `--cleanup-checkpoints BOOL` | `true` | Remove checkpoint directories after each successful training run; retain the final root model. |
-| `--cleanup-optimizers` | `True` | Remove `optimizer.pt` files after training completes to save disk space. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `config_patterns` | --- | Yes | One or more generated LLaMA Factory training config paths or glob patterns. |
+| `--env-file` | `.env` | No | Local secret environment file containing values such as `HF_TOKEN` and `WANDB_API_KEY`. |
+| `--cleanup-checkpoints BOOL` | `true` | No | Remove checkpoint directories after each successful training run; retain the final root model. |
+| `--cleanup-optimizers` | `True` | No | Remove `optimizer.pt` files after training completes to save disk space. |
 
 > [!Tip]
 > For multi-GPU or DeepSpeed runs, set the LLaMA Factory torchrun environment 
@@ -465,11 +466,11 @@ Evaluation results, samples, and request caches are stored under `outputs/evalua
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--matrix` | Required | Evaluation matrix YAML file used to generate lm-evaluation-harness configs. |
-| `--profile` | All profiles | Profile to generate. Repeat the argument to generate multiple profiles. |
-| `--overwrite` | `False` | Replace existing generated YAML files. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--matrix` | --- | Yes | Evaluation matrix YAML file used to generate lm-evaluation-harness configs. |
+| `--profile` | All profiles | No | Profile to generate. Repeat the argument to generate multiple profiles. |
+| `--overwrite` | `False` | No | Replace existing generated YAML files. |
 
 > [!Important]
 > To run an evaluation from a config, execute:
@@ -480,9 +481,9 @@ python -m src.eval_config configs/evaluation/generated/smoke/<model_key>/<model_
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `config_path` | Required | Generated lm-evaluation-harness config YAML file to run. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `config_path` | --- | Yes | Generated lm-evaluation-harness config YAML file to run. |
 
 > [!Important]
 > Alternatively, a full profile can be executed:
@@ -507,11 +508,11 @@ python -m src.eval_profile experiments --model <model_key> --exclude '<model_key
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `profile` | `experiments` | Generated evaluation profile to run. |
-| `--model` | `None` | Model key to run inside the generated profile, for example `gemma4_12b`. |
-| `--exclude` | `None` | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `profile` | `experiments` | No | Generated evaluation profile to run. |
+| `--model` | `None` | No | Model key to run inside the generated profile, for example `gemma4_12b`. |
+| `--exclude` | `None` | No | Config filename, stem, path, or glob pattern to skip. Repeat for multiple exclusions. |
 
 > [!Important]
 > To evaluate a model against a specific benchmark, execute:
@@ -526,6 +527,12 @@ Repeat `--model` to run the same benchmark for several models in one invocation:
 python -m src.eval_benchmark --model gemma3_4b --model gemma4_2b --model gemma4_12b --benchmark mgsm
 ```
 
+Omit `--model` to run it for every model registered in `configs/evaluation`:
+
+```bash
+python -m src.eval_benchmark --benchmark mgsm
+```
+
 For the `Flores+` benchkmark both the source and target languages should be specified
 
 ```bash
@@ -534,14 +541,14 @@ python -m src.eval_benchmark --model <model_key> --benchmark flores --source_lan
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--model` | Required; repeatable | Model key to evaluate, for example `gemma4_4b`. Repeat to evaluate multiple models. |
-| `--benchmark` | `None` | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `include`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`.|
-| `--language` | `None` | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`.|
-| `--cpt-method` | `None` | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated.|
-| `--lora-rank` | `None` | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
-| `--dataset-configuration` | `None` | Optional dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. If this parameter is omitted all dataset configuration variants are evaluated. | 
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--model` | All registered models; repeatable | No | Model key to evaluate, for example `gemma4_4b`. Repeat to select multiple models; omit to run all registered models. |
+| `--benchmark` | --- | Yes | Benchmark name to be scored. Accepted values: `mmlu`, `belele`, `multiwikiqa`, `flores`, `mgsm`, `piqa`, `include`, `arceasy`, `arcchallenge`, `hellaswag`, `xstorycloze`, `gpqa`, `wnli`, `copa`, `truthfulqa`. |
+| `--language` | `None` | No | Optional language of the benchmark to be scored. Accepted values: `spanish`, `english`, `guarani`. |
+| `--cpt-method` | `None` | No | Optional CPT method to be evaluated. Accepted values: `base`, `full`, `lora`. If this parameters is omitted `base` and all `full` and `LoRA` CPT variants are evaluated. |
+| `--lora-rank` | `None` | No | LoRA rank to be evaluated. Accepted values: `64`, `128`, `256`, `512`. |
+| `--dataset-configuration` | `None` | No | Optional dataset configuration to be evaluated. Accepted values: `c1`, `c2`, `c3`, `c4`, `c5`, `c6`, `c7`, `c8`. If this parameter is omitted all dataset configuration variants are evaluated. |
 
 > [!Note]
 > Check [configs/evaluation/README.md](configs/evaluation/README.md) for instructions 
@@ -589,17 +596,17 @@ the matching base model.
 
 ##### CLI reference
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--model` | Required | Model key to analyze. Repeat the option to analyze multiple models. |
-| `--evaluation-root` | `outputs/evaluation` | Root directory containing evaluation outputs. |
-| `--profile` | All profiles | Evaluation profile to include. Repeat the option to include multiple profiles. |
-| `--cpt-method` | `full_lora` | CPT methods to include: `full`, `lora`, or `full_lora`. Base model rows remain available for comparison. |
-| `--output-dir` | `results` | Parent directory for model-specific analysis report directories. |
-| `--benchmark-markdown-name` | Auto-generated | Benchmark-by-model markdown output filename. |
-| `--benchmark-language` | `all` | Benchmark language to include in the comparison table. Supported values: `all`, `en`, `es`, `gn`. |
-| `--perplexity-markdown-name` | Auto-generated | Perplexity-by-model markdown output filename. |
-| `--language-average-markdown-name` | Auto-generated | Language-average benchmark markdown output filename. |
+| Argument | Default | Mandatory | Description |
+| --- | --- | --- | --- |
+| `--model` | --- | Yes | Model key to analyze. Repeat the option to analyze multiple models. |
+| `--evaluation-root` | `outputs/evaluation` | No | Root directory containing evaluation outputs. |
+| `--profile` | All profiles | No | Evaluation profile to include. Repeat the option to include multiple profiles. |
+| `--cpt-method` | `full_lora` | No | CPT methods to include: `full`, `lora`, or `full_lora`. Base model rows remain available for comparison. |
+| `--output-dir` | `results` | No | Parent directory for model-specific analysis report directories. |
+| `--benchmark-markdown-name` | Auto-generated | No | Benchmark-by-model markdown output filename. |
+| `--benchmark-language` | `all` | No | Benchmark language to include in the comparison table. Supported values: `all`, `en`, `es`, `gn`. |
+| `--perplexity-markdown-name` | Auto-generated | No | Perplexity-by-model markdown output filename. |
+| `--language-average-markdown-name` | Auto-generated | No | Language-average benchmark markdown output filename. |
 
 ## License
 
