@@ -174,6 +174,57 @@ def test_parse_variant() -> None:
     }
 
 
+def test_benchmark_labels_keep_lora_rank_for_same_corpus() -> None:
+    variants = [
+        {
+            "model_key": "gemma4_4b",
+            "variant": "full_C7_kuatia_es10_en10",
+            "training_method": "full",
+            "corpus": "C7_kuatia_es10_en10",
+            "lora_rank": None,
+            "guarani_wnli_acc": 0.45,
+        },
+        *[
+            {
+                "model_key": "gemma4_4b",
+                "variant": f"lora_r{rank}_C7_kuatia_es10_en10",
+                "training_method": "lora",
+                "corpus": "C7_kuatia_es10_en10",
+                "lora_rank": rank,
+                "guarani_wnli_acc": score,
+            }
+            for rank, score in ((64, 0.408), (128, 0.41), (256, 0.42), (512, 0.44))
+        ],
+    ]
+
+    expected_labels = [
+        "C7 (Full CPT)",
+        "C7 (LoRA r64)",
+        "C7 (LoRA r128)",
+        "C7 (LoRA r256)",
+        "C7 (LoRA r512)",
+    ]
+    assert analyze_eval_results.benchmark_model_labels(variants) == expected_labels
+
+    rows, columns = analyze_eval_results.benchmark_table(variants, "gn", {})
+    assert columns == [
+        "benchmark",
+        *[
+            column
+            for label in expected_labels
+            for column in (label, f"Gain {label}")
+        ],
+    ]
+    wnli_row = next(row for row in rows if row["benchmark"] == "WNLI GN (acc)")
+    assert [wnli_row[label] for label in expected_labels] == [
+        45.0,
+        40.8,
+        41.0,
+        42.0,
+        44.0,
+    ]
+
+
 def test_skipped_tasks_are_persisted_and_mark_analysis_incomplete(tmp_path: Path) -> None:
     evaluation_root = tmp_path / "evaluation"
     output_path = evaluation_root / "experiments" / "gemma4_12b" / "base" / "perplexity"
@@ -537,7 +588,8 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "| Global MMLU Lite GN (acc) | **38.75 (36.30, 41.20)** | 32.50 (31.52, 33.48) | -6.25 |" in report
     assert "| Belebele GN (acc) | 43.00 | **46.67** | +3.67 |" in report
     assert "| Average | 26.34 | **27.98** | +1.64 |" in report
-    assert "| benchmark | base (-95% CI, +95% CI) | C1 (-95% CI, +95% CI) | Gain C1 |" in report
+    assert "| benchmark | base | C1 | Gain C1 |" in report
+    assert "(-95% CI, +95% CI)" not in report
     assert "FLORES+ EN->GN (chrF++)" in report
     assert "FLORES+ EN->GN (BLEU)" not in report
     assert "Average of en benchmarks" not in report
@@ -546,6 +598,7 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
     assert "Token totals are the number of tokens" in report
     assert "| Instances |" not in report
     assert "Gain columns show signed score-point differences" in report
+    assert "Values in parentheses are the lower and upper bounds of an approximate 95% confidence interval" in report
     mmlu_row = next(row for row in rows if row.get("benchmark") == "Global MMLU Lite GN (acc)")
     assert mmlu_row["_standard_errors"] == {"base": 1.25, "C1": 0.5}
     assert "standard_errors" not in columns
@@ -583,6 +636,43 @@ def test_benchmark_table_matches_grouped_report_format(tmp_path: Path) -> None:
         ("gemma4_4b", "llama3_8b"),
         [base, variant, {"training_method": "lora"}],
     ) == "Gemma4 4B, Llama3 8B (Full CPT, LoRA)"
+
+
+def test_language_average_report_explains_parenthetical_ci_without_header_suffix(
+    tmp_path: Path,
+) -> None:
+    rows = [
+        {
+            "model_key": "gemma4_4b",
+            "variant": "base",
+            "training_method": "base",
+            "guarani_average": 50.0,
+            "guarani_average_stderr": 1.0,
+            "guarani_gain_base": None,
+            "guarani_is_base": True,
+        },
+        {
+            "model_key": "gemma4_4b",
+            "variant": "C7 (LoRA r64)",
+            "training_method": "lora",
+            "guarani_average": 60.0,
+            "guarani_average_stderr": 0.5,
+            "guarani_gain_base": 10.0,
+            "guarani_is_base": False,
+        },
+    ]
+    columns = ["variant", "guarani_average", "guarani_gain_base"]
+    output_path = tmp_path / "evaluation_average_score_by_language.md"
+
+    analyze_eval_results.write_language_average_markdown(
+        str(output_path), rows, columns
+    )
+    report = output_path.read_text(encoding="utf-8")
+
+    assert "| Variant | Guarani Average | Guarani Gain |" in report
+    assert "(-95% CI, +95% CI)" not in report
+    assert "60.00 (59.02, 60.98)" in report
+    assert "Values in parentheses are the lower and upper bounds" in report
 
 
 def test_task_specs_apply_matrix_overrides_per_task() -> None:

@@ -2237,7 +2237,7 @@ def benchmark_report_heading(
 
 
 def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
-    """Return concise corpus labels with qualifiers where labels collide."""
+    """Return corpus labels, retaining every LoRA rank in the label."""
     labels = []
     for row in variants:
         if row.get('variant') == 'base':
@@ -2249,8 +2249,6 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
         labels.append(label)
 
     for index, (label, row) in enumerate(zip(labels.copy(), variants)):
-        if labels.count(label) <= 1:
-            continue
         if row.get('variant') == 'base':
             continue
         method = str(row.get('training_method') or '').lower()
@@ -2258,8 +2256,12 @@ def benchmark_model_labels(variants: list[dict[str, Any]]) -> list[str]:
             rank = row.get('lora_rank')
             qualifier = f'LoRA r{rank}' if rank else 'LoRA'
         elif method == 'full':
+            if labels.count(label) <= 1:
+                continue
             qualifier = 'Full CPT'
         else:
+            if labels.count(label) <= 1:
+                continue
             qualifier = method.title() if method else str(row.get('variant'))
         labels[index] = f'{label} ({qualifier})'
 
@@ -2638,12 +2640,10 @@ def write_language_average_markdown(
             for column in columns
             if column.endswith('_average')
         }
-        display_columns = []
-        for column in columns:
-            label = column.removesuffix('_base').replace('_', ' ').title()
-            if ci_available.get(column, False):
-                label += ' (-95% CI, +95% CI)'
-            display_columns.append(label)
+        display_columns = [
+            column.removesuffix('_base').replace('_', ' ').title()
+            for column in columns
+        ]
         handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         column_maxima = {
@@ -2683,8 +2683,9 @@ def write_language_average_markdown(
         if any(ci_available.values()):
             handle.write(
                 '\n>[!Note]\n'
-                '> 95% confidence intervals are approximate normal intervals computed '
-                'as the average score ± 1.96 times its propagated standard error. '
+                '> Values in parentheses are the lower and upper bounds of an '
+                'approximate 95% confidence interval around the average score, '
+                'computed as the average ± 1.96 times its propagated standard error. '
                 'Average standard errors assume independent benchmark estimates. '
                 'An interval is omitted when any included benchmark lacks a finite '
                 'standard error in the evaluation output. '
@@ -2717,12 +2718,7 @@ def write_benchmark_markdown(
         if model_keys:
             heading = benchmark_report_heading(model_keys, variants)
             handle.write(f'# {heading}\n\n')
-        display_columns = [
-            f'{column} (-95% CI, +95% CI)'
-            if column != 'benchmark' and not column.startswith('Gain ')
-            else column
-            for column in columns
-        ]
+        display_columns = columns
         handle.write('| ' + ' | '.join(display_columns) + ' |\n')
         handle.write('| ' + ' | '.join(['---'] * len(columns)) + ' |\n')
         for row in rows:
@@ -2770,10 +2766,11 @@ def write_benchmark_markdown(
 
         handle.write(
             '\n>[!Note]\n'
-            '> 95% confidence intervals are approximate normal intervals computed '
-            'as the score or average ± 1.96 times its standard error. Average '
-            'standard errors assume independent benchmark estimates. An interval '
-            'is omitted when the evaluation output lacks a finite standard error. '
+            '> Values in parentheses are the lower and upper bounds of an approximate '
+            '95% confidence interval around the score, computed as the score ± 1.96 '
+            'times its standard error. Average standard errors assume independent '
+            'benchmark estimates. An interval is omitted when the evaluation output '
+            'lacks a finite standard error. '
             'Gain columns show signed score-point differences from the corresponding '
             'base model; average gains use displayed rounded scores. FLORES+ BLEU '
             'is excluded; FLORES+ chrF++ is reported by translation direction.\n'
